@@ -1,0 +1,29 @@
+# The working tree is bind-mounted into Linux containers (docker-compose), and
+# this machine has core.autocrlf=true. Without this file every text file would
+# land CRLF inside the containers. Python and BuildKit tolerate that, but shell
+# scripts do not — they fail with a confusing "\r: command not found".
+# Force LF for everything the containers execute or parse.
+
+* text=auto eol=lf
+
+*.py    text eol=lf
+*.sh    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.toml  text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.html  text eol=lf
+*.js    text eol=lf
+*.conf  text eol=lf
+Dockerfile      text eol=lf
+.dockerignore   text eol=lf
+.gitignore      text eol=lf
+
+# Binary — never touch
+*.png   binary
+*.jpg   binary
+*.mp4   binary
+*.mov   binary
+*.pptx  binary
+*.ipynb binary
