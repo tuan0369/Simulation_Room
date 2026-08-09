@@ -51,19 +51,69 @@ def test_cold_neighbour_cools_a_warm_room():
 
 
 def test_coupling_conserves_energy_between_two_rooms():
-    """Whatever A gains, B loses. Temperature changes differ because the rooms
-    have different heat capacities; the energy must still balance."""
+    """Whatever A gains, B loses.
+
+    Checked as a flux at small dt. Each room is integrated implicitly against
+    its own denominator (operator splitting), so over a FINITE step the two
+    exchanged energies differ by O(dt) — exact conservation would require
+    solving both rooms simultaneously. The physical invariant is the
+    instantaneous heat flow, which is what this measures.
+    """
     t_a, t_b = 20.0, 30.0
-    cap_a = cap_b = ROOM_HEAT_CAPACITY
+    cap = ROOM_HEAT_CAPACITY
+    dt = 0.001
     a = RoomState(temperature=t_a, occupancy=0, hvac_on=False)
     b = RoomState(temperature=t_b, occupancy=0, hvac_on=False)
 
-    # Isolate the coupling term by differencing against the uncoupled step.
-    gain_a = (step_temperature(a, dt=1.0, neighbour_temps={"b": t_b})
-              - step_temperature(a, dt=1.0)) * cap_a
-    loss_b = (step_temperature(b, dt=1.0, neighbour_temps={"a": t_a})
-              - step_temperature(b, dt=1.0)) * cap_b
-    assert gain_a == pytest.approx(-loss_b, rel=1e-9)
+    gain_a = (step_temperature(a, dt=dt, neighbour_temps={"b": t_b})
+              - step_temperature(a, dt=dt)) * cap / dt
+    loss_b = (step_temperature(b, dt=dt, neighbour_temps={"a": t_a})
+              - step_temperature(b, dt=dt)) * cap / dt
+    assert gain_a == pytest.approx(-loss_b, rel=1e-4)
+
+
+def test_coupling_conservation_error_vanishes_with_dt():
+    """Consistency check on the splitting above: halving dt must roughly halve
+    the imbalance, confirming it is a discretisation artefact and not a leak."""
+    t_a, t_b = 20.0, 30.0
+    cap = ROOM_HEAT_CAPACITY
+
+    def imbalance(dt):
+        a = RoomState(temperature=t_a, occupancy=0, hvac_on=False)
+        b = RoomState(temperature=t_b, occupancy=0, hvac_on=False)
+        ga = (step_temperature(a, dt=dt, neighbour_temps={"b": t_b})
+              - step_temperature(a, dt=dt)) * cap / dt
+        lb = (step_temperature(b, dt=dt, neighbour_temps={"a": t_a})
+              - step_temperature(b, dt=dt)) * cap / dt
+        return abs(ga + lb)
+
+    assert imbalance(1.0) > imbalance(0.1) > imbalance(0.01)
+
+
+def test_integrator_is_stable_at_large_timesteps():
+    """The server room has a ~1.7 s explicit stability limit (8333 J/°C against
+    5000 W). A 60 s step must converge toward equilibrium, not oscillate
+    between the clamps — that instability silently corrupted the generated
+    dataset before the integrator was made implicit.
+    """
+    from building import load_building
+    server = load_building().room("f1/server-room")
+    state = RoomState(temperature=24.0, occupancy=0, hvac_on=True,
+                      ac_power_pct=1.0, setpoint=23.0)
+
+    temps = []
+    for _ in range(40):
+        t = step_temperature(state, dt=60.0, config=server,
+                             neighbour_temps={"n1": 24.0, "n2": 24.0})
+        temps.append(t)
+        state = RoomState(temperature=t, occupancy=0, hvac_on=True,
+                          ac_power_pct=1.0, setpoint=23.0)
+
+    # Monotone approach to equilibrium, and never slammed against a clamp.
+    assert all(t >= 15.0 for t in temps)
+    swings = sum(1 for x, y in zip(temps, temps[1:])
+                 if abs(y - x) > 5.0)
+    assert swings == 0, f"temperature oscillated: {temps[:8]}"
 
 
 def test_coupled_pair_converges():

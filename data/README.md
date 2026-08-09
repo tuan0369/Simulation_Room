@@ -107,16 +107,68 @@ Stated separately so the citation is not overclaimed:
 
 ## `building_telemetry.csv` — generated
 
-Produced by `simulator/dataset_generator.py` (Task 6); git-ignored because it is
-large and fully reproducible. Regenerate with:
+Produced by `simulator/dataset_generator.py`; git-ignored because it is 22 MB
+and fully reproducible. Regenerate with:
 
 ```bash
 docker compose run --rm sim python simulator/dataset_generator.py \
     --days 90 --seed 42 --out data/building_telemetry.csv
 ```
 
-Statistics for the committed run will be recorded here once Task 6 lands, so
-results stay auditable without committing the file itself.
+### Statistics of the reference run (`--days 90 --seed 42`)
+
+| | |
+|---|---|
+| Rows | 155,520 (25,920 per room × 6 rooms) |
+| Sampling | one row per room per 5 simulated minutes |
+| Physics timestep | 15 s |
+| Failure events | 53 |
+| Positive rate, 4 h horizon | **1.636 %** (primary target) |
+| Positive rate, 30 min horizon | 0.205 % |
+
+| Room | Failures | Planned services | 4 h positives | Rate |
+|---|---|---|---|---|
+| `f1/lab-a` | 0 | 22 | 0 | 0.00 % |
+| `f1/lab-b` | 5 | 15 | 240 | 0.93 % |
+| `f1/server-room` | 22 | 34 | 1057 | 4.08 % |
+| `f2/lab-c` | 11 | 11 | 528 | 2.04 % |
+| `f2/meeting-room` | 6 | 0 | 288 | 1.11 % |
+| `f2/office` | 9 | 7 | 432 | 1.67 % |
+
+### Two label horizons, and why
+
+`label_failure_within_30min` is the window named in the project plan, but it
+yields only 0.2 % positives and — operationally — half an hour is too short to
+dispatch a technician into. `label_failure_within_4h` is the primary training
+target: 1.6 % positives, the same order as AI4I's 3.39 %, and actually
+actionable. Both are emitted so the notebook can compare them.
+
+`label_rul_hours` is right-censored at 168 h rather than left blank, so no
+column contains NaNs.
+
+Labels are assigned in a **second pass, backwards from observed failures**.
+Every positive is therefore justified by a failure that actually occurred later
+in the same trace, which is what makes the label-correctness tests meaningful
+instead of circular.
+
+### Deliberate distribution shift
+
+Maintenance discipline varies by room, from `f1/lab-a` (serviced every 6–10
+days) to `f2/meeting-room` (never serviced). This is not incidental — it gives
+the Task 7 fairness audit real per-room shift to detect rather than an
+assumed-clean dataset.
+
+One consequence to carry into that audit: **`f1/lab-a` has zero positive
+examples.** It is serviced often enough never to fail in 90 days, so per-room
+recall is *undefined* there, not merely poor. A fairness report must say so
+rather than printing a misleading 0.0.
+
+> **The limitation this project does not hide:** the models are trained on
+> simulated telemetry. AI4I constrains the failure *physics* so the thresholds
+> are not invented, but a real deployment still requires recalibration against
+> at least three months of real building telemetry before any autonomous action.
+> This is stated in the model card and is a Phase-1 entry criterion in the
+> roadmap.
 
 > **The limitation this project does not hide:** the models are trained on
 > simulated telemetry. AI4I constrains the failure *physics* so the thresholds

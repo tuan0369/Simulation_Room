@@ -54,13 +54,20 @@ class RoomState:
 
 
 def auto_hvac_decision(temp: float, setpoint: float, occupancy: int,
-                       currently_on: bool, always_on: bool = False) -> bool:
+                       currently_on: bool, always_on: bool = False,
+                       setback_c: float | None = None) -> bool:
     """Thermostat decision for auto mode (occupancy-driven).
 
     - `always_on` room (server room): never shuts off. Its load is equipment,
       not people, so the empty-room rule below would strand it with 4 kW of
       running hardware and no cooling.
-    - Empty room (occupancy == 0): always off — nobody to cool for.
+    - `setback_c` (optional): unoccupied setback ceiling. An empty room is
+      allowed to drift up to this temperature but no further. Without it, a
+      room with any standing equipment load cooks overnight — 400 W into
+      25 000 J/°C is ~57 °C/hour with the AC off. Real buildings set back
+      rather than switching off. Defaults to None, which is Project 1's
+      original off-when-empty behaviour.
+    - Empty room (occupancy == 0): off, subject to the setback ceiling.
     - Occupied and warmer than the target: engage the AC.
     - Occupied but at/below target: hold current state. While people are
       present the AC is never switched off; the PID simply modulates power
@@ -69,7 +76,9 @@ def auto_hvac_decision(temp: float, setpoint: float, occupancy: int,
     if always_on:
         return True              # critical load -> 24/7 cooling
     if occupancy <= 0:
-        return False             # empty room -> auto shut off
+        if setback_c is None:
+            return False         # empty room -> auto shut off
+        return temp > setback_c  # empty room -> hold at the setback ceiling
     if temp > setpoint:
         return True              # occupied & above target -> engage AC
     return currently_on          # occupied & comfortable -> hold (PID modulates)
@@ -104,20 +113,27 @@ def step_temperature(state: RoomState, dt: float, config=None,
 
     q_people = state.occupancy * HEAT_PER_PERSON_W
     q_equipment = equipment_w
-    q_outdoor = insulation * solar * (t_outdoor - state.temperature)
     q_ac = -ac_max * state.ac_power_pct if state.hvac_on else 0.0
 
-    # Conduction to adjacent rooms. Signed by the gradient, so a room always
-    # loses exactly the energy its neighbour gains.
-    q_neighbours = 0.0
+    # Split the heat balance into a part independent of this room's temperature
+    # and a part proportional to it:  dT/dt = (A - B*T) / C
+    #
+    # Conduction is signed by the gradient, so a room always loses exactly the
+    # energy its neighbour gains.
+    k_envelope = insulation * solar
+    a_terms = q_people + q_equipment + q_ac + k_envelope * t_outdoor
+    b_terms = k_envelope
     if neighbour_temps:
-        q_neighbours = COUPLING_K * sum(
-            t - state.temperature for t in neighbour_temps.values()
-        )
+        a_terms += COUPLING_K * sum(neighbour_temps.values())
+        b_terms += COUPLING_K * len(neighbour_temps)
 
-    t_next = state.temperature + (dt / capacity) * (
-        q_people + q_equipment + q_outdoor + q_ac + q_neighbours
-    )
+    # Implicit (backward) Euler: unconditionally stable, so a large dt slows
+    # convergence instead of exploding. Explicit Euler needs dt < C/P, which is
+    # ~1.7 s for the server room (8333 J/°C against 5000 W) — at dt=60 it
+    # oscillated between the 15 °C and 40 °C clamps and silently corrupted the
+    # generated dataset. At the small dt Project 1 uses, the two agree to ~1e-6.
+    t_next = (state.temperature + (dt / capacity) * a_terms) / (
+        1.0 + (dt / capacity) * b_terms)
     return clamp(t_next, TEMP_MIN, TEMP_MAX)
 
 

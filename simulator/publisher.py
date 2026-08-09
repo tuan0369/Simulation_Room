@@ -7,6 +7,7 @@ Command handling lives in `commands.py` and is re-exported here so existing
 imports (and Project 1's test suite) keep working unchanged.
 """
 import json
+import math
 import os
 import random
 import time
@@ -232,8 +233,20 @@ class Simulator:
             if n in self.twins
         }
 
+    def outdoor_temp(self) -> float:
+        """Diurnal outdoor temperature, peaking mid-afternoon."""
+        p = self.building.outdoor_profile
+        hour = (self.sim_time_s / 3600.0) % 24.0
+        peak = p.get("peak_hour", 15)
+        return p["base_temp_c"] + p["diurnal_amplitude_c"] * math.cos(
+            2.0 * math.pi * (hour - peak) / 24.0)
+
     def step(self, dt: float):
         """One simulation step across the whole facility.
+
+        This is the single canonical stepper: the live orchestrator and the
+        offline dataset generator both drive it, so training data cannot come
+        from a different physics path than production telemetry.
 
         Neighbour temperatures are snapshotted before any room advances, so
         every twin sees the same instant. Updating in place would make results
@@ -245,11 +258,12 @@ class Simulator:
             if tid not in self.manual_occupancy:
                 self.twins[tid].set_occupancy(count)
 
+        outdoor = self.outdoor_temp()
         snapshot = {tid: t.state.temperature for tid, t in self.twins.items()}
         for twin in self.twins.values():
             neighbours = {n: snapshot[n] for n in twin.config.neighbours
                           if n in snapshot}
-            twin.tick(dt=dt, neighbour_temps=neighbours)
+            twin.tick(dt=dt, neighbour_temps=neighbours, outdoor_temp=outdoor)
 
     def run(self):
         self.client.connect(BROKER_HOST, BROKER_PORT)

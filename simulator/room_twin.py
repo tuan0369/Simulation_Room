@@ -35,6 +35,10 @@ TELEMETRY_FIELDS = (
 # spoofed advisory must not be able to make a room unsafe.
 ADVISORY_LIMIT_C = 1.5
 
+# Unoccupied setback ceiling. An empty room may drift up to here, but no
+# further — standing equipment load would otherwise cook it overnight.
+UNOCCUPIED_SETBACK_C = 28.0
+
 
 class RoomTwin:
     """A single room's digital twin."""
@@ -103,6 +107,7 @@ class RoomTwin:
                 self.state.temperature, target,
                 self.state.occupancy, self.state.hvac_on,
                 always_on=self.config.always_on,
+                setback_c=UNOCCUPIED_SETBACK_C,
             )
             if desired != self.state.hvac_on:
                 self.state = replace(self.state, hvac_on=desired)
