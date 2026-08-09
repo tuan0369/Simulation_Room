@@ -20,6 +20,8 @@ from commands import (CMD_HVAC, CMD_MAINTENANCE, CMD_MODE,  # noqa: F401
                       SETPOINT_MAX, SETPOINT_MIN, TOPIC_ROOT,
                       VALID_TIME_SCALES, handle_command, make_payload,
                       parse_command_topic, utc_now_iso)
+from building_twin import BuildingTwin
+from floor_twin import FloorTwin
 from occupancy_twin import OccupancyTwin
 from room_twin import RoomTwin
 
@@ -35,7 +37,14 @@ CMD_WILDCARD = f"{TOPIC_ROOT}/+/+/cmd/#"
 INTERVALS = {"temperature": 3, "humidity": 5, "occupancy": 2}
 HEALTH_INTERVAL = 5
 OCCUPANCY_TOPIC = f"{TOPIC_ROOT}/building/occupancy"
+ADVISORY_TOPIC = f"{TOPIC_ROOT}/building/advisory"
 NOISE = 0.1
+
+# Tiered loop rates: rooms react fast, supervisors coordinate slowly. The gap
+# is deliberate — it is what keeps supervision advisory rather than a hidden
+# outer control loop fighting each room's PID.
+FLOOR_INTERVAL = 10
+BUILDING_INTERVAL = 30
 
 # Demos should not start at midnight in an empty building.
 START_HOUR = 8.5
@@ -49,6 +58,10 @@ class Simulator:
         self.twins = {r.twin_id: RoomTwin(r) for r in self.building.all_rooms()}
         self.rng = random.Random(seed)
         self.occupancy = OccupancyTwin(self.building, rng=random.Random(seed))
+        self.floors = {f.floor_id: FloorTwin(f) for f in self.building.floors}
+        self.coordinator = BuildingTwin(self.building)
+        self.budgets = {f.floor_id: f.power_budget_kw for f in self.building.floors}
+        self.active_nudges: dict[str, float] = {}
         self.sim_time_s = START_HOUR * 3600.0
         self.manual_occupancy: set[str] = set()
         self.time_scale = 1.0
@@ -151,6 +164,63 @@ class Simulator:
         }
         self.client.publish(OCCUPANCY_TOPIC, json.dumps(payload), retain=True)
 
+    # ── Supervision ────────────────────────────────────────────────────────
+
+    def run_floor_supervision(self):
+        """Aggregate each floor and publish any recommended nudges.
+
+        Nudges are published as advice on the floor's own topic. Rooms are not
+        mutated here — applying a nudge is the room's decision, which is what
+        keeps a dead supervisor from stopping anyone's cooling.
+        """
+        summaries = {}
+        self.active_nudges = {}
+        for fid, floor in self.floors.items():
+            summary = floor.aggregate(self.twins)
+            nudges = floor.arbitrate(self.twins, self.budgets.get(
+                fid, floor.config.power_budget_kw))
+            self.active_nudges.update(nudges)
+            # Offer the advice; each room clamps it to its own safety limit.
+            for tid in floor._mine(self.twins):
+                if tid in nudges:
+                    self.twins[tid].accept_advisory(nudges[tid])
+                else:
+                    self.twins[tid].clear_advisory()
+            summary |= {
+                "allocated_kw": round(self.budgets.get(fid, 0.0), 3),
+                "nudges": nudges,
+                "timestamp": utc_now_iso(),
+            }
+            summaries[fid] = summary
+            self.client.publish(floor.topic("summary"),
+                                json.dumps(summary), retain=True)
+        return summaries
+
+    def run_building_coordination(self, summaries):
+        self.budgets = self.coordinator.allocate_budgets(summaries)
+        for fid, kw in self.budgets.items():
+            self.client.publish(f"{TOPIC_ROOT}/{fid}/cmd/power_budget",
+                                json.dumps({"budget_kw": kw}))
+
+        summary = self.coordinator.summary(summaries) | {
+            "allocations_kw": self.budgets,
+            "timestamp": utc_now_iso(),
+        }
+        self.client.publish(self.coordinator.topic("summary"),
+                            json.dumps(summary), retain=True)
+
+        # Risk scores arrive from ml_inference in Task 8; until then this is
+        # empty and the coordinator simply raises no work orders.
+        for order in self.coordinator.advisories(self.risk_scores()):
+            self.client.publish(ADVISORY_TOPIC,
+                                json.dumps(order | {"timestamp": utc_now_iso()}))
+            print(f"WORK ORDER {order['twin_id']}: {order['action']} "
+                  f"(p={order['failure_prob']}, {order['top_factor']})")
+
+    def risk_scores(self) -> dict:
+        """Overridden once live ML inference lands (Task 8)."""
+        return {}
+
     # ── Loop ───────────────────────────────────────────────────────────────
 
     def neighbour_temps(self, twin: RoomTwin) -> dict[str, float]:
@@ -201,6 +271,13 @@ class Simulator:
                     self.publish_building_summary()
                     self.publish_occupancy_flow()
 
+                if tick % FLOOR_INTERVAL == 0:
+                    self.floor_summaries = self.run_floor_supervision()
+
+                if tick % BUILDING_INTERVAL == 0:
+                    self.run_building_coordination(
+                        getattr(self, "floor_summaries", {}))
+
                 if tick % 2 == 0:
                     for twin in self.twins.values():
                         if twin.state.hvac_on:
@@ -210,10 +287,12 @@ class Simulator:
                 if tick % 10 == 0:
                     hot = max(self.twins.values(),
                               key=lambda t: t.state.temperature)
-                    print(f"t={tick} hottest={hot.twin_id} "
-                          f"{hot.state.temperature:.2f}C "
+                    nudged = f" nudges={len(self.active_nudges)}" if self.active_nudges else ""
+                    print(f"t={tick} {(self.sim_time_s/3600)%24:05.2f}h "
+                          f"people={self.occupancy.total_in_building} "
+                          f"hottest={hot.twin_id} {hot.state.temperature:.2f}C "
                           f"load={sum(t.electrical_load_w() for t in self.twins.values())/1000:.2f}kW "
-                          f"x{int(self.time_scale)}")
+                          f"x{int(self.time_scale)}{nudged}")
 
                 tick += 1
                 time.sleep(1)

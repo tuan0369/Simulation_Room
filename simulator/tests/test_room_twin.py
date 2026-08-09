@@ -276,6 +276,43 @@ def test_electrical_load_is_zero_when_off(twins):
     assert lab.electrical_load_w() == 0.0
 
 
+def test_advisory_nudge_raises_the_effective_setpoint(twins):
+    lab = twins["f1/lab-a"]
+    lab.state = lab.state.__class__(setpoint=22.0)
+    lab.accept_advisory(1.0)
+    assert lab.effective_setpoint == pytest.approx(23.0)
+
+
+def test_room_clamps_an_oversized_advisory(twins):
+    """The room enforces its own limit; a buggy or spoofed supervisor asking
+    for +50 C must not be obeyed."""
+    from room_twin import ADVISORY_LIMIT_C
+    lab = twins["f1/lab-a"]
+    lab.accept_advisory(50.0)
+    assert lab.advisory_offset == ADVISORY_LIMIT_C
+
+
+def test_advisory_can_never_make_a_room_colder(twins):
+    lab = twins["f1/lab-a"]
+    lab.accept_advisory(-5.0)
+    assert lab.advisory_offset == 0.0
+
+
+def test_malformed_advisory_is_ignored(twins):
+    lab = twins["f1/lab-a"]
+    lab.accept_advisory(0.8)
+    lab.accept_advisory("banana")
+    assert lab.advisory_offset == pytest.approx(0.8)
+
+
+def test_clearing_an_advisory_restores_the_setpoint(twins):
+    lab = twins["f1/lab-a"]
+    lab.state = lab.state.__class__(setpoint=22.0)
+    lab.accept_advisory(1.5)
+    lab.clear_advisory()
+    assert lab.effective_setpoint == pytest.approx(22.0)
+
+
 def test_electrical_load_rises_with_ac_power(twins):
     lab = twins["f1/lab-a"]
     lab.state = lab.state.__class__(hvac_on=True, ac_power_pct=0.25)

@@ -30,6 +30,11 @@ TELEMETRY_FIELDS = (
     "motor_room_delta",
 )
 
+# The most a room will let a supervisor push its setpoint. Enforced HERE, by
+# the room, not by the floor twin that sends the advice — a supervisor bug or a
+# spoofed advisory must not be able to make a room unsafe.
+ADVISORY_LIMIT_C = 1.5
+
 
 class RoomTwin:
     """A single room's digital twin."""
@@ -38,6 +43,7 @@ class RoomTwin:
         self.config = config
         self.pid = PIDController()
         self.health = HVACHealth.for_room(config)
+        self.advisory_offset = 0.0
         if state is not None:
             self.state = state
         else:
@@ -60,6 +66,27 @@ class RoomTwin:
     def topic(self, suffix: str) -> str:
         return f"{TOPIC_ROOT}/{self.config.twin_id}/{suffix}"
 
+    # ── Supervision ────────────────────────────────────────────────────────
+
+    @property
+    def effective_setpoint(self) -> float:
+        """The target this room is actually controlling to, including any
+        advisory nudge it has chosen to accept."""
+        return self.state.setpoint + self.advisory_offset
+
+    def accept_advisory(self, delta_c: float) -> None:
+        """Accept a supervisor's setpoint nudge, clamped to this room's own
+        limit. A room only ever runs WARMER on advice, never colder, so load
+        shedding cannot be inverted into a demand spike."""
+        try:
+            delta = float(delta_c)
+        except (TypeError, ValueError):
+            return
+        self.advisory_offset = max(0.0, min(delta, ADVISORY_LIMIT_C))
+
+    def clear_advisory(self) -> None:
+        self.advisory_offset = 0.0
+
     # ── Simulation ─────────────────────────────────────────────────────────
 
     def tick(self, dt: float, neighbour_temps: dict[str, float] | None = None,
@@ -69,9 +96,11 @@ class RoomTwin:
         `neighbour_temps` maps adjacent twin_id -> temperature. Absent or empty
         means no coupling, which reproduces Project 1's isolated-room physics.
         """
+        target = self.effective_setpoint
+
         if self.state.mode == "auto":
             desired = auto_hvac_decision(
-                self.state.temperature, self.state.setpoint,
+                self.state.temperature, target,
                 self.state.occupancy, self.state.hvac_on,
                 always_on=self.config.always_on,
             )
@@ -82,7 +111,7 @@ class RoomTwin:
 
         if self.state.hvac_on:
             self.state = replace(self.state, ac_power_pct=self.pid.compute(
-                self.state.temperature, self.state.setpoint, dt))
+                self.state.temperature, target, dt))
         elif self.state.ac_power_pct:
             self.state = replace(self.state, ac_power_pct=0.0)
 

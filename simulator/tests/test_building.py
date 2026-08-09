@@ -123,6 +123,32 @@ def test_floor_budgets_oversubscribe_the_building(building):
     assert floor_total > building.power_budget_kw
 
 
+def test_building_budget_is_reachable(building):
+    """The budget must sit BELOW total installed cooling capacity.
+
+    If every unit at 100% still fits inside the budget, it can never be
+    breached, the floor/building arbitration never runs, and Task 5 is dead
+    code whose tests only pass against fabricated inputs. An earlier 40 kW
+    budget against 21.2 kW of installed plant had exactly that problem.
+    """
+    installed_kw = sum(r.hvac_max_power_w for r in building.all_rooms()) / 1000.0
+    assert building.power_budget_kw < installed_kw, (
+        f"budget {building.power_budget_kw} kW >= installed {installed_kw} kW: "
+        f"coordination can never trigger"
+    )
+
+
+def test_each_floor_can_outgrow_its_own_budget(building):
+    """Same argument one level down: a floor budget the floor cannot exceed
+    would make its arbitration unreachable too."""
+    for floor in building.floors:
+        installed_kw = sum(r.hvac_max_power_w for r in floor.rooms) / 1000.0
+        assert floor.power_budget_kw < installed_kw, (
+            f"{floor.floor_id}: budget {floor.power_budget_kw} kW >= "
+            f"installed {installed_kw} kW"
+        )
+
+
 def test_server_room_is_always_on_with_constant_it_load(building):
     """Its AC must not follow the 'empty room -> off' rule."""
     server = building.room("f1/server-room")

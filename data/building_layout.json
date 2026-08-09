@@ -1,8 +1,9 @@
 {
   "$comment": "Facility description for the Smart Lab Digital Twin ecosystem. Single source of truth: simulator/building.py, the Streamlit dashboard and room3d/building3d.html all read this file, so geometry can never drift from physics. f1/lab-a is the Project-1 room and keeps its exact calibrated constants.",
   "building": {
+    "$budget_note": "15 kW is BELOW the 21.2 kW of installed cooling (3.5+2.6+5.0+4.2+2.4+3.5). That is deliberate and realistic: electrical services are sized with a diversity factor, on the assumption that not every unit runs flat out at once. It is also what gives the floor and building twins a real conflict to arbitrate - an earlier 40 kW budget could never be breached, which made the whole coordination layer unreachable in practice.",
     "name": "Engineering Building B",
-    "power_budget_kw": 40.0,
+    "power_budget_kw": 15.0,
     "outdoor": {
       "base_temp_c": 32.0,
       "diurnal_amplitude_c": 4.0,
@@ -13,7 +14,7 @@
     {
       "floor_id": "f1",
       "name": "Ground Floor",
-      "power_budget_kw": 22.0,
+      "power_budget_kw": 9.0,
       "solar_gain": 0.6,
       "corridor": {
         "node_id": "f1/corridor",
@@ -68,7 +69,7 @@
     {
       "floor_id": "f2",
       "name": "First Floor",
-      "power_budget_kw": 22.0,
+      "power_budget_kw": 8.0,
       "solar_gain": 1.0,
       "corridor": {
         "node_id": "f2/corridor",

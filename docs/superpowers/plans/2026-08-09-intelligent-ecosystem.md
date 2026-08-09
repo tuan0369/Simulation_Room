@@ -19,7 +19,7 @@
 | 1. Building layout dataset + loader | ✅ done | `f12eb70` | 60 |
 | 2. HVAC health model (AI4I-calibrated) | ✅ done | `dd35407` | 86 |
 | 3. Room twin refactor | ✅ done | `5f2597c` | 113 |
-| 4. Occupancy twin | ✅ done | `see log` | 133 |
+| 4. Occupancy twin | ✅ done | `d87f0a2` | 133 |
 | 5. Floor + building twins | ⬜ next | | |
 | 6. Dataset generator | ⬜ | | |
 | 7. ML notebooks | ⬜ | | |
