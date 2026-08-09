@@ -6,6 +6,7 @@ Upgraded with:
 - Occupancy up to 30 people
 """
 import json
+import os
 import random
 import time
 from dataclasses import replace
@@ -18,8 +19,10 @@ from physics import (OCC_MAX, OCC_MIN, RoomState, ac_output_temperature,
                      step_temperature)
 from pid_controller import PIDController
 
-BROKER_HOST = "localhost"
-BROKER_PORT = 1883
+# In Docker the broker is the `mosquitto` service, not localhost. The localhost
+# default keeps host-side runs working.
+BROKER_HOST = os.getenv("MQTT_BROKER_HOST", "localhost")
+BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT", "1883"))
 BASE = "twin/room1"
 CMD_HVAC = f"{BASE}/cmd/hvac"
 CMD_OCCUPANCY = f"{BASE}/cmd/occupancy"

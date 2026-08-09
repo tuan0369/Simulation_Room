@@ -126,6 +126,21 @@ Two consequences fall out of this and must be handled here, not discovered later
 - Modify: `simulator/publisher.py`, `dashboard/app.py` (broker host from env)
 - Replace: `.agents/skills/developing-with-streamlit`, `.claude/skills/developing-with-streamlit`
 
+- [ ] **Step 0: Enable the WSL2 backend (needs admin + reboot — USER ACTION)**
+
+Docker Desktop 4.85.0 is already installed at `%LOCALAPPDATA%\Programs\DockerDesktop` and the CLI works (`docker --version` → 29.6.2), but the **engine cannot start**: `Microsoft-Windows-Subsystem-Linux` and `VirtualMachinePlatform` are both disabled (`InstallState: 2`). Firmware virtualization *is* available (`HypervisorPresent: True`), so only the Windows features are missing.
+
+In an **elevated** PowerShell:
+```powershell
+wsl --install
+```
+Then **reboot**. After the reboot, verify in a fresh shell:
+```powershell
+wsl --status
+docker info --format '{{.ServerVersion}} {{.OSType}}'   # engine must respond
+```
+If `docker` is not found, the install added `%LOCALAPPDATA%\Programs\DockerDesktop\resources\bin` to the **User** PATH — open a new terminal so it is picked up.
+
 - [ ] **Step 1: Fix `requires-python` and add ML dependencies**
 
 `pyproject.toml` currently declares `requires-python = ">=3.9"`, which is **wrong** — `publisher.py` uses PEP 604 syntax (`timestamp: str | None = None`) in a runtime-evaluated signature, which raises `TypeError` on 3.9. Set it to match reality:
@@ -163,12 +178,14 @@ ENV UV_LINK_MODE=copy \
 
 # Dependency layer: cached unless pyproject/uv.lock change
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --all-groups
+RUN uv sync --all-groups
 
 COPY . .
 ```
 
 `UV_PROJECT_ENVIRONMENT=/opt/venv` puts the venv **outside** `/app` so the bind-mount in Step 3 cannot shadow it — mounting the repo over `/app` would otherwise hide a `/app/.venv` and break every container. `PYTHONPATH` includes `simulator/` because the existing tests import `physics` and `publisher` as top-level modules.
+
+**Why not `--frozen` yet:** the committed `uv.lock` was resolved against `requires-python = ">=3.9"` and has no `ml` group, so `--frozen` would fail the build on a lock/manifest mismatch. Step 8 regenerates the lock inside the container and then switches this line to `uv sync --frozen --all-groups`, which is what we actually want for reproducible builds.
 
 `.dockerignore`:
 ```
@@ -290,7 +307,22 @@ docker compose up -d sim dashboard room3d
 
 Then confirm end to end: the dashboard at `http://localhost:8501` shows live telemetry, and `docker compose logs sim` shows the publish loop. **This is the gate for the whole plan — if 38 tests do not pass here, stop and fix before Task 1.**
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 8: Regenerate the lockfile, then freeze the build**
+
+The lock must be re-resolved for `requires-python = ">=3.12"` and the new `ml` group. Do it in-container (the repo is bind-mounted, so the updated lock lands in the working tree):
+
+```powershell
+docker compose run --rm sim uv lock
+```
+
+Then change the Dockerfile's `RUN uv sync --all-groups` to `RUN uv sync --frozen --all-groups`, rebuild, and re-run the tests to confirm the frozen lock resolves cleanly:
+
+```powershell
+docker compose build --no-cache sim
+docker compose run --rm sim pytest -v      # still 38 passed
+```
+
+- [ ] **Step 9: Commit**
 
 ```powershell
 git add Dockerfile .dockerignore docker-compose.yml pyproject.toml uv.lock .gitignore .agents .claude simulator/publisher.py dashboard/app.py

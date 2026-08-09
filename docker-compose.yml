@@ -8,3 +8,61 @@ services:
     volumes:
       - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
     restart: unless-stopped
+
+  # Physics simulator + MQTT publisher. Also the general-purpose Python service:
+  #   docker compose run --rm sim pytest -v
+  sim:
+    build: .
+    container_name: twin-sim
+    depends_on: [mosquitto]
+    environment:
+      MQTT_BROKER_HOST: mosquitto
+    volumes:
+      - .:/app
+    command: python simulator/publisher.py
+    restart: unless-stopped
+
+  dashboard:
+    build: .
+    container_name: twin-dashboard
+    depends_on: [mosquitto]
+    environment:
+      MQTT_BROKER_HOST: mosquitto
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+    # --server.address=0.0.0.0 is mandatory: Streamlit binds loopback by default,
+    # so the published port would connect to nothing.
+    # Switches to dashboard/streamlit_app.py in Task 9.
+    command: >
+      streamlit run dashboard/app.py
+      --server.address=0.0.0.0 --server.port=8501
+    restart: unless-stopped
+
+  # Static server for the Three.js view. The browser loads this from
+  # http://localhost:8000, so its ws://localhost:9001 MQTT URL stays correct.
+  room3d:
+    build: .
+    container_name: twin-room3d
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    command: python -m http.server 8000 --directory room3d
+    restart: unless-stopped
+
+  # Opt-in:  docker compose --profile ml up -d jupyter
+  # Tokenless, so the port is pinned to 127.0.0.1 — a tokenless notebook server
+  # reachable on a LAN is remote code execution for anyone on that network.
+  jupyter:
+    build: .
+    container_name: twin-jupyter
+    profiles: ["ml"]
+    ports:
+      - "127.0.0.1:8888:8888"
+    volumes:
+      - .:/app
+    command: >
+      jupyter lab --ip=0.0.0.0 --port=8888 --no-browser
+      --allow-root --IdentityProvider.token=''

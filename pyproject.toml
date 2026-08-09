@@ -3,7 +3,9 @@ name = "smart-lab-digital-twin"
 version = "0.1.0"
 description = "A real-time laboratory room Digital Twin with PID HVAC automation"
 readme = "README.md"
-requires-python = ">=3.9"
+# 3.12+: publisher.py uses PEP 604 (`str | None`) in a runtime-evaluated
+# signature, which raises TypeError on 3.9. The previous ">=3.9" was incorrect.
+requires-python = ">=3.12"
 dependencies = [
     "streamlit>=1.37.0",
     "paho-mqtt>=2.0.0,<3.0.0",
@@ -14,4 +16,12 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=8.0.0",
+]
+ml = [
+    "scikit-learn>=1.5",
+    "pandas>=2.2",
+    "joblib>=1.4",
+    "jupyter>=1.1",
+    "matplotlib>=3.9",
+    "altair>=5.4",
 ]

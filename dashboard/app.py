@@ -4,6 +4,7 @@ Optimized layout: No sidebar, compact metrics cards, central control panel,
 and side-by-side temperature chart & 3D room view.
 """
 import json
+import os
 import threading
 from collections import deque
 from datetime import datetime
@@ -13,8 +14,12 @@ import paho.mqtt.client as mqtt
 import plotly.graph_objects as go
 import streamlit as st
 
-BROKER_HOST = "localhost"
-BROKER_PORT = 1883
+# In Docker the broker is the `mosquitto` service, not localhost. The localhost
+# default keeps host-side runs working. Note: the st.iframe URL below and the 3D
+# view's ws://localhost:9001 stay `localhost` — those resolve in the user's
+# browser against published ports, not inside a container.
+BROKER_HOST = os.getenv("MQTT_BROKER_HOST", "localhost")
+BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT", "1883"))
 BASE = "twin/room1"
 SENSORS = ("temperature", "humidity", "occupancy")
 MANUAL_ALERT_ON, MANUAL_ALERT_OFF = 30.0, 29.5  # manual: fixed 30°C overheat (hysteresis)
