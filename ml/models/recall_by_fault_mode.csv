@@ -1,0 +1,4 @@
+fault,positives,recall_model,recall_hybrid,mean_model_score,note
+hdf,97,0.0,0.5876,0.0001,
+osf,2640,0.9833,0.9833,0.9165,
+pwf,96,1.0,1.0,0.6081,
