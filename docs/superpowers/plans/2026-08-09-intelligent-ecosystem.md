@@ -21,8 +21,8 @@
 | 3. Room twin refactor | ✅ done | `5f2597c` | 113 |
 | 4. Occupancy twin | ✅ done | `d87f0a2` | 133 |
 | 5. Floor + building twins | ✅ done | `b87ce9d` | 169 |
-| 6. Dataset generator | ⬜ next | | |
-| 7. ML notebooks | ⬜ | | |
+| 6. Dataset generator | ✅ done | see log | 196 |
+| 7. ML notebooks | ⬜ next | | |
 | 8. Live inference | ⬜ | | |
 | 9. Multipage dashboard | ⬜ | | |
 | 10. Multi-floor 3D view | ⬜ | | |
