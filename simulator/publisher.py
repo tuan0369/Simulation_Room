@@ -20,7 +20,7 @@ from commands import (CMD_HVAC, CMD_MAINTENANCE, CMD_MODE,  # noqa: F401
                       SETPOINT_MAX, SETPOINT_MIN, TOPIC_ROOT,
                       VALID_TIME_SCALES, handle_command, make_payload,
                       parse_command_topic, utc_now_iso)
-from physics import step_occupancy
+from occupancy_twin import OccupancyTwin
 from room_twin import RoomTwin
 
 # In Docker the broker is the `mosquitto` service, not localhost. The localhost
@@ -34,7 +34,11 @@ CMD_WILDCARD = f"{TOPIC_ROOT}/+/+/cmd/#"
 
 INTERVALS = {"temperature": 3, "humidity": 5, "occupancy": 2}
 HEALTH_INTERVAL = 5
+OCCUPANCY_TOPIC = f"{TOPIC_ROOT}/building/occupancy"
 NOISE = 0.1
+
+# Demos should not start at midnight in an empty building.
+START_HOUR = 8.5
 
 
 class Simulator:
@@ -44,6 +48,9 @@ class Simulator:
         self.building = load_building()
         self.twins = {r.twin_id: RoomTwin(r) for r in self.building.all_rooms()}
         self.rng = random.Random(seed)
+        self.occupancy = OccupancyTwin(self.building, rng=random.Random(seed))
+        self.sim_time_s = START_HOUR * 3600.0
+        self.manual_occupancy: set[str] = set()
         self.time_scale = 1.0
         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         self.client.will_set(STATUS_TOPIC, "offline", retain=True)
@@ -76,6 +83,13 @@ class Simulator:
         # from the building it sits in.
         if kind == CMD_TIMESCALE:
             self.time_scale = twin.state.time_scale
+
+        # An explicit occupancy override pins that room: the occupancy twin
+        # stops driving it, otherwise the schedule would immediately undo what
+        # the operator just asked for. Demos rely on the override sticking.
+        if kind == CMD_OCCUPANCY:
+            self.manual_occupancy.add(twin_id)
+            self.occupancy.occupancy[twin_id] = twin.state.occupancy
 
         print(f"cmd {msg.topic}: {msg.payload!r} -> "
               f"hvac={twin.state.hvac_on} occ={twin.state.occupancy} "
@@ -120,9 +134,22 @@ class Simulator:
             "power_budget_kw": self.building.power_budget_kw,
             "occupancy": sum(t.state.occupancy for t in self.twins.values()),
             "rooms": len(self.twins),
+            "sim_hour": round((self.sim_time_s / 3600.0) % 24.0, 2),
             "timestamp": utc_now_iso(),
         }
         self.client.publish(BUILDING_SUMMARY_TOPIC, json.dumps(payload), retain=True)
+
+    def publish_occupancy_flow(self):
+        """People per node, corridors included — makes the conservation
+        property visible instead of merely asserted in tests."""
+        payload = {
+            "nodes": dict(self.occupancy.occupancy),
+            "total_in_building": self.occupancy.total_in_building,
+            "entrance_flow": self.occupancy.last_entrance_flow,
+            "sim_hour": round((self.sim_time_s / 3600.0) % 24.0, 2),
+            "timestamp": utc_now_iso(),
+        }
+        self.client.publish(OCCUPANCY_TOPIC, json.dumps(payload), retain=True)
 
     # ── Loop ───────────────────────────────────────────────────────────────
 
@@ -142,6 +169,12 @@ class Simulator:
         every twin sees the same instant. Updating in place would make results
         depend on dictionary order.
         """
+        self.sim_time_s += dt
+        room_occupancy = self.occupancy.step(self.sim_time_s, dt)
+        for tid, count in room_occupancy.items():
+            if tid not in self.manual_occupancy:
+                self.twins[tid].set_occupancy(count)
+
         snapshot = {tid: t.state.temperature for tid, t in self.twins.items()}
         for twin in self.twins.values():
             neighbours = {n: snapshot[n] for n in twin.config.neighbours
@@ -157,13 +190,6 @@ class Simulator:
                 dt = self.time_scale
                 self.step(dt)
 
-                if tick % INTERVALS["occupancy"] == 0:
-                    for twin in self.twins.values():
-                        if twin.config.occupancy_profile == "unoccupied":
-                            continue
-                        twin.set_occupancy(
-                            step_occupancy(twin.state, self.rng, twin.config))
-
                 for sensor, interval in INTERVALS.items():
                     if tick % interval == 0:
                         for twin in self.twins.values():
@@ -173,6 +199,7 @@ class Simulator:
                     for twin in self.twins.values():
                         self.publish_health(twin)
                     self.publish_building_summary()
+                    self.publish_occupancy_flow()
 
                 if tick % 2 == 0:
                     for twin in self.twins.values():
