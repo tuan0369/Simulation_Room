@@ -11,6 +11,27 @@
 
 **Runtime:** everything runs in Docker (see Task 0). There is no host Python on the dev machine and none is required.
 
+## Progress
+
+| Task | Status | Commit | Tests |
+|---|---|---|---|
+| 0. Dockerize the environment | ✅ done | `7397b95`, `44f9449`, `e7ff738` | 38 |
+| 1. Building layout dataset + loader | ✅ done | `f12eb70` | 60 |
+| 2. HVAC health model (AI4I-calibrated) | ✅ done | `dd35407` | 86 |
+| 3. Room twin refactor | ⬜ next | | |
+| 4. Occupancy twin | ⬜ | | |
+| 5. Floor + building twins | ⬜ | | |
+| 6. Dataset generator | ⬜ | | |
+| 7. ML notebooks | ⬜ | | |
+| 8. Live inference | ⬜ | | |
+| 9. Multipage dashboard | ⬜ | | |
+| 10. Multi-floor 3D view | ⬜ | | |
+| 11. Ecosystem / governance / ROI docs | ⬜ | | |
+| 12. Executive pitch | ⬜ | | |
+| 13. README + final integration | ⬜ | | |
+
+Keep this table current — the Project-1 plan's checkboxes were never ticked and it stopped being a usable record of what shipped.
+
 ---
 
 ## Goal
