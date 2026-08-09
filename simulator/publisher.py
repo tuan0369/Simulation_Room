@@ -1,210 +1,192 @@
-"""Simulator: publish sensor data and receive control commands (closed-loop).
+"""Orchestrator: runs every twin in the facility and bridges them to MQTT.
 
-Upgraded with:
-- Variable-speed AC (0-100% power via PID controller)
-- Configurable setpoint and time scale
-- Occupancy up to 30 people
+One process, one MQTT client, one loop. Each room twin owns its own physics and
+control; this module only sequences them, routes commands, and publishes.
+
+Command handling lives in `commands.py` and is re-exported here so existing
+imports (and Project 1's test suite) keep working unchanged.
 """
 import json
 import os
 import random
 import time
-from dataclasses import replace
-from datetime import datetime, timezone
 
 import paho.mqtt.client as mqtt
 
-from physics import (OCC_MAX, OCC_MIN, RoomState, ac_output_temperature,
-                     auto_hvac_decision, clamp, step_humidity, step_occupancy,
-                     step_temperature)
-from pid_controller import PIDController
+from building import load_building
+# Re-exported for backwards compatibility with tests/test_publisher.py
+from commands import (CMD_HVAC, CMD_MAINTENANCE, CMD_MODE,  # noqa: F401
+                      CMD_OCCUPANCY, CMD_SETPOINT, CMD_TIMESCALE,
+                      SETPOINT_MAX, SETPOINT_MIN, TOPIC_ROOT,
+                      VALID_TIME_SCALES, handle_command, make_payload,
+                      parse_command_topic, utc_now_iso)
+from physics import step_occupancy
+from room_twin import RoomTwin
 
 # In Docker the broker is the `mosquitto` service, not localhost. The localhost
 # default keeps host-side runs working.
 BROKER_HOST = os.getenv("MQTT_BROKER_HOST", "localhost")
 BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT", "1883"))
-BASE = "twin/room1"
-CMD_HVAC = f"{BASE}/cmd/hvac"
-CMD_OCCUPANCY = f"{BASE}/cmd/occupancy"
-CMD_SETPOINT = f"{BASE}/cmd/setpoint"
-CMD_TIMESCALE = f"{BASE}/cmd/timescale"
-CMD_MODE = f"{BASE}/cmd/mode"
-STATUS_TOPIC = f"{BASE}/status"
-HVAC_STATE_TOPIC = f"{BASE}/hvac/state"
-AC_DETAIL_TOPIC = f"{BASE}/ac/detail"
+
+STATUS_TOPIC = f"{TOPIC_ROOT}/building/status"
+BUILDING_SUMMARY_TOPIC = f"{TOPIC_ROOT}/building/summary"
+CMD_WILDCARD = f"{TOPIC_ROOT}/+/+/cmd/#"
 
 INTERVALS = {"temperature": 3, "humidity": 5, "occupancy": 2}
+HEALTH_INTERVAL = 5
 NOISE = 0.1
-
-# Valid time scale values
-VALID_TIME_SCALES = {1, 2, 5, 10}
-SETPOINT_MIN, SETPOINT_MAX = 18.0, 30.0
-
-
-def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def make_payload(sensor: str, value, unit: str, timestamp: str | None = None) -> str:
-    return json.dumps({"sensor": sensor, "value": value, "unit": unit,
-                       "timestamp": timestamp or utc_now_iso()})
-
-
-def handle_command(state: RoomState, topic: str, payload: bytes) -> RoomState:
-    """Apply control command to state; malformed commands are ignored."""
-    try:
-        data = json.loads(payload)
-    except (json.JSONDecodeError, UnicodeDecodeError):
-        return state
-    if not isinstance(data, dict):
-        return state
-    if topic == CMD_HVAC:
-        cmd = data.get("command")
-        if cmd in ("on", "off"):
-            return replace(state, hvac_on=(cmd == "on"))
-    elif topic == CMD_OCCUPANCY:
-        v = data.get("value")
-        if isinstance(v, int) and not isinstance(v, bool):
-            return replace(state, occupancy=clamp(v, OCC_MIN, OCC_MAX))
-    elif topic == CMD_SETPOINT:
-        v = data.get("value")
-        if isinstance(v, (int, float)) and not isinstance(v, bool):
-            return replace(state, setpoint=clamp(float(v), SETPOINT_MIN, SETPOINT_MAX))
-    elif topic == CMD_TIMESCALE:
-        v = data.get("value")
-        if isinstance(v, (int, float)) and not isinstance(v, bool):
-            v = int(v)
-            if v in VALID_TIME_SCALES:
-                return replace(state, time_scale=float(v))
-    elif topic == CMD_MODE:
-        m = data.get("mode")
-        if m in ("auto", "manual"):
-            return replace(state, mode=m)
-    return state
 
 
 class Simulator:
-    def __init__(self):
-        self.state = RoomState()
-        self.rng = random.Random()
-        self.pid = PIDController()
+    """Drives all six room twins from a single loop."""
+
+    def __init__(self, seed: int | None = None):
+        self.building = load_building()
+        self.twins = {r.twin_id: RoomTwin(r) for r in self.building.all_rooms()}
+        self.rng = random.Random(seed)
+        self.time_scale = 1.0
         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         self.client.will_set(STATUS_TOPIC, "offline", retain=True)
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
 
+    # ── MQTT ───────────────────────────────────────────────────────────────
+
     def on_connect(self, client, userdata, flags, reason_code, properties):
-        client.subscribe([
-            (CMD_HVAC, 0), (CMD_OCCUPANCY, 0),
-            (CMD_SETPOINT, 0), (CMD_TIMESCALE, 0), (CMD_MODE, 0),
-        ])
+        client.subscribe(CMD_WILDCARD)
         client.publish(STATUS_TOPIC, "online", retain=True)
-        self.publish_hvac_state()
-        self.publish_ac_detail()
-        print("connected, subscribed to cmd topics")
+        for twin in self.twins.values():
+            self.publish_hvac_state(twin)
+            self.publish_ac_detail(twin)
+        print(f"connected; {len(self.twins)} room twins on {CMD_WILDCARD}")
 
     def on_message(self, client, userdata, msg):
-        before_hvac = self.state.hvac_on
-        before_mode = self.state.mode
-        self.state = handle_command(self.state, msg.topic, msg.payload)
-        print(f"cmd {msg.topic}: {msg.payload!r} -> mode={self.state.mode}, "
-              f"hvac_on={self.state.hvac_on}, occupancy={self.state.occupancy}, "
-              f"setpoint={self.state.setpoint}, time_scale={self.state.time_scale}")
+        parsed = parse_command_topic(msg.topic)
+        if parsed is None:
+            return
+        twin_id, kind = parsed
+        twin = self.twins.get(twin_id)
+        if twin is None:
+            print(f"command for unknown twin {twin_id!r} ignored")
+            return
 
-        # Reset PID when HVAC is turned off
-        if before_hvac and not self.state.hvac_on:
-            self.pid.reset()
-            self.state = replace(self.state, ac_power_pct=0.0)
+        twin.handle_command(msg.topic, msg.payload)
 
-        if self.state.hvac_on != before_hvac or self.state.mode != before_mode:
-            self.publish_hvac_state()
-            self.publish_ac_detail()
+        # Time scale is global: one room cannot run at a different clock rate
+        # from the building it sits in.
+        if kind == CMD_TIMESCALE:
+            self.time_scale = twin.state.time_scale
 
-    def publish_hvac_state(self):
-        self.client.publish(HVAC_STATE_TOPIC,
-                            json.dumps({
-                                "hvac_on": self.state.hvac_on,
-                                "ac_power_pct": round(self.state.ac_power_pct, 2),
-                                "setpoint": self.state.setpoint,
-                                "timestamp": utc_now_iso(),
-                            }),
-                            retain=True)
+        print(f"cmd {msg.topic}: {msg.payload!r} -> "
+              f"hvac={twin.state.hvac_on} occ={twin.state.occupancy} "
+              f"sp={twin.state.setpoint} mode={twin.state.mode}")
+        self.publish_hvac_state(twin)
+        self.publish_ac_detail(twin)
 
-    def publish_ac_detail(self):
-        ac_temp = ac_output_temperature(self.state.ac_power_pct)
-        mode = self.state.mode
-        self.client.publish(AC_DETAIL_TOPIC,
-                            json.dumps({
-                                "ac_power_pct": round(self.state.ac_power_pct, 2),
-                                "ac_temp_output": round(ac_temp, 1),
-                                "setpoint": self.state.setpoint,
-                                "mode": mode,
-                                "timestamp": utc_now_iso(),
-                            }),
-                            retain=True)
+    # ── Publishing ─────────────────────────────────────────────────────────
 
-    def publish_sensor(self, sensor: str):
+    def publish_hvac_state(self, twin: RoomTwin):
+        payload = twin.hvac_state_payload() | {"timestamp": utc_now_iso()}
+        self.client.publish(twin.topic("hvac/state"), json.dumps(payload), retain=True)
+
+    def publish_ac_detail(self, twin: RoomTwin):
+        payload = twin.ac_detail_payload() | {"timestamp": utc_now_iso()}
+        self.client.publish(twin.topic("ac/detail"), json.dumps(payload), retain=True)
+
+    def publish_sensor(self, twin: RoomTwin, sensor: str):
         if sensor == "temperature":
-            value, unit = round(self.state.temperature + self.rng.uniform(-NOISE, NOISE), 2), "C"
+            value = round(twin.state.temperature + self.rng.uniform(-NOISE, NOISE), 2)
+            unit = "C"
         elif sensor == "humidity":
-            value, unit = round(self.state.humidity + self.rng.uniform(-NOISE, NOISE), 2), "%"
+            value = round(twin.state.humidity + self.rng.uniform(-NOISE, NOISE), 2)
+            unit = "%"
         else:
-            value, unit = self.state.occupancy, "people"
-        self.client.publish(f"{BASE}/{sensor}", make_payload(sensor, value, unit), retain=True)
-        ac_pct_display = round(self.state.ac_power_pct * 100)
-        print(f"{sensor}={value}{unit} hvac={'on' if self.state.hvac_on else 'off'} "
-              f"ac_power={ac_pct_display}% setpoint={self.state.setpoint}°C "
-              f"x{int(self.state.time_scale)}")
+            value, unit = twin.state.occupancy, "people"
+        self.client.publish(twin.topic(sensor),
+                            make_payload(sensor, value, unit), retain=True)
+
+    def publish_health(self, twin: RoomTwin):
+        payload = twin.telemetry() | {
+            "timestamp": utc_now_iso(),
+            "failure_flags": twin.failure_flags(),
+        }
+        self.client.publish(twin.topic("health/telemetry"),
+                            json.dumps(payload), retain=True)
+
+    def publish_building_summary(self):
+        total_kw = sum(t.electrical_load_w() for t in self.twins.values()) / 1000.0
+        payload = {
+            "total_load_kw": round(total_kw, 3),
+            "power_budget_kw": self.building.power_budget_kw,
+            "occupancy": sum(t.state.occupancy for t in self.twins.values()),
+            "rooms": len(self.twins),
+            "timestamp": utc_now_iso(),
+        }
+        self.client.publish(BUILDING_SUMMARY_TOPIC, json.dumps(payload), retain=True)
+
+    # ── Loop ───────────────────────────────────────────────────────────────
+
+    def neighbour_temps(self, twin: RoomTwin) -> dict[str, float]:
+        """Temperatures of adjacent rooms. Corridor nodes are skipped — they
+        are circulation paths for people, not thermal masses we model."""
+        return {
+            n: self.twins[n].state.temperature
+            for n in twin.config.neighbours
+            if n in self.twins
+        }
+
+    def step(self, dt: float):
+        """One simulation step across the whole facility.
+
+        Neighbour temperatures are snapshotted before any room advances, so
+        every twin sees the same instant. Updating in place would make results
+        depend on dictionary order.
+        """
+        snapshot = {tid: t.state.temperature for tid, t in self.twins.items()}
+        for twin in self.twins.values():
+            neighbours = {n: snapshot[n] for n in twin.config.neighbours
+                          if n in snapshot}
+            twin.tick(dt=dt, neighbour_temps=neighbours)
 
     def run(self):
         self.client.connect(BROKER_HOST, BROKER_PORT)
-        self.client.loop_start()  # cmd processing on paho's separate thread
+        self.client.loop_start()
         tick = 0
         try:
             while True:
-                # Apply time_scale: each tick simulates time_scale seconds of physics
-                dt = self.state.time_scale
+                dt = self.time_scale
+                self.step(dt)
 
-                # Auto mode: engage when occupied & above target, off when empty
-                if self.state.mode == "auto":
-                    desired_on = auto_hvac_decision(
-                        self.state.temperature, self.state.setpoint,
-                        self.state.occupancy, self.state.hvac_on
-                    )
-                    if desired_on != self.state.hvac_on:
-                        self.state = replace(self.state, hvac_on=desired_on)
-                        if not desired_on:  # auto shut-off: stop cooling cleanly
-                            self.pid.reset()
-                            self.state = replace(self.state, ac_power_pct=0.0)
-                        self.publish_hvac_state()
-                        self.publish_ac_detail()
-
-                # PID controller: auto-adjust AC power when HVAC is on
-                if self.state.hvac_on:
-                    new_pct = self.pid.compute(
-                        self.state.temperature, self.state.setpoint, dt
-                    )
-                    self.state = replace(self.state, ac_power_pct=new_pct)
-
-                # Advance physics by dt seconds
-                self.state = replace(
-                    self.state,
-                    temperature=step_temperature(self.state, dt=dt),
-                    humidity=step_humidity(self.state, dt=dt),
-                )
                 if tick % INTERVALS["occupancy"] == 0:
-                    self.state = replace(self.state,
-                                         occupancy=step_occupancy(self.state, self.rng))
+                    for twin in self.twins.values():
+                        if twin.config.occupancy_profile == "unoccupied":
+                            continue
+                        twin.set_occupancy(
+                            step_occupancy(twin.state, self.rng, twin.config))
 
-                # Publish sensors and AC details at regular intervals
                 for sensor, interval in INTERVALS.items():
                     if tick % interval == 0:
-                        self.publish_sensor(sensor)
+                        for twin in self.twins.values():
+                            self.publish_sensor(twin, sensor)
 
-                # Publish AC detail every 2 ticks when HVAC is running
-                if self.state.hvac_on and tick % 2 == 0:
-                    self.publish_hvac_state()
-                    self.publish_ac_detail()
+                if tick % HEALTH_INTERVAL == 0:
+                    for twin in self.twins.values():
+                        self.publish_health(twin)
+                    self.publish_building_summary()
+
+                if tick % 2 == 0:
+                    for twin in self.twins.values():
+                        if twin.state.hvac_on:
+                            self.publish_hvac_state(twin)
+                            self.publish_ac_detail(twin)
+
+                if tick % 10 == 0:
+                    hot = max(self.twins.values(),
+                              key=lambda t: t.state.temperature)
+                    print(f"t={tick} hottest={hot.twin_id} "
+                          f"{hot.state.temperature:.2f}C "
+                          f"load={sum(t.electrical_load_w() for t in self.twins.values())/1000:.2f}kW "
+                          f"x{int(self.time_scale)}")
 
                 tick += 1
                 time.sleep(1)
