@@ -11,10 +11,11 @@ ENV UV_LINK_MODE=copy \
     PYTHONPATH=/app/simulator:/app
 
 # Dependency layer: rebuilt only when pyproject.toml / uv.lock change.
-# Not --frozen yet: uv.lock predates the requires-python bump and the `ml` group.
-# Task 0 Step 8 regenerates the lock in-container, commits it, then switches
-# this to `uv sync --frozen --all-groups` for reproducible builds.
+# --frozen makes the build fail loudly on a lock/manifest mismatch rather than
+# silently re-resolving, so images stay reproducible. Regenerate the lock with
+#   docker compose run --rm sim uv lock
+# whenever pyproject.toml changes.
 COPY pyproject.toml uv.lock ./
-RUN uv sync --all-groups
+RUN uv sync --frozen --all-groups
 
 COPY . .
