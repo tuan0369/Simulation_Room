@@ -20,8 +20,8 @@
 | 2. HVAC health model (AI4I-calibrated) | ✅ done | `dd35407` | 86 |
 | 3. Room twin refactor | ✅ done | `5f2597c` | 113 |
 | 4. Occupancy twin | ✅ done | `d87f0a2` | 133 |
-| 5. Floor + building twins | ⬜ next | | |
-| 6. Dataset generator | ⬜ | | |
+| 5. Floor + building twins | ✅ done | `b87ce9d` | 169 |
+| 6. Dataset generator | ⬜ next | | |
 | 7. ML notebooks | ⬜ | | |
 | 8. Live inference | ⬜ | | |
 | 9. Multipage dashboard | ⬜ | | |
