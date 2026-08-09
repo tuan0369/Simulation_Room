@@ -18,8 +18,8 @@
 | 0. Dockerize the environment | ✅ done | `7397b95`, `44f9449`, `e7ff738` | 38 |
 | 1. Building layout dataset + loader | ✅ done | `f12eb70` | 60 |
 | 2. HVAC health model (AI4I-calibrated) | ✅ done | `dd35407` | 86 |
-| 3. Room twin refactor | ⬜ next | | |
-| 4. Occupancy twin | ⬜ | | |
+| 3. Room twin refactor | ✅ done | `5f2597c` | 113 |
+| 4. Occupancy twin | ⬜ next | | |
 | 5. Floor + building twins | ⬜ | | |
 | 6. Dataset generator | ⬜ | | |
 | 7. ML notebooks | ⬜ | | |
