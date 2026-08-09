@@ -21,7 +21,12 @@ import argparse
 import csv
 import random
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+# Wall-clock origin for the simulated trace. Real timestamps let the notebook
+# resample, plot and split on a DatetimeIndex instead of bare integers.
+EPOCH = datetime(2026, 1, 1, tzinfo=timezone.utc)
 
 from hvac_health import apply_maintenance, failure_flags
 from publisher import Simulator
@@ -60,7 +65,8 @@ MAINTENANCE_POLICY = {
 FAULT_PRIORITY = ("hdf", "bearing", "airflow", "pwf", "osf")
 
 COLUMNS = [
-    "timestamp_s", "sim_hour", "day", "twin_id", "floor", "room_profile",
+    "timestamp_iso", "timestamp_s", "sim_hour", "day", "segment_id",
+    "twin_id", "floor", "room_profile",
     "occupancy", "room_temp", "humidity", "setpoint", "outdoor_temp",
     "hvac_on", "ac_power_pct",
     "motor_temp", "motor_room_delta", "fan_rpm", "vibration_mm_s",
@@ -77,7 +83,7 @@ def _fault_name(flags: dict) -> str:
     return "none"
 
 
-def generate(days: int = 90, seed: int = 42, sample_every: int = SAMPLE_EVERY,
+def generate(days: int = 365, seed: int = 42, sample_every: int = SAMPLE_EVERY,
              dt: float = SIM_DT, progress: bool = False) -> tuple[list[dict], dict]:
     """Simulate `days` and return (rows, statistics).
 
@@ -111,6 +117,11 @@ def generate(days: int = 90, seed: int = 42, sample_every: int = SAMPLE_EVERY,
     was_failed = {tid: False for tid in sim.twins}
     corrective = {tid: 0 for tid in sim.twins}
     planned = {tid: 0 for tid in sim.twins}
+    # A degradation segment runs from one reset (failure repair or planned
+    # service) to the next. It is the natural unit for run-to-failure analysis
+    # and for grouped cross-validation, since rows inside a segment are heavily
+    # autocorrelated and must never be split across a train/test boundary.
+    segment = {tid: 0 for tid in sim.twins}
 
     steps_per_hour = 3600.0 / dt
     jitter_steps = int(12 * steps_per_hour)        # +/- 12 h on service dates
@@ -132,6 +143,7 @@ def generate(days: int = 90, seed: int = 42, sample_every: int = SAMPLE_EVERY,
                     apply_maintenance(twin.health, "replace_filter"),
                     "service_motor")
                 corrective[tid] += 1
+                segment[tid] += 1
                 # Planned work stays on its own calendar. Rescheduling it from
                 # each repair meant corrective always arrived first and planned
                 # service NEVER fired, collapsing every room into run-to-failure
@@ -146,6 +158,7 @@ def generate(days: int = 90, seed: int = 42, sample_every: int = SAMPLE_EVERY,
                 if due is not None and step_i >= due:
                     twin.health = apply_maintenance(twin.health, action)
                     planned[tid] += 1
+                    segment[tid] += 1
                     interval = MAINTENANCE_POLICY[tid][kind] * steps_per_day
                     jitter = rng.randint(-jitter_steps, jitter_steps)
                     next_service[tid][kind] = step_i + interval + jitter
@@ -156,9 +169,12 @@ def generate(days: int = 90, seed: int = 42, sample_every: int = SAMPLE_EVERY,
             for tid, twin in sim.twins.items():
                 t = twin.telemetry()
                 rows.append({
+                    "timestamp_iso": (EPOCH + timedelta(
+                        seconds=sim.sim_time_s)).isoformat(),
                     "timestamp_s": int(sim.sim_time_s),
                     "sim_hour": round(hour, 3),
                     "day": step_i // steps_per_day,
+                    "segment_id": f"{tid}#{segment[tid]}",
                     "twin_id": tid,
                     "floor": t["floor"],
                     "room_profile": t["room_profile"],
@@ -255,7 +271,12 @@ def write_csv(rows: list[dict], path: Path) -> None:
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--days", type=int, default=90)
+    # 365 days, not 90. What limits the model is the number of INDEPENDENT
+    # failure events, not the row count: rows inside one degradation segment
+    # are heavily autocorrelated, so 155k rows containing 53 events is really a
+    # 53-sample problem, and a temporal split would leave ~15 events to test on.
+    # A full year yields 228 events (~68 in a held-out final third).
+    ap.add_argument("--days", type=int, default=365)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--sample-every", type=int, default=SAMPLE_EVERY,
                     help="record a row every N simulated minutes")

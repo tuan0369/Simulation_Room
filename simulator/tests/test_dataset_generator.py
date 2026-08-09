@@ -100,6 +100,54 @@ def test_dataset_contains_failures(dataset):
     assert stats["failure_events"] > 0, "no failures: nothing to learn"
 
 
+def test_failure_rate_per_day_supports_a_useful_sample():
+    """What limits the model is INDEPENDENT events, not rows.
+
+    Rows inside a degradation segment are autocorrelated, so a dataset with
+    600k rows and 50 events is a 50-sample problem. This pins the event rate so
+    the shipped 365-day run yields a sample big enough to split temporally.
+    """
+    _, stats = generate(days=DAYS, seed=42, progress=False)
+    per_day = stats["failure_events"] / DAYS
+    assert per_day >= 0.2, (
+        f"{per_day:.2f} events/day gives only {per_day * 365:.0f} events in a "
+        f"year — too few to hold out a meaningful test set"
+    )
+
+
+def test_timestamps_are_iso_and_ordered(dataset):
+    """Time-series data needs a real time axis, not a row counter."""
+    rows, _ = dataset
+    from datetime import datetime
+    stamps = [datetime.fromisoformat(r["timestamp_iso"]) for r in rows]
+    assert stamps == sorted(stamps), "rows are not in chronological order"
+    assert stamps[0].tzinfo is not None, "timestamps must be timezone-aware"
+
+
+def test_segments_never_span_a_maintenance_reset(dataset):
+    """A segment_id must cover exactly one degradation run. Grouped CV relies
+    on this: splitting a segment across train and test leaks the future."""
+    rows, _ = dataset
+    by_segment = {}
+    for row in rows:
+        by_segment.setdefault(row["segment_id"], []).append(row)
+
+    for seg, seg_rows in by_segment.items():
+        seg_rows.sort(key=lambda r: r["timestamp_s"])
+        # Runtime and clog only ever reset at a segment boundary, so within one
+        # segment runtime_hours must be non-decreasing.
+        runtimes = [r["runtime_hours"] for r in seg_rows]
+        assert runtimes == sorted(runtimes), f"{seg}: runtime went backwards"
+
+
+def test_each_segment_belongs_to_one_room(dataset):
+    rows, _ = dataset
+    owner = {}
+    for row in rows:
+        seg, tid = row["segment_id"], row["twin_id"]
+        assert owner.setdefault(seg, tid) == tid
+
+
 def test_positive_labels_are_followed_by_a_real_failure(dataset):
     """Label correctness, verified by construction rather than trusted.
 

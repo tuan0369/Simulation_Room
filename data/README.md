@@ -115,25 +115,58 @@ docker compose run --rm sim python simulator/dataset_generator.py \
     --days 90 --seed 42 --out data/building_telemetry.csv
 ```
 
-### Statistics of the reference run (`--days 90 --seed 42`)
+### Statistics of the reference run (`--days 365 --seed 42`)
 
 | | |
 |---|---|
-| Rows | 155,520 (25,920 per room × 6 rooms) |
+| Rows | 630,720 (105,120 per room × 6 rooms), 114 MB |
+| Simulated span | 365 days from 2026-01-01 UTC |
 | Sampling | one row per room per 5 simulated minutes |
 | Physics timestep | 15 s |
-| Failure events | 53 |
-| Positive rate, 4 h horizon | **1.636 %** (primary target) |
-| Positive rate, 30 min horizon | 0.205 % |
+| **Failure events** | **228** |
+| Degradation segments | 612 |
+| Positive rate, 4 h horizon | **1.737 %** (primary target) |
+| Positive rate, 30 min horizon | 0.218 % |
 
 | Room | Failures | Planned services | 4 h positives | Rate |
 |---|---|---|---|---|
-| `f1/lab-a` | 0 | 22 | 0 | 0.00 % |
-| `f1/lab-b` | 5 | 15 | 240 | 0.93 % |
-| `f1/server-room` | 22 | 34 | 1057 | 4.08 % |
-| `f2/lab-c` | 11 | 11 | 528 | 2.04 % |
-| `f2/meeting-room` | 6 | 0 | 288 | 1.11 % |
-| `f2/office` | 9 | 7 | 432 | 1.67 % |
+| `f1/lab-a` | 3 | 95 | 145 | 0.14 % |
+| `f1/lab-b` | 22 | 61 | 1056 | 1.00 % |
+| `f1/server-room` | 92 | 144 | 4418 | 4.20 % |
+| `f2/lab-c` | 49 | 46 | 2353 | 2.24 % |
+| `f2/meeting-room` | 25 | 0 | 1201 | 1.14 % |
+| `f2/office` | 37 | 32 | 1780 | 1.69 % |
+
+### Why a year, not 90 days
+
+An earlier 90-day run produced 155,520 rows but only **53 failure events**, and
+the event count is what actually constrains the model: rows inside one
+degradation segment are heavily autocorrelated, so that was a 53-sample problem
+wearing a 155k-row costume. A temporal split would have left ~15 events to test
+on, far too few for a stable PR-AUC.
+
+A full year gives 228 events (~68 in a held-out final third) and, as a side
+effect, fixed a subtler problem: at 90 days `f1/lab-a` recorded **zero**
+failures, so its per-room recall was undefined and any identity-aware model
+would have learned that room cannot fail. Over a year it fails 3 times. No room
+is immortal; the short window just had not observed it yet.
+
+### Time-series structure
+
+This is temporal data and the columns say so explicitly:
+
+- `timestamp_iso` — timezone-aware ISO-8601, so the notebook can build a real
+  `DatetimeIndex` rather than treating a row counter as time.
+- `segment_id` — `"<twin_id>#<n>"`, one degradation run from a reset (planned
+  service or failure repair) to the next. This is the correct grouping unit for
+  cross-validation: splitting a segment across train and test leaks the future,
+  and rolling features are computed per segment so no window spans a
+  maintenance reset.
+- Rows are emitted in chronological order, six rooms per timestamp.
+
+Splits must be **temporal** (and, for the generalisation check, by held-out
+room). A random row shuffle would put a row's own neighbours five minutes either
+side of it into the training set and inflate scores to a meaningless ~0.99.
 
 ### Two label horizons, and why
 
@@ -158,10 +191,19 @@ days) to `f2/meeting-room` (never serviced). This is not incidental — it gives
 the Task 7 fairness audit real per-room shift to detect rather than an
 assumed-clean dataset.
 
-One consequence to carry into that audit: **`f1/lab-a` has zero positive
-examples.** It is serviced often enough never to fail in 90 days, so per-room
-recall is *undefined* there, not merely poor. A fairness report must say so
-rather than printing a misleading 0.0.
+Two consequences to carry into that audit:
+
+**Room identity is never a feature.** `ml/features.py` excludes `twin_id`,
+`floor`, `room_profile` and `segment_id` by construction, and a test enforces
+it. `f1/lab-a` has 30× fewer positives than the server room purely because of
+its maintenance *policy*, not because its hardware is different — an
+identity-aware model would learn "lab-a is safe" and stay silent when its filter
+finally does clog. Risk is inferred from condition alone, so a healthy room
+scores low because it is healthy, not because of its name.
+
+**The per-room positive rate spans 0.14 % to 4.20 %.** That is real
+distribution shift, and the audit should expect worse recall on the sparse rooms
+rather than treating uniform performance as the default.
 
 > **The limitation this project does not hide:** the models are trained on
 > simulated telemetry. AI4I constrains the failure *physics* so the thresholds
