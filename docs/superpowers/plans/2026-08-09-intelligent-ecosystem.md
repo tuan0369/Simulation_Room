@@ -25,8 +25,8 @@
 | 7. ML notebooks | ✅ done | see log | 214 |
 | 8. Live inference | ✅ done | see log | 236 |
 | 9. Multipage dashboard | ✅ done | see log | 273 |
-| 10. Multi-floor 3D view | ⬜ next | | |
-| 11. Ecosystem / governance / ROI docs | ⬜ | | |
+| 10. Multi-floor 3D view | ✅ done | see log | 288 |
+| 11. Ecosystem / governance / ROI docs | ⬜ next | | |
 | 12. Executive pitch | ⬜ | | |
 | 13. README + final integration | ⬜ | | |
 
