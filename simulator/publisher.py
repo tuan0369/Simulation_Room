@@ -120,7 +120,7 @@ class Simulator:
         # rolling window keeps pre-service readings and it stays above the
         # alert threshold for minutes after being repaired.
         if kind == CMD_MAINTENANCE:
-            self.scorer.reset_history(twin_id)
+            self.scorer.reset_history(twin_id, twin.telemetry(), self.sim_time_s)
             self.latest_risk.pop(twin_id, None)
 
         print(f"cmd {msg.topic}: {msg.payload!r} -> "
@@ -246,7 +246,7 @@ class Simulator:
         twin = self.twins[twin_id]
         twin.handle_command(twin.topic(CMD_MAINTENANCE),
                             json.dumps({"action": action}).encode())
-        self.scorer.reset_history(twin_id)
+        self.scorer.reset_history(twin_id, twin.telemetry(), self.sim_time_s)
         self.latest_risk.pop(twin_id, None)
 
     def warm_up(self, hours: float = WARMUP_HOURS):

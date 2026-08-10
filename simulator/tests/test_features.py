@@ -113,7 +113,13 @@ def test_live_path_refuses_to_score_without_enough_history():
     """Cold start must return None, not a fabricated vector."""
     assert build_features_live([]) is None
     assert build_features_live(None) is None
+
+
+def test_live_path_rejects_incomplete_telemetry():
+    """A truncated record must return None rather than raise: a malformed
+    message must not be able to take risk reporting down with it."""
     assert build_features_live([{"room_temp": 24.0}] * 3) is None
+    assert build_features_live([{}]) is None
 
 
 # ── Shape and hygiene ───────────────────────────────────────────────────────

@@ -135,18 +135,25 @@ class RiskScorer:
     def ready(self, twin_id: str) -> bool:
         return self.samples(twin_id) >= self.min_samples
 
-    def reset_history(self, twin_id: str) -> None:
-        """Drop history after maintenance, starting a fresh degradation segment.
+    def reset_history(self, twin_id: str, telemetry: dict | None = None,
+                      sim_time_s: float | None = None) -> None:
+        """Start a fresh degradation segment after maintenance.
 
         Training computed rolling features per segment, so a window never
-        spanned a service. Live, it did: a unit stayed above the alert
-        threshold for minutes after being repaired because its 6-hour window
-        still held pre-service readings. Clearing here restores the training
-        semantics — and because partial windows are scorable, the unit is
-        scoreable again on its very next sample rather than in six hours.
+        spanned a service. Live it did, and a repaired unit stayed above the
+        alert threshold for minutes because its 6-hour window still held
+        pre-service readings.
+
+        Passing the post-service reading seeds the new segment immediately, so
+        the unit is scorable with **no gap at all** rather than waiting for the
+        next 5-minute sample. That reading is a real observation of the
+        repaired unit, not a fabrication, and a one-sample segment is exactly
+        what training's `min_periods=1` produced at every segment start.
         """
         self._history.pop(twin_id, None)
         self._last_sample_s.pop(twin_id, None)
+        if telemetry is not None:
+            self.observe(twin_id, telemetry, sim_time_s or 0.0)
 
     # ── Scoring ────────────────────────────────────────────────────────────
 
@@ -217,6 +224,11 @@ class RiskScorer:
             "explanation": PLAIN_LANGUAGE.get(factor, "condition degrading"),
             "thermal_guard": round(guard, 4),
             "thermal_note": thermal_note,
+            # How much context backed this score. A freshly serviced unit is
+            # scored from a short segment; that is legitimate, but a consumer
+            # should be able to tell.
+            "history_samples": len(self._history[twin_id]),
+            "history_full": len(self._history[twin_id]) >= self.window,
             "alert": bool(model_alert or guard_alert),
             "alert_source": source,
             "rul_hours": round(rul_hours, 2) if rul_hours is not None else None,

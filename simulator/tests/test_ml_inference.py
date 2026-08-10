@@ -70,11 +70,10 @@ def test_no_history_returns_none(scorer, building):
     assert scorer.score("f1/lab-a") is None
 
 
-def test_below_the_minimum_returns_none(scorer, building):
-    twin = RoomTwin(building.room("f1/lab-a"))
-    feed(scorer, "f1/lab-a", twin, scorer.min_samples - 1)
+def test_a_unit_with_no_history_returns_none(scorer, building):
+    assert scorer.samples("f1/lab-a") == 0
     assert scorer.ready("f1/lab-a") is False
-    assert scorer.score("f1/lab-a") is None, "scored a unit with no usable window"
+    assert scorer.score("f1/lab-a") is None, "scored a unit with no observations"
 
 
 @pytest.mark.skipif(not RiskScorer(MODEL_DIR, quiet=True).available,
@@ -111,6 +110,44 @@ def test_maintenance_clears_history(scorer, building):
     scorer.reset_history("f1/lab-b")
     assert scorer.samples("f1/lab-b") == 0
     assert scorer.score("f1/lab-b") is None
+
+
+@pytest.mark.skipif(not RiskScorer(MODEL_DIR, quiet=True).available,
+                    reason="model not trained yet")
+def test_seeding_the_reset_keeps_the_unit_scorable_with_no_gap(scorer, building):
+    """A serviced unit must not go dark. Seeding the new segment with the
+    post-service reading — a real observation, and exactly the one-sample
+    segment start that training produced — closes the gap entirely."""
+    twin = RoomTwin(building.room("f1/lab-b"))
+    feed(scorer, "f1/lab-b", twin, 40)
+    scorer.reset_history("f1/lab-b", twin.telemetry(), 99999.0)
+    assert scorer.samples("f1/lab-b") == 1
+    result = scorer.score("f1/lab-b")
+    assert result is not None, "unit went dark immediately after service"
+    assert result["history_samples"] == 1
+    assert result["history_full"] is False
+
+
+@pytest.mark.skipif(not RiskScorer(MODEL_DIR, quiet=True).available,
+                    reason="model not trained yet")
+def test_a_single_sample_is_scorable(scorer, building):
+    """Training's min_periods=1 produced exactly these rows, so refusing them
+    live would be stricter than training for no gain."""
+    twin = RoomTwin(building.room("f1/lab-b"))
+    feed(scorer, "f1/lab-b", twin, 1)
+    result = scorer.score("f1/lab-b")
+    assert result is not None
+    assert 0.0 <= result["failure_prob"] <= 1.0
+
+
+@pytest.mark.skipif(not RiskScorer(MODEL_DIR, quiet=True).available,
+                    reason="model not trained yet")
+def test_score_reports_how_much_history_backed_it(scorer, building):
+    twin = RoomTwin(building.room("f1/lab-b"))
+    feed(scorer, "f1/lab-b", twin, scorer.window)
+    result = scorer.score("f1/lab-b")
+    assert result["history_samples"] == scorer.window
+    assert result["history_full"] is True
 
 
 def test_history_resumes_immediately_after_a_reset(scorer, building):
@@ -231,10 +268,9 @@ def test_healthy_unit_does_not_trip_the_guard(scorer, building):
 def test_score_all_omits_unscorable_rooms(scorer, building):
     lab_b = RoomTwin(building.room("f1/lab-b"))
     feed(scorer, "f1/lab-b", lab_b, scorer.window)
-    feed(scorer, "f2/office", RoomTwin(building.room("f2/office")), 5)
-    scores = scorer.score_all(["f1/lab-b", "f2/office"])
+    scores = scorer.score_all(["f1/lab-b", "f2/office"])   # office never observed
     assert "f1/lab-b" in scores
-    assert "f2/office" not in scores, "scored a room without enough history"
+    assert "f2/office" not in scores, "scored a room it has never observed"
 
 
 @pytest.mark.skipif(not RiskScorer(MODEL_DIR, quiet=True).available,

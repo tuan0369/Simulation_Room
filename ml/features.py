@@ -61,13 +61,18 @@ WINDOWS = {"30m": 6, "2h": 24, "6h": 72}
 
 # Minimum history before a live unit can be scored at all.
 #
-# NOT the longest window. Training used `min_periods=1`, so every degradation
-# segment's opening rows were produced from partial windows — the model is
-# calibrated for them. Demanding a full 6 h window live would be *stricter* than
-# training, and would black out every unit for six hours after each service.
-# Below one short window even the 30 m features are degenerate, so that is the
-# floor.
-MIN_LIVE_SAMPLES = WINDOWS["30m"]
+# One sample, matching training exactly. Training computed rolling features with
+# `min_periods=1` grouped by degradation segment, so the FIRST row after every
+# service was itself built from a single sample — rolling means equal to the
+# current value, slopes filled with zero. The model was fitted on thousands of
+# such rows and is calibrated for them.
+#
+# Anything higher is stricter live than in training, and buys nothing: a
+# six-sample floor blacked out every serviced unit for 30 simulated minutes for
+# no gain in fidelity. Level features (runtime, torque, vibration, clog) carry
+# most of the signal on their own; the trend features simply read zero until
+# there is a trend to read, exactly as they did at segment starts in training.
+MIN_LIVE_SAMPLES = 1
 
 # Columns that must NEVER become features: identity (leaks maintenance policy),
 # labels (leak the answer), and bookkeeping.
@@ -194,4 +199,13 @@ def build_features_live(history) -> np.ndarray:
     frame = pd.DataFrame(list(history)[-max(WINDOWS.values()):])
     if "sim_hour" not in frame:
         frame["sim_hour"] = 0.0
+
+    # Incomplete telemetry returns None rather than raising. A malformed or
+    # truncated record must not be able to take the scorer — and with it the
+    # simulator's risk reporting — down.
+    missing = [c for c in BASE_FEATURES
+               if c not in frame and c not in ("hour_sin", "hour_cos")]
+    if missing:
+        return None
+
     return feature_matrix(frame).iloc[[-1]].to_numpy()
