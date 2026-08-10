@@ -133,6 +133,38 @@ def test_recovery_rearms_the_alert(coordinator):
     assert twin.advisories(risk), "relapse was suppressed"
 
 
+def test_the_models_own_threshold_is_honoured(coordinator):
+    """The model derives its threshold from a cost curve and ships it with each
+    score. A hardcoded default here meant a room scoring 0.495 against the
+    model's 0.0053 threshold raised no work order at all."""
+    twin, _, _ = coordinator
+    orders = twin.advisories({"f1/lab-a": {"failure_prob": 0.4954,
+                                           "threshold": 0.0053,
+                                           "top_factor": "runtime_hours"}})
+    assert len(orders) == 1, "calibrated threshold was ignored"
+
+
+def test_a_nonsense_threshold_falls_back_to_the_default(coordinator):
+    twin, _, _ = coordinator
+    assert twin.advisories({"f1/lab-a": {"failure_prob": 0.1,
+                                         "threshold": 0.0}}) == []
+    assert twin.advisories({"f1/lab-b": {"failure_prob": 0.9,
+                                         "threshold": "high"}})
+
+
+def test_thermal_guard_raises_a_work_order_on_its_own(coordinator):
+    """The model cannot see heat-dissipation failure. Gating the guard behind
+    the model score would reinstate exactly the blind spot it exists to cover.
+    """
+    twin, _, _ = coordinator
+    orders = twin.advisories({"f1/lab-a": {"failure_prob": 0.001,
+                                           "threshold": 0.0053,
+                                           "thermal_guard": 0.8,
+                                           "top_factor": "motor_temp"}})
+    assert len(orders) == 1
+    assert orders[0]["action"] == "service_motor"
+
+
 def test_advisories_are_recommendations_not_actions(coordinator):
     twin, _, _ = coordinator
     order = twin.advisories({"f2/office": {"failure_prob": 0.95,

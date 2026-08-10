@@ -92,13 +92,13 @@ def generate(days: int = 365, seed: int = 42, sample_every: int = SAMPLE_EVERY,
     sim = Simulator(seed=seed)
     sim.sim_time_s = START_HOUR * 3600.0
 
-    # Auto mode throughout: with the AC left in manual-off, every room would
-    # simply cook to the 40 C clamp and the dataset would carry no control
-    # behaviour to learn from.
-    for twin in sim.twins.values():
-        twin.state = twin.state.__class__(
-            temperature=24.0, humidity=45.0, occupancy=0,
-            hvac_on=twin.config.always_on, mode="auto", setpoint=23.0)
+    # RoomTwin's own defaults (auto mode, 23 C setpoint) are used unchanged.
+    # Restating them here is how the training and live configurations drift
+    # apart: the model would be trained on one control regime and served on
+    # another. With the AC in manual-off, every room simply cooks to the 40 C
+    # clamp and the dataset carries no control behaviour to learn from.
+    assert all(t.state.mode == "auto" for t in sim.twins.values()), (
+        "rooms must start in auto or the dataset will not match live operation")
 
     rng = random.Random(seed)          # jitters service dates only
     steps_per_day = int(round(86400.0 / dt))
@@ -182,7 +182,9 @@ def generate(days: int = 365, seed: int = 42, sample_every: int = SAMPLE_EVERY,
                     "room_temp": t["room_temp"],
                     "humidity": t["humidity"],
                     "setpoint": t["setpoint"],
-                    "outdoor_temp": round(outdoor, 3),
+                    # From the twin, not the loop variable: one source, so the
+                    # training rows and the live feature vector cannot diverge.
+                    "outdoor_temp": t["outdoor_temp"],
                     "hvac_on": int(t["hvac_on"]),
                     "ac_power_pct": t["ac_power_pct"],
                     "motor_temp": t["motor_temp"],

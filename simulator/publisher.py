@@ -23,6 +23,7 @@ from commands import (CMD_HVAC, CMD_MAINTENANCE, CMD_MODE,  # noqa: F401
                       parse_command_topic, utc_now_iso)
 from building_twin import BuildingTwin
 from floor_twin import FloorTwin
+from ml_inference import SAMPLE_INTERVAL_S, RiskScorer
 from occupancy_twin import OccupancyTwin
 from room_twin import RoomTwin
 
@@ -46,6 +47,14 @@ NOISE = 0.1
 # outer control loop fighting each room's PID.
 FLOOR_INTERVAL = 10
 BUILDING_INTERVAL = 30
+RISK_INTERVAL = 30
+
+# The ML features need a 6-hour trailing window (72 samples at 5-minute
+# spacing). Waiting for that in real time would leave the dashboard blank for
+# 36 minutes even at x10, so the simulator advances the physics headlessly at
+# startup to give every unit a plausible operating history. This is warm-up,
+# not fabrication: the history is produced by the same physics as the live run.
+WARMUP_HOURS = 8.0
 
 # Demos should not start at midnight in an empty building.
 START_HOUR = 8.5
@@ -54,7 +63,7 @@ START_HOUR = 8.5
 class Simulator:
     """Drives all six room twins from a single loop."""
 
-    def __init__(self, seed: int | None = None):
+    def __init__(self, seed: int | None = None, quiet: bool = False):
         self.building = load_building()
         self.twins = {r.twin_id: RoomTwin(r) for r in self.building.all_rooms()}
         self.rng = random.Random(seed)
@@ -63,6 +72,8 @@ class Simulator:
         self.coordinator = BuildingTwin(self.building)
         self.budgets = {f.floor_id: f.power_budget_kw for f in self.building.floors}
         self.active_nudges: dict[str, float] = {}
+        self.scorer = RiskScorer(quiet=quiet)
+        self.latest_risk: dict[str, dict] = {}
         self.sim_time_s = START_HOUR * 3600.0
         self.manual_occupancy: set[str] = set()
         self.time_scale = 1.0
@@ -219,8 +230,35 @@ class Simulator:
                   f"(p={order['failure_prob']}, {order['top_factor']})")
 
     def risk_scores(self) -> dict:
-        """Overridden once live ML inference lands (Task 8)."""
-        return {}
+        """Latest scores, consumed by the building twin into work orders."""
+        return self.latest_risk
+
+    def warm_up(self, hours: float = WARMUP_HOURS):
+        """Advance the physics headlessly so the scorer has a full window.
+
+        No MQTT, no sleeping — this runs in a couple of seconds. It also leaves
+        the building in a realistic mid-morning state instead of every room
+        sitting at exactly 24.0 C.
+        """
+        steps = int(hours * 3600 / 1.0)
+        for _ in range(steps):
+            self.step(dt=1.0)
+        ready = sum(1 for tid in self.twins if self.scorer.ready(tid))
+        return ready
+
+    def publish_risk(self):
+        """Publish a risk score per room; honest placeholder when not scorable."""
+        for tid in self.twins:
+            result = self.scorer.score(tid)
+            if result is None:
+                payload = self.scorer.warming_up_payload(tid)
+                self.latest_risk.pop(tid, None)
+            else:
+                payload = result
+                self.latest_risk[tid] = result
+            self.client.publish(f"{TOPIC_ROOT}/{tid}/health/risk",
+                                json.dumps(payload | {"timestamp": utc_now_iso()}),
+                                retain=True)
 
     # ── Loop ───────────────────────────────────────────────────────────────
 
@@ -265,7 +303,18 @@ class Simulator:
                           if n in snapshot}
             twin.tick(dt=dt, neighbour_temps=neighbours, outdoor_temp=outdoor)
 
+        # Feed the scorer on its own 5-minute cadence, matching how the
+        # training data was sampled.
+        for tid, twin in self.twins.items():
+            self.scorer.observe(tid, twin.telemetry(), self.sim_time_s)
+
     def run(self):
+        if self.scorer.available:
+            print(f"warming up {WARMUP_HOURS:.0f} simulated hours "
+                  f"so risk scores are available immediately...")
+            ready = self.warm_up()
+            print(f"  {ready}/{len(self.twins)} rooms scorable")
+
         self.client.connect(BROKER_HOST, BROKER_PORT)
         self.client.loop_start()
         tick = 0
@@ -284,6 +333,9 @@ class Simulator:
                         self.publish_health(twin)
                     self.publish_building_summary()
                     self.publish_occupancy_flow()
+
+                if tick % RISK_INTERVAL == 0:
+                    self.publish_risk()
 
                 if tick % FLOOR_INTERVAL == 0:
                     self.floor_summaries = self.run_floor_supervision()

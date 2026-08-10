@@ -63,22 +63,14 @@ SEED = 42
 FAULT_CLASSES = ["none", "hdf", "osf", "pwf"]
 TARGET_TYPE = "label_failure_type"
 
-# Heat-dissipation failure is defined by motor_temp crossing the 85 C Class-F
-# insulation limit, so it has a DIRECT physical precursor: the temperature
-# climbing toward it. That is a threshold problem, not a learning problem — and
-# it has to be, because the training set contains only ~96 HDF rows (about two
-# events), which no model can generalise from. Overstrain and power failures are
-# cumulative and genuinely benefit from the model.
-#
-# So the shipped detector is a hybrid: model OR physics guard. Reporting the
-# model alone would be dishonest about a mode it cannot see; replacing the model
-# with thresholds would throw away the 0.93 PR-AUC it earns on the other modes.
-HDF_GUARD_LOW = 70.0
-HDF_GUARD_HIGH = 85.0
+# The HDF physics guard lives in simulator/hvac_health.py, with the rest of the
+# physics, so training and live inference share one definition. See the comment
+# there for why it stays a separate channel rather than a term in the score.
+from hvac_health import HDF_GUARD_HIGH, HDF_GUARD_LOW  # noqa: E402,F401
 
 
 def hdf_guard_score(motor_temp: np.ndarray) -> np.ndarray:
-    """Ramp from 0 at 70 C to 1 at the 85 C alarm."""
+    """Vectorised form of the scalar guard, for evaluating whole test splits."""
     return np.clip((motor_temp - HDF_GUARD_LOW)
                    / (HDF_GUARD_HIGH - HDF_GUARD_LOW), 0.0, 1.0)
 

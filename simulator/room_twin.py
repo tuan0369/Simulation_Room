@@ -14,8 +14,8 @@ from building import RoomConfig
 from commands import (CMD_MAINTENANCE, TOPIC_ROOT, handle_command,
                       parse_maintenance)
 from hvac_health import HVACHealth, apply_maintenance, failure_flags, step_health
-from physics import (RoomState, ac_output_temperature, auto_hvac_decision,
-                     step_humidity, step_temperature)
+from physics import (T_OUTDOOR, RoomState, ac_output_temperature,
+                     auto_hvac_decision, step_humidity, step_temperature)
 from pid_controller import PIDController
 
 # The ML feature contract. `telemetry()` must supply exactly these keys — a
@@ -23,7 +23,7 @@ from pid_controller import PIDController
 # scorer cannot silently drift apart from the simulator.
 TELEMETRY_FIELDS = (
     "twin_id", "floor", "room_id", "room_profile",
-    "occupancy", "room_temp", "humidity", "setpoint",
+    "occupancy", "room_temp", "humidity", "setpoint", "outdoor_temp",
     "hvac_on", "ac_power_pct",
     "motor_temp", "fan_rpm", "vibration_mm_s", "filter_clog",
     "power_draw_w", "runtime_hours", "torque_nm",
@@ -39,6 +39,16 @@ ADVISORY_LIMIT_C = 1.5
 # further — standing equipment load would otherwise cook it overnight.
 UNOCCUPIED_SETBACK_C = 28.0
 
+# Defaults for a freshly built twin. These are NOT arbitrary: the model was
+# trained on telemetry generated with auto mode and this setpoint, so a live
+# system starting in manual-off would be a distribution shift — and would also
+# cook every room to the 40 °C clamp, since equipment load runs regardless.
+# Project 1 defaulted to manual because its demo was "watch one room overheat,
+# then intervene"; a six-room building with predictive maintenance wants the
+# plant running. Operators can still switch any room to manual.
+DEFAULT_MODE = "auto"
+DEFAULT_SETPOINT_C = 23.0
+
 
 class RoomTwin:
     """A single room's digital twin."""
@@ -48,17 +58,20 @@ class RoomTwin:
         self.pid = PIDController()
         self.health = HVACHealth.for_room(config)
         self.advisory_offset = 0.0
+        # Remembered from the last tick so telemetry() is self-contained. The
+        # ML feature set needs outdoor_temp, and having the caller attach it
+        # separately let the training and live paths diverge.
+        self.outdoor_temp = T_OUTDOOR
         if state is not None:
             self.state = state
         else:
-            # An always-on room starts cooling immediately in auto; everything
-            # else starts idle in manual, matching Project 1's defaults.
             self.state = RoomState(
                 temperature=24.0,
                 humidity=45.0,
                 occupancy=0 if config.occupancy_profile == "unoccupied" else 2,
                 hvac_on=config.always_on,
-                mode="auto" if config.always_on else "manual",
+                mode=DEFAULT_MODE,
+                setpoint=DEFAULT_SETPOINT_C,
             )
 
     # ── Topics ─────────────────────────────────────────────────────────────
@@ -100,6 +113,8 @@ class RoomTwin:
         `neighbour_temps` maps adjacent twin_id -> temperature. Absent or empty
         means no coupling, which reproduces Project 1's isolated-room physics.
         """
+        if outdoor_temp is not None:
+            self.outdoor_temp = outdoor_temp
         target = self.effective_setpoint
 
         if self.state.mode == "auto":
@@ -172,6 +187,7 @@ class RoomTwin:
             "room_temp": round(self.state.temperature, 3),
             "humidity": round(self.state.humidity, 3),
             "setpoint": self.state.setpoint,
+            "outdoor_temp": round(self.outdoor_temp, 3),
             "hvac_on": self.state.hvac_on,
             "ac_power_pct": round(self.state.ac_power_pct, 4),
             "motor_temp": round(self.health.motor_temp, 3),

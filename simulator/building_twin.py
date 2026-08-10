@@ -17,8 +17,18 @@ from __future__ import annotations
 
 from building import BuildingConfig
 
-RISK_THRESHOLD = 0.70        # matches the decision threshold in the model card
-RECOVERY_THRESHOLD = 0.40    # risk must fall below this to re-arm an alert
+# Fallback only. The real threshold travels WITH each risk score, because the
+# model derives it from a cost curve (missed failure EUR2000 vs false alarm
+# EUR150) and it is documented in the model card. Hardcoding a guess here meant
+# the coordinator silently ignored the calibrated value: a room scoring 0.495
+# against the model's own 0.0053 threshold raised no work order at all.
+RISK_THRESHOLD = 0.70
+
+# Risk must fall to this fraction of the firing threshold before the same fault
+# can alert again — expressed as a fraction so it tracks whatever threshold the
+# model ships rather than drifting out of step with it.
+RECOVERY_FRACTION = 0.5
+
 MIN_FLOOR_SHARE = 0.15       # fraction of the budget every floor keeps
 
 # Which factor drove the risk -> what a technician should actually do.
@@ -97,10 +107,22 @@ class BuildingTwin:
             if not isinstance(prob, (int, float)):
                 continue
 
-            if prob < RECOVERY_THRESHOLD:
+            # Honour the threshold the model shipped with this score.
+            threshold = score.get("threshold")
+            if not isinstance(threshold, (int, float)) or not 0 < threshold <= 1:
+                threshold = RISK_THRESHOLD
+
+            # An independent thermal alarm raises a work order on its own — the
+            # model is blind to heat-dissipation failure (model card §4), so
+            # gating the guard behind the model score would reinstate the blind
+            # spot the guard exists to cover.
+            thermal = score.get("thermal_guard")
+            thermal_alert = isinstance(thermal, (int, float)) and thermal >= 0.5
+
+            if prob < threshold * RECOVERY_FRACTION and not thermal_alert:
                 self._open_orders.pop(twin_id, None)
                 continue
-            if prob < RISK_THRESHOLD:
+            if prob < threshold and not thermal_alert:
                 continue
 
             factor = score.get("top_factor") or "unknown"

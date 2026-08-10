@@ -81,6 +81,27 @@ DEFAULT_RATED_POWER_W = 280.0   # 8% of Project 1's 3500 W unit
 MAINTENANCE_ACTIONS = ("replace_filter", "service_motor")
 
 
+# Heat-dissipation failure has a direct physical precursor — the winding
+# climbing toward its insulation limit — so it is detectable by threshold and
+# does not need a model. That matters because the training set holds only ~2 HDF
+# events, far too few to learn from; see ml/models/model_card.md section 4.
+# Defined here, with the rest of the physics, so training and live inference
+# cannot drift apart.
+HDF_GUARD_LOW = 70.0
+HDF_GUARD_HIGH = MOTOR_TEMP_ALARM
+
+
+def hdf_guard_score(motor_temp):
+    """Independent thermal alarm: 0 at 70 °C, ramping to 1 at the 85 °C limit.
+
+    Kept as a SEPARATE channel from the model's risk score. Blending the two
+    lifted HDF recall but dragged server-room precision from 0.81 to 0.33,
+    because it fires on any hot motor regardless of the actual fault.
+    """
+    span = HDF_GUARD_HIGH - HDF_GUARD_LOW
+    return max(0.0, min((float(motor_temp) - HDF_GUARD_LOW) / span, 1.0))
+
+
 def _clamp(v: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, v))
 
