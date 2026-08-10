@@ -477,10 +477,19 @@ def main():
         "task": "multiclass fault type; P(failure) = 1 - P(none)",
         "classes": list(best_model.classes_),
         "recall_by_fault_mode": modes.to_dict("records"),
+        # Names matter here: docs and the ROI model cite these directly, and an
+        # earlier build labelled the UNSEEN-ROOM recall as plain "recall",
+        # understating in-distribution performance by a third.
         "metrics": {
             "pr_auc": round(float(average_precision_score(y_test, best_scores)), 4),
             "roc_auc": round(float(roc_auc_score(y_test, best_scores)), 4),
-            "recall": round(float(room_ev.recall_at_threshold), 4),
+            "recall": round(float(
+                [e for e in results if e.name == best_name][0]
+                .recall_at_threshold), 4),
+            "precision": round(float(
+                [e for e in results if e.name == best_name][0]
+                .precision_at_threshold), 4),
+            "unseen_room_recall": round(float(room_ev.recall_at_threshold), 4),
             "unseen_room_pr_auc": round(float(room_ev.pr_auc), 4),
         },
         "rul": rul_metrics,
