@@ -23,8 +23,8 @@
 | 5. Floor + building twins | ✅ done | `b87ce9d` | 169 |
 | 6. Dataset generator | ✅ done | see log | 196 |
 | 7. ML notebooks | ✅ done | see log | 214 |
-| 8. Live inference | ⬜ next | | |
-| 9. Multipage dashboard | ⬜ | | |
+| 8. Live inference | ✅ done | see log | 236 |
+| 9. Multipage dashboard | ⬜ next | | |
 | 10. Multi-floor 3D view | ⬜ | | |
 | 11. Ecosystem / governance / ROI docs | ⬜ | | |
 | 12. Executive pitch | ⬜ | | |
