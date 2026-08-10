@@ -27,8 +27,8 @@
 | 9. Multipage dashboard | ✅ done | see log | 273 |
 | 10. Multi-floor 3D view | ✅ done | see log | 288 |
 | 11. Ecosystem / governance / ROI docs | ✅ done | see log | 320 |
-| 12. Executive pitch | ⬜ next | | |
-| 13. README + final integration | ⬜ | | |
+| 12. Executive pitch | ✅ done | see log | 335 |
+| 13. README + final integration | ⬜ next | | |
 
 Keep this table current — the Project-1 plan's checkboxes were never ticked and it stopped being a usable record of what shipped.
 
