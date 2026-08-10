@@ -8,7 +8,7 @@ ENV UV_LINK_MODE=copy \
     UV_PROJECT_ENVIRONMENT=/opt/venv \
     PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app/simulator:/app/ml:/app
+    PYTHONPATH=/app/simulator:/app/ml:/app/dashboard:/app
 
 # Dependency layer: rebuilt only when pyproject.toml / uv.lock change.
 # --frozen makes the build fail loudly on a lock/manifest mismatch rather than
