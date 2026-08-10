@@ -101,6 +101,45 @@ def test_single_cached_mqtt_client():
     assert text.count("mqtt.Client(") == 1
 
 
+@pytest.mark.parametrize("path", SOURCES)
+def test_modules_used_are_imported(path):
+    """Catches the NameError class of bug that AppTest cannot.
+
+    A page only executes the branches its default state reaches, so a missing
+    import inside a conditional survives a green smoke test and then crashes
+    the first time a user clicks something. `json.dumps` in the automation
+    handler did exactly that: the branch runs only when the level CHANGES.
+    """
+    import ast
+    tree = ast.parse(_source(path))
+    imported = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported.update(a.asname or a.name.split(".")[0] for a in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            imported.update(a.asname or a.name for a in node.names)
+
+    assigned = {n.id for node in ast.walk(tree)
+                if isinstance(node, ast.Assign)
+                for n in ast.walk(node.targets[0]) if isinstance(n, ast.Name)}
+    assigned |= {n.id for node in ast.walk(tree)
+                 if isinstance(node, (ast.For, ast.comprehension))
+                 for n in ast.walk(getattr(node, "target", node))
+                 if isinstance(n, ast.Name)}
+
+    stdlib = {"json", "os", "math", "time", "random", "datetime", "pathlib",
+              "collections", "threading", "re", "itertools", "functools"}
+    used = {node.value.id for node in ast.walk(tree)
+            if isinstance(node, ast.Attribute)
+            and isinstance(node.value, ast.Name)}
+
+    for name in used & stdlib:
+        if name in assigned:
+            continue
+        assert name in imported, (
+            f"{path} uses {name}.* but never imports {name}")
+
+
 def test_automation_is_one_control_in_one_place():
     """Two different things called 'auto' on two pages is the confusion this
     replaced: the climate mode lived on the console and auto-remediation on the
@@ -138,7 +177,17 @@ def test_ac_buttons_sit_with_the_other_actions():
 
 def test_manual_only_controls_are_disabled_under_automation():
     console = _source("dashboard/app_pages/room_console.py")
-    assert "disabled=not _manual" in console
+    assert "disabled=not is_manual" in console
+
+
+def test_ac_buttons_follow_the_chosen_level_not_the_confirmed_one():
+    """They must react to the level the operator just picked. Reading the
+    confirmed MQTT mode left them greyed out for a full round-trip after
+    switching to Manual, so Manual appeared not to work at all."""
+    console = _source("dashboard/app_pages/room_console.py")
+    assert "is_manual = (level or current) == \"Manual\"" in console
+    # …and the actions block must come after the control that sets `level`.
+    assert console.index("is_manual =") > console.index("level = st.segmented_control")
 
 
 def test_pages_do_not_open_their_own_connections():

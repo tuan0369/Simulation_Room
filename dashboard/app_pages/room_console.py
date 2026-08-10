@@ -10,6 +10,8 @@ with `st.segmented_control` in place of a horizontal radio, per the
 developing-with-streamlit skill. The one addition is an equipment-health metric
 in the HVAC card — Project 2's whole point, and the card had room for it.
 """
+import json
+
 import altair as alt
 import pandas as pd
 import streamlit as st
@@ -34,50 +36,6 @@ with st.sidebar:
     st.selectbox("Room", known, key="selected_room", format_func=room_name)
     st.caption("Every room runs its own control loop. Switching rooms here does "
                "not disturb the others.")
-
-    st.divider()
-    st.markdown("**Actions**")
-    st.caption("Everything an operator can do to a room, in one place. Under "
-               "Full auto the model dispatches the maintenance ones itself.")
-    _room = st.session_state.selected_room
-    _hvac = rooms[_room]["hvac"]
-    _manual = _hvac.get("mode") != "auto"
-
-    # Cooling control sits with the other interventions rather than beside the
-    # automation switch — switching the AC is an action, not a mode.
-    ac_on = _hvac.get("hvac_on")
-    cool_col1, cool_col2 = st.columns(2)
-    if cool_col1.button("AC on", icon=":material/ac_unit:", width="stretch",
-                        disabled=not _manual, key=f"acon_{_room}",
-                        help="Available in Manual. The thermostat owns this "
-                             "under Auto climate and Full auto."):
-        publish(client, _room, "cmd/hvac", {"command": "on"})
-    if cool_col2.button("AC off", width="stretch", disabled=not _manual,
-                        key=f"acoff_{_room}",
-                        help="Available in Manual only."):
-        publish(client, _room, "cmd/hvac", {"command": "off"})
-    st.caption(f"AC is currently "
-               f"{'—' if ac_on is None else ('on' if ac_on else 'off')}"
-               + ("" if _manual else " · thermostat controlled"))
-
-    for label, action, icon, help_text in [
-        ("Replace filter", "replace_filter", ":material/filter_alt:",
-         "Airflow failure — clears a loaded filter."),
-        ("Service motor", "service_motor", ":material/build:",
-         "Bearing or overstrain — new bearings, running hours reset."),
-        ("Electrical service", "electrical_service", ":material/bolt:",
-         "Power failure — re-terminate and rebalance, clearing load drift."),
-        ("Thermal derate", "thermal_derate", ":material/mode_cool:",
-         "Overheating — caps fan duty at 50 % so the winding cools. "
-         "Never switches cooling off; releases itself once the motor is cool."),
-        ("Post occupant notice", "post_room_notice", ":material/campaign:",
-         "Overstrain — warns occupants that the unit is overloaded. "
-         "Informational: the system never evacuates anyone."),
-    ]:
-        if st.button(label, icon=icon, width="stretch", help=help_text,
-                     key=f"act_{action}_{_room}"):
-            publish(client, _room, "cmd/maintenance", {"action": action})
-            st.toast(f"{label} → {room_name(_room)}")
 
 twin_id = st.session_state.selected_room
 
@@ -164,6 +122,60 @@ with mid:
         if st.button("Apply occupancy", width="stretch", key=f"bocc_{twin_id}"):
             publish(client, twin_id, "cmd/occupancy", {"value": occ})
             st.toast(f"Occupancy set to {occ}")
+
+
+# ── Actions ─────────────────────────────────────────────────────────────────
+# Rendered into the sidebar, but placed AFTER the automation control in script
+# order on purpose. The enabled/disabled state must follow the level the
+# operator just picked; reading the confirmed MQTT mode instead left the AC
+# buttons greyed out for a full round-trip after switching to Manual, so
+# "Manual" appeared not to work.
+
+is_manual = (level or current) == "Manual"
+
+with st.sidebar:
+    st.divider()
+    st.markdown("**Actions**")
+    st.caption("Everything an operator can do to a room, in one place. Under "
+               "Full auto the model dispatches the maintenance ones itself.")
+
+    # Cooling control sits with the other interventions rather than beside the
+    # automation switch — switching the AC is an action, not a mode.
+    ac_on = room_now["hvac"].get("hvac_on")
+    cool_on, cool_off = st.columns(2)
+    if cool_on.button("AC on", icon=":material/ac_unit:", width="stretch",
+                      disabled=not is_manual, key=f"acon_{twin_id}",
+                      help="Available in Manual. The thermostat owns this "
+                           "under Auto climate and Full auto."):
+        publish(client, twin_id, "cmd/hvac", {"command": "on"})
+        st.toast(f"AC on → {room_name(twin_id)}")
+    if cool_off.button("AC off", width="stretch", disabled=not is_manual,
+                       key=f"acoff_{twin_id}",
+                       help="Available in Manual only."):
+        publish(client, twin_id, "cmd/hvac", {"command": "off"})
+        st.toast(f"AC off → {room_name(twin_id)}")
+    st.caption(f"AC is currently "
+               f"{'—' if ac_on is None else ('on' if ac_on else 'off')}"
+               + ("" if is_manual else " · thermostat controlled"))
+
+    for label, action, icon, help_text in [
+        ("Replace filter", "replace_filter", ":material/filter_alt:",
+         "Airflow failure — clears a loaded filter."),
+        ("Service motor", "service_motor", ":material/build:",
+         "Bearing or overstrain — new bearings, running hours reset."),
+        ("Electrical service", "electrical_service", ":material/bolt:",
+         "Power failure — re-terminate and rebalance, clearing load drift."),
+        ("Thermal derate", "thermal_derate", ":material/mode_cool:",
+         "Overheating — caps fan duty at 50 % so the winding cools. "
+         "Never switches cooling off; releases itself once the motor is cool."),
+        ("Post occupant notice", "post_room_notice", ":material/campaign:",
+         "Overstrain — warns occupants that the unit is overloaded. "
+         "Informational: the system never evacuates anyone."),
+    ]:
+        if st.button(label, icon=icon, width="stretch", help=help_text,
+                     key=f"act_{action}_{twin_id}"):
+            publish(client, twin_id, "cmd/maintenance", {"action": action})
+            st.toast(f"{label} → {room_name(twin_id)}")
 
 
 with bottom_right:
