@@ -70,12 +70,26 @@ def test_no_history_returns_none(scorer, building):
     assert scorer.score("f1/lab-a") is None
 
 
-def test_partial_history_still_returns_none(scorer, building):
+def test_below_the_minimum_returns_none(scorer, building):
     twin = RoomTwin(building.room("f1/lab-a"))
-    feed(scorer, "f1/lab-a", twin, scorer.window - 1)
-    assert scorer.samples("f1/lab-a") == scorer.window - 1
+    feed(scorer, "f1/lab-a", twin, scorer.min_samples - 1)
     assert scorer.ready("f1/lab-a") is False
-    assert scorer.score("f1/lab-a") is None, "scored a unit it has no window for"
+    assert scorer.score("f1/lab-a") is None, "scored a unit with no usable window"
+
+
+@pytest.mark.skipif(not RiskScorer(MODEL_DIR, quiet=True).available,
+                    reason="model not trained yet")
+def test_a_partial_window_is_scorable(scorer, building):
+    """Training used min_periods=1, so every segment's opening rows came from
+    partial windows and the model is calibrated for them. Demanding a full 6 h
+    window live would be stricter than training and would black out every unit
+    for six hours after each service."""
+    twin = RoomTwin(building.room("f1/lab-b"))
+    feed(scorer, "f1/lab-b", twin, scorer.min_samples)
+    assert scorer.samples("f1/lab-b") < scorer.window
+    result = scorer.score("f1/lab-b")
+    assert result is not None
+    assert 0.0 <= result["failure_prob"] <= 1.0
 
 
 def test_warming_up_payload_reports_progress(scorer, building):
@@ -84,8 +98,27 @@ def test_warming_up_payload_reports_progress(scorer, building):
     payload = scorer.warming_up_payload("f1/lab-a")
     assert payload["status"] == "warming_up"
     assert payload["samples"] == 10
-    assert payload["samples_required"] == scorer.window
+    assert payload["samples_required"] == scorer.min_samples
     assert payload["failure_prob"] is None
+
+
+def test_maintenance_clears_history(scorer, building):
+    """Servicing starts a new degradation segment, matching how training
+    computed rolling features per segment."""
+    twin = RoomTwin(building.room("f1/lab-b"))
+    feed(scorer, "f1/lab-b", twin, 40)
+    assert scorer.samples("f1/lab-b") == 40
+    scorer.reset_history("f1/lab-b")
+    assert scorer.samples("f1/lab-b") == 0
+    assert scorer.score("f1/lab-b") is None
+
+
+def test_history_resumes_immediately_after_a_reset(scorer, building):
+    """The next sample after a service must not be rejected as 'too soon'."""
+    twin = RoomTwin(building.room("f1/lab-b"))
+    t = feed(scorer, "f1/lab-b", twin, 10)
+    scorer.reset_history("f1/lab-b")
+    assert scorer.observe("f1/lab-b", twin.telemetry(), t) is True
 
 
 # ── Sampling cadence ────────────────────────────────────────────────────────

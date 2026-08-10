@@ -59,6 +59,16 @@ ROLLING_SIGNALS = [
 # so these are 30 min / 2 h / 6 h.
 WINDOWS = {"30m": 6, "2h": 24, "6h": 72}
 
+# Minimum history before a live unit can be scored at all.
+#
+# NOT the longest window. Training used `min_periods=1`, so every degradation
+# segment's opening rows were produced from partial windows — the model is
+# calibrated for them. Demanding a full 6 h window live would be *stricter* than
+# training, and would black out every unit for six hours after each service.
+# Below one short window even the 30 m features are degenerate, so that is the
+# floor.
+MIN_LIVE_SAMPLES = WINDOWS["30m"]
+
 # Columns that must NEVER become features: identity (leaks maintenance policy),
 # labels (leak the answer), and bookkeeping.
 FORBIDDEN = {
@@ -179,10 +189,9 @@ def build_features_live(history) -> np.ndarray:
     separate live implementation is the classic way training/serving skew
     creeps in, and `test_features.py` asserts the two agree.
     """
-    needed = max(WINDOWS.values())
-    if history is None or len(history) < needed:
+    if history is None or len(history) < MIN_LIVE_SAMPLES:
         return None
-    frame = pd.DataFrame(list(history)[-needed:])
+    frame = pd.DataFrame(list(history)[-max(WINDOWS.values()):])
     if "sim_hour" not in frame:
         frame["sim_hour"] = 0.0
     return feature_matrix(frame).iloc[[-1]].to_numpy()

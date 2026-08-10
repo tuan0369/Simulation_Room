@@ -120,14 +120,33 @@ class RiskScorer:
 
     @property
     def window(self) -> int:
+        """Longest rolling window — the buffer size, not the scoring minimum."""
         from features import WINDOWS
         return max(WINDOWS.values())
+
+    @property
+    def min_samples(self) -> int:
+        from features import MIN_LIVE_SAMPLES
+        return MIN_LIVE_SAMPLES
 
     def samples(self, twin_id: str) -> int:
         return len(self._history.get(twin_id, ()))
 
     def ready(self, twin_id: str) -> bool:
-        return self.samples(twin_id) >= self.window
+        return self.samples(twin_id) >= self.min_samples
+
+    def reset_history(self, twin_id: str) -> None:
+        """Drop history after maintenance, starting a fresh degradation segment.
+
+        Training computed rolling features per segment, so a window never
+        spanned a service. Live, it did: a unit stayed above the alert
+        threshold for minutes after being repaired because its 6-hour window
+        still held pre-service readings. Clearing here restores the training
+        semantics — and because partial windows are scorable, the unit is
+        scoreable again on its very next sample rather than in six hours.
+        """
+        self._history.pop(twin_id, None)
+        self._last_sample_s.pop(twin_id, None)
 
     # ── Scoring ────────────────────────────────────────────────────────────
 
@@ -213,7 +232,7 @@ class RiskScorer:
             "failure_prob": None,
             "alert": False,
             "samples": self.samples(twin_id),
-            "samples_required": self.window,
+            "samples_required": self.min_samples,
             "model_version": self.model_version,
             "reason": self.unavailable_reason or "insufficient history",
         }

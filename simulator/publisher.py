@@ -116,6 +116,13 @@ class Simulator:
             self.manual_occupancy.add(twin_id)
             self.occupancy.occupancy[twin_id] = twin.state.occupancy
 
+        # Servicing starts a new degradation segment. Without this the unit's
+        # rolling window keeps pre-service readings and it stays above the
+        # alert threshold for minutes after being repaired.
+        if kind == CMD_MAINTENANCE:
+            self.scorer.reset_history(twin_id)
+            self.latest_risk.pop(twin_id, None)
+
         print(f"cmd {msg.topic}: {msg.payload!r} -> "
               f"hvac={twin.state.hvac_on} occ={twin.state.occupancy} "
               f"sp={twin.state.setpoint} mode={twin.state.mode}")
@@ -232,6 +239,15 @@ class Simulator:
     def risk_scores(self) -> dict:
         """Latest scores, consumed by the building twin into work orders."""
         return self.latest_risk
+
+    def apply_maintenance(self, twin_id: str, action: str) -> None:
+        """Service a unit from code (used by the dataset generator and tests),
+        keeping the scorer's segment boundary in step with the repair."""
+        twin = self.twins[twin_id]
+        twin.handle_command(twin.topic(CMD_MAINTENANCE),
+                            json.dumps({"action": action}).encode())
+        self.scorer.reset_history(twin_id)
+        self.latest_risk.pop(twin_id, None)
 
     def warm_up(self, hours: float = WARMUP_HOURS):
         """Advance the physics headlessly so the scorer has a full window.
