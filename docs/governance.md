@@ -207,7 +207,30 @@ warning that occupants can read and act on. The system has no authority to clear
 a room, and adding one would be a materially different governance question from
 anything in this document.
 
-**4. Autonomous preventive maintenance — opt-in, OFF by default.**
+**4. Autonomy is a single, three-level operator choice.**
+
+Climate control and maintenance autonomy were previously separate switches on
+separate pages, both called "auto". They are now one control on the room
+console, so an operator can see exactly how much the system is doing for them:
+
+| Level | The thermostat runs the AC | The model dispatches maintenance |
+|---|---|---|
+| **Manual** | No — operator switches it | No |
+| **Auto climate** *(default)* | Yes | No — every work order needs approval |
+| **Full auto** | Yes | Yes — preventive actions only |
+
+Merging the two into one switch was a usability fix, and it carried a risk worth
+naming: had auto-remediation simply been folded into the default climate mode,
+autonomy over physical equipment would have been silently switched on for
+everyone. The three-level design keeps the default at **Auto climate**, so
+Full auto remains a deliberate escalation. `test_full_auto_is_not_the_default`
+enforces it.
+
+Note the asymmetry, which the UI states plainly: climate mode is **per room**,
+while Full auto is **building-wide**, because the coordinator dispatches for the
+whole facility.
+
+**5. Autonomous preventive maintenance — opt-in, OFF by default.**
 
 The system can be configured to dispatch servicing without waiting for approval.
 This is a deliberate, bounded delegation, not an erosion of the rule above:

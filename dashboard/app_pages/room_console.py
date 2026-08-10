@@ -36,10 +36,30 @@ with st.sidebar:
                "not disturb the others.")
 
     st.divider()
-    st.markdown("**Remediation**")
-    st.caption("One remedy per failure mode. The same actions the predictive "
-               "model dispatches when auto-fix is on.")
+    st.markdown("**Actions**")
+    st.caption("Everything an operator can do to a room, in one place. Under "
+               "Full auto the model dispatches the maintenance ones itself.")
     _room = st.session_state.selected_room
+    _hvac = rooms[_room]["hvac"]
+    _manual = _hvac.get("mode") != "auto"
+
+    # Cooling control sits with the other interventions rather than beside the
+    # automation switch — switching the AC is an action, not a mode.
+    ac_on = _hvac.get("hvac_on")
+    cool_col1, cool_col2 = st.columns(2)
+    if cool_col1.button("AC on", icon=":material/ac_unit:", width="stretch",
+                        disabled=not _manual, key=f"acon_{_room}",
+                        help="Available in Manual. The thermostat owns this "
+                             "under Auto climate and Full auto."):
+        publish(client, _room, "cmd/hvac", {"command": "on"})
+    if cool_col2.button("AC off", width="stretch", disabled=not _manual,
+                        key=f"acoff_{_room}",
+                        help="Available in Manual only."):
+        publish(client, _room, "cmd/hvac", {"command": "off"})
+    st.caption(f"AC is currently "
+               f"{'—' if ac_on is None else ('on' if ac_on else 'off')}"
+               + ("" if _manual else " · thermostat controlled"))
+
     for label, action, icon, help_text in [
         ("Replace filter", "replace_filter", ":material/filter_alt:",
          "Airflow failure — clears a loaded filter."),
@@ -77,22 +97,47 @@ with mid:
     c1, c2, c3, c4 = st.columns([1.2, 2, 2, 2])
 
     with c1:
-        st.markdown("**AC mode**")
-        confirmed = room_now["hvac"].get("mode", "auto")
-        mode = st.segmented_control(
-            "AC mode", ["Auto", "Manual"],
-            default="Auto" if confirmed == "auto" else "Manual",
-            key=f"mode_{twin_id}", label_visibility="collapsed")
-        if mode and mode.lower() != confirmed:
-            publish(client, twin_id, "cmd/mode", {"mode": mode.lower()})
-            st.toast(f"{room_name(twin_id)} → {mode}")
-        if mode == "Manual":
-            if st.button("AC on", icon=":material/ac_unit:", width="stretch"):
-                publish(client, twin_id, "cmd/hvac", {"command": "on"})
-            if st.button("AC off", width="stretch"):
-                publish(client, twin_id, "cmd/hvac", {"command": "off"})
+        # ONE control for everything the system may do by itself. Splitting
+        # "AC mode" here from an "auto-fix" toggle on another page invited the
+        # obvious confusion: two different things both called auto, in two
+        # different places.
+        st.markdown("**Automation**")
+        climate_auto = room_now["hvac"].get("mode", "auto") == "auto"
+        fix_auto = bool(data.get("autofix", {}).get("enabled", False))
+        current = ("Full auto" if (climate_auto and fix_auto)
+                   else "Auto climate" if climate_auto else "Manual")
+
+        level = st.segmented_control(
+            "Automation", ["Manual", "Auto climate", "Full auto"],
+            default=current, key=f"auto_{twin_id}",
+            label_visibility="collapsed",
+            help="Manual — you control cooling and choose every remedy.\n\n"
+                 "Auto climate — the thermostat runs the AC; maintenance still "
+                 "needs your approval.\n\n"
+                 "Full auto — the thermostat runs the AC and the predictive "
+                 "model dispatches preventive maintenance itself.")
+
+        if level and level != current:
+            want_climate = level in ("Auto climate", "Full auto")
+            want_fix = level == "Full auto"
+            if want_climate != climate_auto:
+                publish(client, twin_id, "cmd/mode",
+                        {"mode": "auto" if want_climate else "manual"})
+            if want_fix != fix_auto:
+                # Building-wide, not per room: the coordinator dispatches for
+                # the whole facility, so the switch says so rather than
+                # pretending to be room-scoped.
+                client.publish("twin/building/cmd/autofix",
+                               json.dumps({"enabled": want_fix}))
+            st.toast(f"Automation → {level}")
+
+        if level == "Manual":
+            st.caption("You are flying this room by hand.")
+        elif level == "Auto climate":
+            st.caption("Thermostat on. Maintenance needs approval.")
         else:
-            st.caption("The thermostat controls the AC automatically.")
+            st.caption(":material/bolt: Model may service equipment "
+                       "**building-wide** without approval.")
 
     with c2:
         st.markdown("**Target temperature**")

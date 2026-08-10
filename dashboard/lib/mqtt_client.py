@@ -47,6 +47,7 @@ def get_mqtt():
         "floors": {},
         "building": {},
         "occupancy": {},
+        "autofix": {},
         "advisories": deque(maxlen=ADVISORY_LOG),
         "status": "unknown",
         "messages": 0,
@@ -77,13 +78,16 @@ def get_mqtt():
             except json.JSONDecodeError:
                 return
 
-            # twin/building/<what>
+            # twin/building/<what>. Routed explicitly: an earlier catch-all
+            # wrote every unrecognised building topic into store["building"],
+            # so publishing twin/building/autofix silently clobbered the
+            # building summary.
             if len(parts) == 3 and parts[1] == "building":
                 what = parts[2]
                 if what == "advisory":
                     store["advisories"].appendleft(data)
-                else:
-                    store[what if what in ("occupancy",) else "building"] = data
+                elif what in ("summary", "occupancy", "autofix"):
+                    store["building" if what == "summary" else what] = data
                 return
 
             # twin/<floor>/summary
@@ -141,6 +145,7 @@ def snapshot(store) -> dict:
             "floors": {k: dict(v) for k, v in store["floors"].items()},
             "building": dict(store["building"]),
             "occupancy": dict(store["occupancy"]),
+            "autofix": dict(store["autofix"]),
             "advisories": list(store["advisories"]),
             "status": store["status"],
             "messages": store["messages"],

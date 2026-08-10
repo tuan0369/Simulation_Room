@@ -101,6 +101,46 @@ def test_single_cached_mqtt_client():
     assert text.count("mqtt.Client(") == 1
 
 
+def test_automation_is_one_control_in_one_place():
+    """Two different things called 'auto' on two pages is the confusion this
+    replaced: the climate mode lived on the console and auto-remediation on the
+    maintenance page."""
+    console = _source("dashboard/app_pages/room_console.py")
+    maintenance = _source("dashboard/app_pages/predictive_maintenance.py")
+
+    for level in ("Manual", "Auto climate", "Full auto"):
+        assert level in console, f"{level} missing from the automation control"
+    assert "cmd/autofix" in console, "the console cannot change autonomy"
+    assert "st.toggle(" not in maintenance, (
+        "the maintenance page still owns a second automation switch")
+
+
+def test_full_auto_is_not_the_default():
+    """Autonomy over physical equipment must be opted into. Folding
+    auto-remediation into the default climate mode would have silently turned
+    it on for everyone."""
+    from building_twin import BuildingTwin
+    from building import load_building
+    assert BuildingTwin(load_building()).auto_fix is False
+    console = _source("dashboard/app_pages/room_console.py")
+    # The level shown is derived from live state, never hardcoded to Full auto.
+    assert 'default=current' in console
+
+
+def test_ac_buttons_sit_with_the_other_actions():
+    """Switching the AC is an action, not a mode — it belongs beside the
+    remedies rather than next to the automation switch."""
+    console = _source("dashboard/app_pages/room_console.py")
+    actions_start = console.index('st.markdown("**Actions**")')
+    assert console.index('"AC on"') > actions_start
+    assert console.index('"replace_filter"') > actions_start
+
+
+def test_manual_only_controls_are_disabled_under_automation():
+    console = _source("dashboard/app_pages/room_console.py")
+    assert "disabled=not _manual" in console
+
+
 def test_pages_do_not_open_their_own_connections():
     for page in PAGES:
         text = _source(page)

@@ -17,23 +17,21 @@ client, store = get_mqtt()
 st.subheader("Predictive maintenance")
 
 with st.sidebar:
-    st.markdown("**Autonomous remediation**")
-    auto = st.toggle(
-        "Auto-fix predicted failures", value=False, key="autofix",
-        help="When on, the building twin dispatches filter replacement and "
-             "motor servicing itself instead of waiting for approval. Limited "
-             "to those two preventive actions, at most one per unit per 24 h. "
-             "It can never stop cooling or change a setpoint.",
-    )
-    if auto != st.session_state.get("_autofix_sent"):
-        client.publish("twin/building/cmd/autofix", json.dumps({"enabled": auto}))
-        st.session_state._autofix_sent = auto
-        st.toast(f"Auto-fix {'enabled' if auto else 'disabled'}")
-    if auto:
-        st.warning("Preventive servicing will be dispatched without approval.",
-                   icon=":material/bolt:")
+    # Status only. The switch itself lives on the Room console, with the
+    # climate mode — one automation control rather than two things called
+    # "auto" on two different pages.
+    st.markdown("**Automation status**")
+    _auto = snapshot(store).get("autofix", {})
+    if _auto.get("enabled"):
+        st.warning("Full auto: preventive servicing is dispatched without "
+                   "approval, building-wide.", icon=":material/bolt:")
+        st.caption(f"Permitted: {', '.join(_auto.get('actions', []))} · "
+                   f"at most one per unit per "
+                   f"{_auto.get('cooldown_hours', 24):.0f} h")
     else:
-        st.caption("Off — every work order needs human approval.")
+        st.info("Every work order needs human approval.",
+                icon=":material/how_to_reg:")
+    st.caption("Change this on the Room console, under Automation.")
 
 
 @st.fragment(run_every=3.0)
