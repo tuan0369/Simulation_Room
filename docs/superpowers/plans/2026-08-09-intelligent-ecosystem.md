@@ -32,6 +32,26 @@
 
 Keep this table current — the Project-1 plan's checkboxes were never ticked and it stopped being a usable record of what shipped.
 
+## Scope added after the plan was written
+
+These were not in the original 13 tasks. They are recorded here because each
+changed the system materially, and two of them fixed defects the plan had not
+anticipated.
+
+| Addition | Why | Effect |
+|---|---|---|
+| **Per-room wear characters** (`wear` block in the layout) | Six identical units meant one failure mode was ~90 % of positives and the rarest had two training examples | Closed the model's HDF blind spot at its root: recall 0.000 → 0.928, and `f1/lab-a`'s 100 % false-negative rate → 0.994 recall |
+| **Five remedies, one per fault** | The system could predict five faults but fix two; three predictions had no available action | `electrical_service`, `thermal_derate`, `post_room_notice` added alongside the original two |
+| **`load_drift` degradation state** | Power failures came from a fixed installation property, so the alert could never clear | Power faults are now fixable, and drift is a model feature |
+| **Opt-in auto-remediation** | Requested: let the model act before failure | Off by default; preventive actions only; 24 h cooldown per unit; every dispatch still audited as an advisory |
+| **Furniture and walking people in 3D** | The scene read as empty boxes | Furniture type is data-driven from the layout; agents walk through real doorways |
+| **Project-1 style room console as landing page** | The building grid read as a report rather than an operator console | Replaced `room_detail.py`; the 6-room grid moved to second position |
+
+The governance document was extended rather than contradicted: `thermal_derate`
+is the only remedy that reduces cooling, and it is auto-eligible **only**
+because it is bounded exactly as a thermal overload relay is (50 % floor,
+self-releasing, hour cap). A full shutdown remains forbidden at any setting.
+
 ---
 
 ## Goal
