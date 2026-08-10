@@ -24,4 +24,5 @@ ml = [
     "jupyter>=1.1",
     "matplotlib>=3.9",
     "altair>=5.4",
+    "python-pptx>=1.0",
 ]
