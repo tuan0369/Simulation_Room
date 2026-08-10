@@ -17,7 +17,7 @@ MODULE = re.search(r'<script type="module">(.*?)</script>', HTML, re.S).group(1)
 
 
 def test_page_exists_where_the_dashboard_points():
-    dashboard = Path("dashboard/app_pages/building_overview.py").read_text(
+    dashboard = Path("dashboard/app_pages/room_console.py").read_text(
         encoding="utf-8")
     assert "/room3d/building3d.html" in dashboard
     assert PAGE.exists()

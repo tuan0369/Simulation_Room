@@ -15,7 +15,7 @@ from streamlit.testing.v1 import AppTest
 
 PAGES = [
     "dashboard/app_pages/building_overview.py",
-    "dashboard/app_pages/room_detail.py",
+    "dashboard/app_pages/room_console.py",
     "dashboard/app_pages/predictive_maintenance.py",
     "dashboard/app_pages/ecosystem.py",
 ]

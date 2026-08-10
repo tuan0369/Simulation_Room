@@ -13,10 +13,12 @@ if "selected_room" not in st.session_state:
 
 page = st.navigation(
     [
+        # The room console is the landing page: it mirrors Project 1's layout,
+        # which reads as one operator console rather than a report.
+        st.Page("app_pages/room_console.py", title="Room console",
+                icon=":material/dashboard:", default=True),
         st.Page("app_pages/building_overview.py", title="Building",
-                icon=":material/apartment:", default=True),
-        st.Page("app_pages/room_detail.py", title="Room detail",
-                icon=":material/meeting_room:"),
+                icon=":material/apartment:"),
         st.Page("app_pages/predictive_maintenance.py", title="Maintenance",
                 icon=":material/build:"),
         st.Page("app_pages/ecosystem.py", title="Ecosystem",
