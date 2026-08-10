@@ -71,6 +71,63 @@ def test_failures_are_visible_rather_than_blank():
     assert "Could not load" in MODULE
 
 
+def test_furniture_is_chosen_by_the_layout_not_by_room_name():
+    """Branching on room names here would put geometry decisions in two places
+    and reintroduce the drift the shared layout file exists to prevent."""
+    assert "r.furniture" in MODULE
+    assert "FURNITURE[" in MODULE
+
+
+def test_every_room_declares_a_furniture_kind_the_page_implements():
+    import json
+    raw = json.loads(Path("data/building_layout.json").read_text(encoding="utf-8"))
+    kinds = {r["furniture"] for f in raw["floors"] for r in f["rooms"]}
+    for kind in kinds:
+        assert f"{kind}(group)" in MODULE, (
+            f"layout asks for {kind!r} furniture but the page cannot draw it")
+
+
+def test_furniture_covers_every_room():
+    import json
+    raw = json.loads(Path("data/building_layout.json").read_text(encoding="utf-8"))
+    for floor in raw["floors"]:
+        for room in floor["rooms"]:
+            assert room.get("furniture"), (
+                f"{floor['floor_id']}/{room['room_id']} has no furniture kind")
+
+
+def test_people_walk_rather_than_teleport():
+    """People move toward a target at a speed, with states for entering,
+    idling and leaving — not repositioned instantly on each occupancy update."""
+    for token in ("class Person", "this.speed", "'entering'", "'leaving'",
+                  "update(dt", "walking bob"):
+        assert token in MODULE, f"missing {token}"
+
+
+def test_people_enter_through_the_doorway():
+    """The corridor-facing wall is split around a door, and arrivals path
+    through it rather than through a wall."""
+    assert "DOOR_W" in MODULE
+    assert "doorway" in MODULE
+    assert "spotInCorridor" in MODULE
+
+
+def test_people_are_removed_after_leaving():
+    """Departed people must be destroyed, or the scene leaks meshes forever."""
+    assert "destroy()" in MODULE
+    assert "'gone'" in MODULE
+
+
+def test_person_count_is_capped_for_legibility():
+    assert "MAX_VISIBLE" in MODULE
+
+
+def test_geometry_and_materials_are_shared():
+    """Six rooms of furniture plus dozens of people would be far too many
+    unique allocations otherwise."""
+    assert "const G = {" in MODULE and "const M = {" in MODULE
+
+
 def test_floor_isolation_controls_exist():
     for button in ("b-all", "b-f1", "b-f2"):
         assert button in HTML

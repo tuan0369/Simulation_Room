@@ -46,7 +46,8 @@ function fatal(what, err) {
 }
 
 // The SAME file the simulator and dashboard read. Fetching it rather than
-// hardcoding geometry is what stops the picture drifting from the physics.
+// hardcoding geometry is what stops the picture drifting from the physics —
+// including which furniture each room contains.
 let layout;
 try {
   const res = await fetch('/data/building_layout.json');
@@ -62,7 +63,7 @@ if (typeof mqtt === 'undefined') {
 }
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x0b1220, 40, 95);
+scene.fog = new THREE.Fog(0x0b1220, 45, 105);
 const camera = new THREE.PerspectiveCamera(52, innerWidth/innerHeight, 0.1, 200);
 const renderer = new THREE.WebGLRenderer({ antialias:true });
 renderer.setSize(innerWidth, innerHeight);
@@ -73,23 +74,116 @@ addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
 });
 
-scene.add(new THREE.AmbientLight(0xffffff, 0.62));
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
 const sun = new THREE.DirectionalLight(0xffffff, 0.85);
-sun.position.set(14, 26, 12); scene.add(sun);
+sun.position.set(14, 30, 12); scene.add(sun);
 
 const root = new THREE.Group(); scene.add(root);
 
-const FLOOR_H = 7.0;          // vertical separation between slabs
-const ROOM_W = 11, ROOM_D = 9, CORRIDOR_D = 4.5;
+const FLOOR_H = 7.0;
+const ROOM_W = 12, ROOM_D = 10, CORRIDOR_D = 5.0;
+const CORRIDOR_Z = ROOM_D / 2 + CORRIDOR_D / 2 + 0.4;
+const DOOR_W = 2.8;
 
 const cold = new THREE.Color(0x2563eb), hot = new THREE.Color(0xef4444);
-const wallMat = new THREE.MeshStandardMaterial({
-  color:0x94a3b8, transparent:true, opacity:0.13, roughness:0.2 });
-const corridorMat = new THREE.MeshStandardMaterial({ color:0x334155, roughness:0.8 });
-const personGeo = new THREE.CapsuleGeometry(0.24, 0.72, 4, 8);
-const personMat = new THREE.MeshStandardMaterial({ color:0xfcd34d, roughness:0.5 });
 
-const rooms = {};             // twin_id -> parts
+// Shared geometry and materials — six rooms of furniture and up to ~60 people
+// would be far too many unique allocations otherwise.
+const M = {
+  wall:    new THREE.MeshStandardMaterial({ color:0x94a3b8, transparent:true,
+                                            opacity:0.13, roughness:0.2 }),
+  corridor:new THREE.MeshStandardMaterial({ color:0x334155, roughness:0.85 }),
+  frame:   new THREE.MeshStandardMaterial({ color:0x1e293b, roughness:0.5 }),
+  top:     new THREE.MeshStandardMaterial({ color:0xe2e8f0, roughness:0.35 }),
+  rack:    new THREE.MeshStandardMaterial({ color:0x0f172a, roughness:0.6 }),
+  led:     new THREE.MeshBasicMaterial({ color:0x22d3ee }),
+  screen:  new THREE.MeshStandardMaterial({ color:0x0ea5e9, roughness:0.2,
+                                            emissive:0x0b4a6f }),
+  chair:   new THREE.MeshStandardMaterial({ color:0x475569, roughness:0.7 }),
+  unit:    new THREE.MeshStandardMaterial({ color:0xf1f5f9 }),
+  blade:   new THREE.MeshStandardMaterial({ color:0x38bdf8 }),
+  head:    new THREE.MeshStandardMaterial({ color:0xfde047, roughness:0.5 }),
+};
+const G = {
+  legY:    new THREE.BoxGeometry(0.09, 0.75, 0.09),
+  benchTop:new THREE.BoxGeometry(3.0, 0.09, 1.2),
+  deskTop: new THREE.BoxGeometry(1.7, 0.08, 0.9),
+  monitor: new THREE.BoxGeometry(0.9, 0.55, 0.05),
+  rackBox: new THREE.BoxGeometry(0.9, 2.0, 1.1),
+  rackLed: new THREE.BoxGeometry(0.7, 0.05, 0.02),
+  meetTop: new THREE.BoxGeometry(4.4, 0.1, 1.8),
+  chair:   new THREE.BoxGeometry(0.5, 0.1, 0.5),
+  chairBack:new THREE.BoxGeometry(0.5, 0.55, 0.08),
+  body:    new THREE.CapsuleGeometry(0.2, 0.6, 6, 10),
+  head:    new THREE.SphereGeometry(0.19, 12, 12),
+};
+const PERSON_COLOURS = [0x38bdf8, 0xf43f5e, 0x10b981, 0xf59e0b, 0xa855f7, 0xec4899]
+  .map(c => new THREE.MeshStandardMaterial({ color:c, roughness:0.45 }));
+
+function legs(group, w, d) {
+  [[-w/2+0.2,-d/2+0.2],[w/2-0.2,-d/2+0.2],[-w/2+0.2,d/2-0.2],[w/2-0.2,d/2-0.2]]
+    .forEach(([dx,dz]) => {
+      const leg = new THREE.Mesh(G.legY, M.frame);
+      leg.position.set(dx, 0.375, dz); group.add(leg);
+    });
+}
+
+// Furniture is chosen by the layout's `furniture` field, not by room name, so
+// the scene stays data-driven and adding a room needs no code change here.
+const FURNITURE = {
+  lab_bench(group) {
+    [[-3.0,-2.2],[3.0,-2.2],[-3.0,1.4],[3.0,1.4]].forEach(([x,z]) => {
+      const bench = new THREE.Group();
+      const top = new THREE.Mesh(G.benchTop, M.top);
+      top.position.y = 0.79; bench.add(top);
+      legs(bench, 3.0, 1.2);
+      bench.position.set(x, 0.14, z); group.add(bench);
+    });
+  },
+  desks(group) {
+    for (let i = 0; i < 6; i++) {
+      const desk = new THREE.Group();
+      const top = new THREE.Mesh(G.deskTop, M.top);
+      top.position.y = 0.76; desk.add(top);
+      legs(desk, 1.7, 0.9);
+      const mon = new THREE.Mesh(G.monitor, M.screen);
+      mon.position.set(0, 1.09, -0.3); desk.add(mon);
+      desk.position.set(-3.6 + (i % 3) * 3.6, 0.14, -2.2 + Math.floor(i / 3) * 3.4);
+      group.add(desk);
+    }
+  },
+  server_rack(group) {
+    for (let i = 0; i < 6; i++) {
+      const rack = new THREE.Mesh(G.rackBox, M.rack);
+      rack.position.set(-3.5 + (i % 3) * 3.5, 1.14, -2.4 + Math.floor(i / 3) * 3.6);
+      group.add(rack);
+      for (let j = 0; j < 5; j++) {
+        const led = new THREE.Mesh(G.rackLed, M.led);
+        led.position.set(rack.position.x, 0.55 + j * 0.32, rack.position.z + 0.56);
+        group.add(led);
+      }
+    }
+  },
+  meeting_table(group) {
+    const table = new THREE.Group();
+    const top = new THREE.Mesh(G.meetTop, M.top);
+    top.position.y = 0.78; table.add(top);
+    legs(table, 4.4, 1.8);
+    table.position.set(0, 0.14, -0.4); group.add(table);
+    for (let i = 0; i < 8; i++) {
+      const side = i < 4 ? -1 : 1;
+      const x = -1.65 + (i % 4) * 1.1;
+      const chair = new THREE.Group();
+      const seat = new THREE.Mesh(G.chair, M.chair);
+      seat.position.y = 0.45; chair.add(seat);
+      const back = new THREE.Mesh(G.chairBack, M.chair);
+      back.position.set(0, 0.75, side * 0.22); chair.add(back);
+      chair.position.set(x, 0.14, -0.4 + side * 1.6); group.add(chair);
+    }
+  },
+};
+
+const rooms = {};
 const floorGroups = {};
 
 layout.floors.forEach((floor, fi) => {
@@ -99,66 +193,158 @@ layout.floors.forEach((floor, fi) => {
   root.add(group);
 
   floor.rooms.forEach((r, ri) => {
-    const x = (ri - (floor.rooms.length - 1) / 2) * (ROOM_W + 0.7);
+    const rx = (ri - (floor.rooms.length - 1) / 2) * (ROOM_W + 0.8);
     const twinId = `${floor.floor_id}/${r.room_id}`;
+
+    const roomGroup = new THREE.Group();
+    roomGroup.position.set(rx, 0, 0);
+    group.add(roomGroup);
 
     const floorMat = new THREE.MeshStandardMaterial({ color:0x2563eb, roughness:0.45 });
     const slab = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.28, ROOM_D), floorMat);
-    slab.position.set(x, 0, 0);
-    group.add(slab);
+    roomGroup.add(slab);
 
-    // Four low walls: enough to read as a room without hiding its contents.
-    [[0,-ROOM_D/2,ROOM_W,0.12],[0,ROOM_D/2,ROOM_W,0.12],
-     [-ROOM_W/2,0,0.12,ROOM_D],[ROOM_W/2,0,0.12,ROOM_D]]
-      .forEach(([dx,dz,w,d]) => {
-        const wall = new THREE.Mesh(new THREE.BoxGeometry(w, 2.6, d), wallMat);
-        wall.position.set(x+dx, 1.4, dz); group.add(wall);
-      });
+    // Back and side walls solid; the corridor-facing wall is split so there is
+    // a real doorway for people to walk through.
+    const seg = (w, d, x, z) => {
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(w, 2.6, d), M.wall);
+      wall.position.set(x, 1.4, z); roomGroup.add(wall);
+    };
+    seg(ROOM_W, 0.12, 0, -ROOM_D/2);
+    seg(0.12, ROOM_D, -ROOM_W/2, 0);
+    seg(0.12, ROOM_D, ROOM_W/2, 0);
+    const sideW = (ROOM_W - DOOR_W) / 2;
+    seg(sideW, 0.12, -(DOOR_W/2 + sideW/2), ROOM_D/2);
+    seg(sideW, 0.12,  (DOOR_W/2 + sideW/2), ROOM_D/2);
 
-    // Ceiling AC unit with a fan that spins at the commanded duty.
-    const unit = new THREE.Mesh(new THREE.BoxGeometry(2.2,0.22,2.2),
-      new THREE.MeshStandardMaterial({ color:0xf1f5f9 }));
-    unit.position.set(x, 2.75, 0); group.add(unit);
-    const fan = new THREE.Mesh(new THREE.BoxGeometry(1.7,0.06,0.28),
-      new THREE.MeshStandardMaterial({ color:0x38bdf8 }));
-    fan.position.set(x, 2.6, 0); group.add(fan);
+    (FURNITURE[r.furniture] || FURNITURE.desks)(roomGroup);
 
-    // Amber halo, shown only when the maintenance model flags the room.
+    const unit = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.22, 2.2), M.unit);
+    unit.position.set(0, 2.75, 0); roomGroup.add(unit);
+    const fan = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.06, 0.3), M.blade);
+    fan.position.set(0, 2.6, 0); roomGroup.add(fan);
+
     const halo = new THREE.Mesh(
-      new THREE.TorusGeometry(3.1, 0.13, 8, 40),
+      new THREE.TorusGeometry(3.4, 0.14, 8, 40),
       new THREE.MeshBasicMaterial({ color:0xf59e0b, transparent:true, opacity:0.9 }));
-    halo.rotation.x = -Math.PI/2; halo.position.set(x, 0.3, 0);
-    halo.visible = false; group.add(halo);
+    halo.rotation.x = -Math.PI/2; halo.position.y = 0.3;
+    halo.visible = false; roomGroup.add(halo);
 
-    rooms[twinId] = { floorMat, fan, halo, x, group,
-                      people: [], name: r.name, maxOcc: r.max_occupancy,
-                      temp: 24, setpoint: 23, power: 0, occ: 0, risk: null };
+    rooms[twinId] = {
+      floorMat, fan, halo, rx, group, people: [], nextId: 1,
+      name: r.name, temp: 24, setpoint: 23, power: 0, occ: 0, risk: null,
+    };
   });
 
   const corridor = new THREE.Mesh(
-    new THREE.BoxGeometry(floor.rooms.length * (ROOM_W+0.7), 0.28, CORRIDOR_D),
-    corridorMat);
-  corridor.position.set(0, 0, ROOM_D/2 + CORRIDOR_D/2 + 0.4);
+    new THREE.BoxGeometry(floor.rooms.length * (ROOM_W + 0.8), 0.28, CORRIDOR_D),
+    M.corridor);
+  corridor.position.set(0, 0, CORRIDOR_Z);
   group.add(corridor);
 });
 
-// Stairwell linking the two corridors — the path the occupancy twin moves
-// people along between floors.
 const stair = new THREE.Mesh(
-  new THREE.BoxGeometry(2.4, FLOOR_H, 2.4),
+  new THREE.BoxGeometry(2.6, FLOOR_H, 2.6),
   new THREE.MeshStandardMaterial({ color:0x475569, transparent:true, opacity:0.35 }));
-stair.position.set(-15, FLOOR_H/2, ROOM_D/2 + CORRIDOR_D/2 + 0.4);
+stair.position.set(-17, FLOOR_H/2, CORRIDOR_Z);
 root.add(stair);
 
-function setPeople(room, n) {
-  n = Math.max(0, Math.min(n, 14));           // cap for legibility
-  while (room.people.length > n) room.group.remove(room.people.pop());
-  while (room.people.length < n) {
-    const p = new THREE.Mesh(personGeo, personMat);
-    const i = room.people.length;
-    p.position.set(room.x - 3.6 + (i % 5) * 1.8, 0.72,
-                   -2.6 + Math.floor(i / 5) * 2.0);
-    room.group.add(p); room.people.push(p);
+// ── People who actually walk ────────────────────────────────────────────────
+// Positions are in FLOOR-local coordinates (rooms sit at room.rx), so a person
+// can walk from the shared corridor into their own room and back out again.
+
+const MAX_VISIBLE = 8;      // per room, for legibility and frame rate
+
+function spotInRoom(room) {
+  return { x: room.rx + (Math.random() - 0.5) * 8.0,
+           z: (Math.random() - 0.5) * 6.4 };
+}
+function spotInCorridor(room) {
+  return { x: room.rx + (Math.random() - 0.5) * 7.0,
+           z: CORRIDOR_Z + (Math.random() - 0.5) * 2.6 };
+}
+const doorway = room => ({ x: room.rx + (Math.random() - 0.5) * 1.6,
+                           z: ROOM_D / 2 });
+
+class Person {
+  constructor(room, id, startInside) {
+    this.room = room;
+    this.id = id;
+    this.speed = 1.5 + Math.random() * 0.7;
+    this.group = new THREE.Group();
+
+    const body = new THREE.Mesh(G.body, PERSON_COLOURS[id % PERSON_COLOURS.length]);
+    body.position.y = 0.6;
+    const head = new THREE.Mesh(G.head, M.head);
+    head.position.y = 1.15;
+    this.group.add(body, head);
+
+    if (startInside) {
+      const s = spotInRoom(room);
+      this.group.position.set(s.x, 0, s.z);
+      this.state = 'idle'; this.target = s; this.wait = Math.random() * 4;
+    } else {
+      const s = spotInCorridor(room);
+      this.group.position.set(s.x, 0, s.z);
+      this.state = 'entering'; this.target = doorway(room);
+    }
+    room.group.add(this.group);
+  }
+
+  leave() {
+    if (this.state === 'leaving' || this.state === 'gone') return;
+    this.state = 'leaving';
+    this.target = doorway(this.room);
+  }
+
+  update(dt, t) {
+    const p = this.group.position;
+    const dx = this.target.x - p.x, dz = this.target.z - p.z;
+    const dist = Math.hypot(dx, dz);
+
+    if (dist > 0.1) {
+      const step = Math.min(dist, this.speed * dt);
+      p.x += dx / dist * step;
+      p.z += dz / dist * step;
+      this.group.rotation.y = Math.atan2(dx, dz);
+      p.y = Math.abs(Math.sin(t * 9 + this.id)) * 0.07;   // walking bob
+      return;
+    }
+
+    p.y = 0;
+    if (this.state === 'entering') {
+      this.state = 'idle'; this.target = spotInRoom(this.room);
+      this.wait = Math.random() * 3 + 1;
+    } else if (this.state === 'idle') {
+      this.wait -= dt;
+      if (this.wait <= 0) {
+        this.target = spotInRoom(this.room);
+        this.wait = Math.random() * 6 + 3;
+      }
+    } else if (this.state === 'leaving') {
+      this.state = 'gone_soon';
+      this.target = spotInCorridor(this.room);
+    } else if (this.state === 'gone_soon') {
+      this.state = 'gone';
+    }
+  }
+
+  destroy() { this.room.group.remove(this.group); }
+}
+
+function syncPeople(room, target) {
+  const visible = Math.min(target, MAX_VISIBLE);
+  const staying = room.people.filter(p => p.state !== 'leaving'
+                                       && p.state !== 'gone_soon'
+                                       && p.state !== 'gone');
+  if (staying.length < visible) {
+    for (let i = staying.length; i < visible; i++) {
+      // First render populates rooms instantly; later arrivals walk in.
+      room.people.push(new Person(room, room.nextId++, room.seeded !== true));
+    }
+    room.seeded = true;
+  } else if (staying.length > visible) {
+    for (let i = staying.length - 1; i >= visible; i--) staying[i].leave();
   }
 }
 
@@ -185,14 +371,14 @@ client.on('message', (topic, buf) => {
   const leaf = parts.slice(3).join('/');
 
   if (leaf === 'temperature') room.temp = data.value;
-  else if (leaf === 'occupancy') { room.occ = data.value; setPeople(room, data.value); }
+  else if (leaf === 'occupancy') { room.occ = data.value; syncPeople(room, data.value); }
   else if (leaf === 'hvac/state') { room.power = data.ac_power_pct || 0;
                                     room.setpoint = data.setpoint ?? room.setpoint; }
   else if (leaf === 'health/risk') room.risk = data;
 });
 
 const clock = new THREE.Clock();
-let angle = 0.6, autoOrbit = true;
+let angle = 0.6, autoOrbit = true, elapsed = 0;
 
 renderer.domElement.addEventListener('pointerdown', () => autoOrbit = false);
 renderer.domElement.addEventListener('pointermove', e => {
@@ -205,8 +391,7 @@ function showFloors(which) {
     g.visible = (which === 'all' || which === id));
   stair.visible = which === 'all';
   ['all','f1','f2'].forEach(id =>
-    document.getElementById('b-' + (id === 'all' ? 'all' : id))
-      .classList.toggle('on', id === which));
+    document.getElementById('b-' + id).classList.toggle('on', id === which));
 }
 document.getElementById('b-all').onclick = () => showFloors('all');
 document.getElementById('b-f1').onclick  = () => showFloors('f1');
@@ -214,20 +399,28 @@ document.getElementById('b-f2').onclick  = () => showFloors('f2');
 
 function animate() {
   requestAnimationFrame(animate);
-  const dt = clock.getDelta();
-  if (autoOrbit) angle += dt * 0.12;
-  camera.position.set(Math.cos(angle) * 34, 20, Math.sin(angle) * 34);
+  const dt = Math.min(clock.getDelta(), 0.1);
+  elapsed += dt;
+  if (autoOrbit) angle += dt * 0.1;
+  camera.position.set(Math.cos(angle) * 38, 22, Math.sin(angle) * 38);
   camera.lookAt(0, FLOOR_H * 0.5, 2);
 
   let flagged = 0, hottest = null;
   const pulse = 0.55 + 0.45 * Math.sin(performance.now() / 260);
 
-  for (const [tid, room] of Object.entries(rooms)) {
+  for (const room of Object.values(rooms)) {
     // Blue at the setpoint, red 8 °C above it — relative, so a room is judged
     // against its own target rather than an absolute scale.
     const k = Math.min(Math.max((room.temp - room.setpoint) / 8, 0), 1);
     room.floorMat.color.copy(cold).lerp(hot, k);
     room.fan.rotation.y += dt * 14 * room.power;
+
+    for (const person of room.people) person.update(dt, elapsed);
+    const gone = room.people.filter(p => p.state === 'gone');
+    if (gone.length) {
+      gone.forEach(p => p.destroy());
+      room.people = room.people.filter(p => p.state !== 'gone');
+    }
 
     const alert = !!(room.risk && room.risk.alert);
     room.halo.visible = alert;
