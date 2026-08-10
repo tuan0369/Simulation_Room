@@ -47,10 +47,13 @@ services:
     build: .
     container_name: twin-room3d
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - .:/app
-    command: python -m http.server 8000 --directory room3d
+    # Serves the repo root, not just room3d/, so the 3D page can fetch the SAME
+    # data/building_layout.json the simulator reads - geometry cannot drift from
+    # physics. Bound to 127.0.0.1 because this exposes the working tree.
+    command: python -m http.server 8000 --directory /app
     restart: unless-stopped
 
   # Opt-in:  docker compose --profile ml up -d jupyter

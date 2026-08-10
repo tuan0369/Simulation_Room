@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Smart Facility — 3D</title>
+<style>
+  body { margin:0; overflow:hidden; background:#0b1220;
+         font:13px system-ui, sans-serif; color:#e2e8f0; }
+  #hud { position:fixed; top:10px; left:12px; line-height:1.5;
+         background:rgba(15,23,42,.72); padding:9px 12px; border-radius:8px; }
+  #hud b { color:#93c5fd; }
+  #controls { position:fixed; top:10px; right:12px;
+              background:rgba(15,23,42,.72); padding:9px 12px; border-radius:8px; }
+  button { background:#1e293b; color:#e2e8f0; border:1px solid #334155;
+           border-radius:6px; padding:5px 10px; margin-left:4px; cursor:pointer; }
+  button.on { background:#2563eb; border-color:#3b82f6; }
+  #legend { position:fixed; bottom:10px; left:12px; opacity:.85;
+            background:rgba(15,23,42,.72); padding:8px 11px; border-radius:8px; }
+  .sw { display:inline-block; width:11px; height:11px; border-radius:2px;
+        vertical-align:-1px; margin-right:5px; }
+</style>
+</head>
+<body>
+<div id="hud">connecting…</div>
+<div id="controls">
+  <span>Floors</span>
+  <button id="b-all" class="on">All</button>
+  <button id="b-f1">Ground</button>
+  <button id="b-f2">First</button>
+</div>
+<div id="legend">
+  <span class="sw" style="background:#2563eb"></span>at target
+  <span class="sw" style="background:#ef4444;margin-left:12px"></span>hot
+  <span class="sw" style="background:#f59e0b;margin-left:12px"></span>maintenance flagged
+</div>
+
+<script src="/room3d/vendor/mqtt.min.js"></script>
+<script type="module">
+import * as THREE from '/room3d/vendor/three.module.js';
+
+const hudEl = document.getElementById('hud');
+function fatal(what, err) {
+  hudEl.innerHTML = `<b style="color:#f87171">${what}</b><br>` +
+                    `<span style="opacity:.75">${err}</span>`;
+  throw err;
+}
+
+// The SAME file the simulator and dashboard read. Fetching it rather than
+// hardcoding geometry is what stops the picture drifting from the physics.
+let layout;
+try {
+  const res = await fetch('/data/building_layout.json');
+  if (!res.ok) throw new Error(`HTTP ${res.status} for the layout file`);
+  layout = await res.json();
+} catch (err) {
+  // Without this the module dies silently and the page is simply blank, which
+  // is the hardest kind of failure to diagnose from a dashboard iframe.
+  fatal('Could not load data/building_layout.json', err.message);
+}
+if (typeof mqtt === 'undefined') {
+  fatal('mqtt.min.js did not load', 'check /room3d/vendor/mqtt.min.js');
+}
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x0b1220, 40, 95);
+const camera = new THREE.PerspectiveCamera(52, innerWidth/innerHeight, 0.1, 200);
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+document.body.appendChild(renderer.domElement);
+addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.62));
+const sun = new THREE.DirectionalLight(0xffffff, 0.85);
+sun.position.set(14, 26, 12); scene.add(sun);
+
+const root = new THREE.Group(); scene.add(root);
+
+const FLOOR_H = 7.0;          // vertical separation between slabs
+const ROOM_W = 11, ROOM_D = 9, CORRIDOR_D = 4.5;
+
+const cold = new THREE.Color(0x2563eb), hot = new THREE.Color(0xef4444);
+const wallMat = new THREE.MeshStandardMaterial({
+  color:0x94a3b8, transparent:true, opacity:0.13, roughness:0.2 });
+const corridorMat = new THREE.MeshStandardMaterial({ color:0x334155, roughness:0.8 });
+const personGeo = new THREE.CapsuleGeometry(0.24, 0.72, 4, 8);
+const personMat = new THREE.MeshStandardMaterial({ color:0xfcd34d, roughness:0.5 });
+
+const rooms = {};             // twin_id -> parts
+const floorGroups = {};
+
+layout.floors.forEach((floor, fi) => {
+  const group = new THREE.Group();
+  group.position.y = fi * FLOOR_H;
+  floorGroups[floor.floor_id] = group;
+  root.add(group);
+
+  floor.rooms.forEach((r, ri) => {
+    const x = (ri - (floor.rooms.length - 1) / 2) * (ROOM_W + 0.7);
+    const twinId = `${floor.floor_id}/${r.room_id}`;
+
+    const floorMat = new THREE.MeshStandardMaterial({ color:0x2563eb, roughness:0.45 });
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.28, ROOM_D), floorMat);
+    slab.position.set(x, 0, 0);
+    group.add(slab);
+
+    // Four low walls: enough to read as a room without hiding its contents.
+    [[0,-ROOM_D/2,ROOM_W,0.12],[0,ROOM_D/2,ROOM_W,0.12],
+     [-ROOM_W/2,0,0.12,ROOM_D],[ROOM_W/2,0,0.12,ROOM_D]]
+      .forEach(([dx,dz,w,d]) => {
+        const wall = new THREE.Mesh(new THREE.BoxGeometry(w, 2.6, d), wallMat);
+        wall.position.set(x+dx, 1.4, dz); group.add(wall);
+      });
+
+    // Ceiling AC unit with a fan that spins at the commanded duty.
+    const unit = new THREE.Mesh(new THREE.BoxGeometry(2.2,0.22,2.2),
+      new THREE.MeshStandardMaterial({ color:0xf1f5f9 }));
+    unit.position.set(x, 2.75, 0); group.add(unit);
+    const fan = new THREE.Mesh(new THREE.BoxGeometry(1.7,0.06,0.28),
+      new THREE.MeshStandardMaterial({ color:0x38bdf8 }));
+    fan.position.set(x, 2.6, 0); group.add(fan);
+
+    // Amber halo, shown only when the maintenance model flags the room.
+    const halo = new THREE.Mesh(
+      new THREE.TorusGeometry(3.1, 0.13, 8, 40),
+      new THREE.MeshBasicMaterial({ color:0xf59e0b, transparent:true, opacity:0.9 }));
+    halo.rotation.x = -Math.PI/2; halo.position.set(x, 0.3, 0);
+    halo.visible = false; group.add(halo);
+
+    rooms[twinId] = { floorMat, fan, halo, x, group,
+                      people: [], name: r.name, maxOcc: r.max_occupancy,
+                      temp: 24, setpoint: 23, power: 0, occ: 0, risk: null };
+  });
+
+  const corridor = new THREE.Mesh(
+    new THREE.BoxGeometry(floor.rooms.length * (ROOM_W+0.7), 0.28, CORRIDOR_D),
+    corridorMat);
+  corridor.position.set(0, 0, ROOM_D/2 + CORRIDOR_D/2 + 0.4);
+  group.add(corridor);
+});
+
+// Stairwell linking the two corridors — the path the occupancy twin moves
+// people along between floors.
+const stair = new THREE.Mesh(
+  new THREE.BoxGeometry(2.4, FLOOR_H, 2.4),
+  new THREE.MeshStandardMaterial({ color:0x475569, transparent:true, opacity:0.35 }));
+stair.position.set(-15, FLOOR_H/2, ROOM_D/2 + CORRIDOR_D/2 + 0.4);
+root.add(stair);
+
+function setPeople(room, n) {
+  n = Math.max(0, Math.min(n, 14));           // cap for legibility
+  while (room.people.length > n) room.group.remove(room.people.pop());
+  while (room.people.length < n) {
+    const p = new THREE.Mesh(personGeo, personMat);
+    const i = room.people.length;
+    p.position.set(room.x - 3.6 + (i % 5) * 1.8, 0.72,
+                   -2.6 + Math.floor(i / 5) * 2.0);
+    room.group.add(p); room.people.push(p);
+  }
+}
+
+// ── Live data ───────────────────────────────────────────────────────────────
+const hud = hudEl;
+let messages = 0, buildingOcc = 0, load = null, simHour = null;
+
+const client = mqtt.connect('ws://localhost:9001');
+client.on('connect', () => client.subscribe('twin/#'));
+client.on('close', () => hud.innerHTML = 'broker disconnected');
+client.on('message', (topic, buf) => {
+  messages++;
+  const parts = topic.split('/');
+  let data;
+  try { data = JSON.parse(buf.toString()); } catch { return; }
+
+  if (topic === 'twin/building/summary') {
+    buildingOcc = data.occupancy; load = data.total_load_kw; simHour = data.sim_hour;
+    return;
+  }
+  if (parts.length < 4) return;
+  const room = rooms[`${parts[1]}/${parts[2]}`];
+  if (!room) return;
+  const leaf = parts.slice(3).join('/');
+
+  if (leaf === 'temperature') room.temp = data.value;
+  else if (leaf === 'occupancy') { room.occ = data.value; setPeople(room, data.value); }
+  else if (leaf === 'hvac/state') { room.power = data.ac_power_pct || 0;
+                                    room.setpoint = data.setpoint ?? room.setpoint; }
+  else if (leaf === 'health/risk') room.risk = data;
+});
+
+const clock = new THREE.Clock();
+let angle = 0.6, autoOrbit = true;
+
+renderer.domElement.addEventListener('pointerdown', () => autoOrbit = false);
+renderer.domElement.addEventListener('pointermove', e => {
+  if (e.buttons) angle += e.movementX * 0.005;
+});
+renderer.domElement.addEventListener('pointerup', () => autoOrbit = true);
+
+function showFloors(which) {
+  Object.entries(floorGroups).forEach(([id, g]) =>
+    g.visible = (which === 'all' || which === id));
+  stair.visible = which === 'all';
+  ['all','f1','f2'].forEach(id =>
+    document.getElementById('b-' + (id === 'all' ? 'all' : id))
+      .classList.toggle('on', id === which));
+}
+document.getElementById('b-all').onclick = () => showFloors('all');
+document.getElementById('b-f1').onclick  = () => showFloors('f1');
+document.getElementById('b-f2').onclick  = () => showFloors('f2');
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  if (autoOrbit) angle += dt * 0.12;
+  camera.position.set(Math.cos(angle) * 34, 20, Math.sin(angle) * 34);
+  camera.lookAt(0, FLOOR_H * 0.5, 2);
+
+  let flagged = 0, hottest = null;
+  const pulse = 0.55 + 0.45 * Math.sin(performance.now() / 260);
+
+  for (const [tid, room] of Object.entries(rooms)) {
+    // Blue at the setpoint, red 8 °C above it — relative, so a room is judged
+    // against its own target rather than an absolute scale.
+    const k = Math.min(Math.max((room.temp - room.setpoint) / 8, 0), 1);
+    room.floorMat.color.copy(cold).lerp(hot, k);
+    room.fan.rotation.y += dt * 14 * room.power;
+
+    const alert = !!(room.risk && room.risk.alert);
+    room.halo.visible = alert;
+    if (alert) { room.halo.material.opacity = pulse; flagged++; }
+    if (!hottest || room.temp > hottest.temp) hottest = room;
+  }
+
+  hud.innerHTML =
+    `<b>${layout.building.name}</b><br>` +
+    `${buildingOcc} people · ${load == null ? '—' : load.toFixed(1)} kW` +
+    ` / ${layout.building.power_budget_kw} kW budget<br>` +
+    `${simHour == null ? '' : 'sim ' + simHour.toFixed(1) + ':00 · '}` +
+    `hottest ${hottest ? hottest.name + ' ' + hottest.temp.toFixed(1) + '°C' : '—'}<br>` +
+    (flagged ? `<span style="color:#f59e0b">${flagged} room(s) flagged for maintenance</span>`
+             : `<span style="color:#4ade80">no maintenance flags</span>`) +
+    `<br><span style="opacity:.6">${messages} messages</span>`;
+
+  renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>

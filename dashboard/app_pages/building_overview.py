@@ -82,4 +82,4 @@ with st.container(border=True):
     st.markdown("**3D view**")
     st.caption("Floor colour follows room temperature; a pulsing halo marks a "
                "room the maintenance model has flagged.")
-    st.iframe("http://localhost:8000/building3d.html", height=420)
+    st.iframe("http://localhost:8000/room3d/building3d.html", height=420)
