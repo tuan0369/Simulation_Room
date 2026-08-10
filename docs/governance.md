@@ -89,58 +89,61 @@ Full detail, including the decision-threshold rationale:
 
 ## 3. Bias and fairness
 
-A full audit is in the model card §5. The finding, stated plainly:
+A full audit is in the model card §5.
 
-**The model has a 100 % false-negative rate on Wet Lab A.** It misses every one
-of that room's failures.
+| Room | Dominant fault | Positive rate | PR-AUC | Recall | Precision |
+|---|---|---|---|---|---|
+| `f1/lab-a` | airflow | 3.34 % | 0.980 | 0.992 | 0.700 |
+| `f1/lab-b` | bearing | 1.79 % | 0.995 | 0.998 | 0.836 |
+| `f1/server-room` | overstrain | 4.25 % | 0.978 | 1.000 | 0.849 |
+| `f2/lab-c` | heat dissipation | 2.73 % | **0.679** | 0.953 | **0.462** |
+| `f2/meeting-room` | power | 4.39 % | 0.995 | 0.999 | 0.812 |
 
-| Room | Positive rate | Recall | FN rate |
-|---|---|---|---|
-| `f1/lab-a` | 0.31 % | **0.000** | **1.000** |
-| `f1/lab-b` | 0.91 % | 1.000 | 0.000 |
-| `f1/server-room` | 4.24 % | 1.000 | 0.000 |
-| `f2/lab-c` | 2.42 % | 0.945 | 0.055 |
-| `f2/meeting-room` | 1.06 % | 0.994 | 0.006 |
+### A correction we are documenting rather than quietly deleting
 
-### Why — and why it is not what it first looks like
+An earlier version of this system had a **100 % false-negative rate on Wet Lab A**
+— it missed every failure in the room where an outage costs most. That is
+recorded here because how it was found and fixed matters more than the number
+that replaced it.
 
-It is **not** because the model knows which room it is looking at. Room identity
-(`twin_id`, `floor`, `room_profile`, `segment_id`) is excluded from the feature
-set by construction, enforced by `test_no_identity_column_is_a_feature`, and a
-second test feeds two *different* rooms identical condition data and asserts
-identical scores.
+The cause was never room identity. Identity (`twin_id`, `floor`, `room_profile`,
+`segment_id`) is excluded from the feature set by construction, enforced by
+`test_no_identity_column_is_a_feature`, and a second test feeds two *different*
+rooms identical condition data and asserts identical scores.
 
-The real cause is that **failure modes are segregated by room**. Lab A is the
-most aggressively serviced unit, so it never accumulates the running hours that
-produce overstrain failures. All of its failures are heat-dissipation — the one
-mode with only ~2 training examples, which the model cannot learn. Per-room
-disparity is per-*mode* disparity wearing a different hat.
+The real cause was **mode starvation**: all six units had been modelled with
+identical wear characteristics, so one failure mode accounted for ~90 % of
+positives and the rarest had about two training examples. Giving each unit a
+distinct wear character — as real buildings have — supplied hundreds of examples
+of every mode, and recall on the affected room went from 0.000 to 0.992.
 
-### Who this harms
+**The generalisable point: a model blind to a subgroup is usually being starved
+of it, not badly tuned.** Reaching for a fairness-specific fix before checking
+the data distribution would have papered over it.
 
-A wet lab is the worst room in the building to lose cooling in: it holds
-temperature-sensitive samples and reagents. **The model is blindest precisely
-where an outage costs most.** That asymmetry is the ethically significant part,
-not the metric itself.
+### What disparity remains
 
-### Mitigations in place
+Detection is now even (recall 0.95–1.00 everywhere). The remaining gap is in
+**precision and ranking quality**: `f2/lab-c` scores PR-AUC 0.679 and precision
+0.462, so roughly half its work orders are unnecessary.
 
-1. An independent thermal guard raises Lab A's recall from 0.000 to 0.536 and
-   can raise a work order on its own, without the model's agreement.
-2. The disparity is published — here, in the model card, and in the dashboard —
-   rather than being averaged into a single headline number.
-3. Identity exclusion prevents the model from *learning* the disparity as a rule.
+That room is a teaching lab, where a missed or spurious alert is disruptive
+rather than dangerous. **That is fortunate, not designed** — nothing in the
+system arranges for its weakest coverage to land on its least critical room, and
+a future retraining could move the weakness somewhere worse. This is a reason to
+repeat the audit after every retraining, not a reason to relax.
 
 ### Still outstanding
 
-Even with the guard, Lab A's recall (0.54) is far below the server room's (1.00).
-**Anyone relying on this system should treat well-maintained, HDF-prone units as
-not adequately covered and retain calendar-based servicing for them.** Closing
-the gap needs more HDF examples — a longer observation window, or deliberate
-run-to-failure testing.
+- At `f2/lab-c`'s precision, alert fatigue is a real risk. The decision threshold
+  should be re-derived against real dispatch costs before that room's alerts are
+  acted on automatically.
+- Generalisation to unseen equipment is weak (PR-AUC 0.26). A newly commissioned
+  unit is not adequately covered until it has contributed its own history.
 
-We do not claim to have solved this. We claim to have measured it, published it,
-and bounded the harm.
+We do not claim to have solved fairness. We claim to have measured it, found a
+severe failure, fixed its actual cause, published both states, and named what is
+still wrong.
 
 ---
 
@@ -175,16 +178,42 @@ bound is enforced by the *room*, not by the supervisor that sent the advice
 never colder, so load shedding cannot be inverted into a demand spike. Critical
 loads are exempt from shedding entirely.
 
-**The model has no autonomous power at all.** It opens tickets. Every advisory
-carries `requires_human_approval: true`, and the dashboard's approve button is
-the only path from a prediction to a physical action.
+**3. Autonomous preventive maintenance — opt-in, OFF by default.**
+
+The system can be configured to dispatch servicing without waiting for approval.
+This is a deliberate, bounded delegation, not an erosion of the rule above:
+
+| Bound | Value |
+|---|---|
+| Default state | **Disabled**. Autonomy must be switched on, never inherited |
+| Permitted actions | `replace_filter`, `service_motor` — **preventive only** |
+| Forbidden | Anything that stops cooling, changes a setpoint, or takes a room out of service |
+| Rate limit | At most one automatic service per unit per 24 h |
+| Auditability | Every automatic dispatch is still published to `twin/building/advisory`, flagged `auto_dispatched: true` |
+| Switch | `twin/building/cmd/autofix`, and a labelled dashboard toggle that warns while it is on |
+
+The distinction that makes this acceptable: **replacing a filter is additive to
+safety; shutting a unit down is not.** The worst outcome of a false positive here
+is an unnecessary service visit — the same failure mode as an over-eager
+calendar, and one the cooldown bounds. An action that could *remove* cooling from
+a lab would carry an entirely different risk profile and is not eligible at any
+setting.
+
+`inspect` is never auto-dispatched, because the twin cannot inspect anything.
+
+**Without that toggle, the model has no autonomous power at all.** It opens
+tickets, every advisory carries `requires_human_approval: true`, and the
+dashboard's approve button is the only path from a prediction to a physical
+action.
 
 ### What the system must never be allowed to do
 
-- Shut down a unit on a model score.
+- Shut down a unit on a model score — **at any autonomy setting**.
+- Change a setpoint on a model score.
 - Retrain and self-deploy without human review of the fairness audit.
 - Raise a setpoint beyond the room's own limit, whatever a supervisor requests.
 - Act on a score whose `model_version` it cannot resolve.
+- Auto-dispatch more often than the cooldown permits, however high the score.
 
 ---
 

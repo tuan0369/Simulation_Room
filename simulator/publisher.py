@@ -21,7 +21,8 @@ from commands import (CMD_HVAC, CMD_MAINTENANCE, CMD_MODE,  # noqa: F401
                       SETPOINT_MAX, SETPOINT_MIN, TOPIC_ROOT,
                       VALID_TIME_SCALES, handle_command, make_payload,
                       parse_command_topic, utc_now_iso)
-from building_twin import BuildingTwin
+from building_twin import (AUTO_FIX_ACTIONS, AUTO_FIX_COOLDOWN_H,
+                           BuildingTwin)
 from floor_twin import FloorTwin
 from ml_inference import SAMPLE_INTERVAL_S, RiskScorer
 from occupancy_twin import OccupancyTwin
@@ -40,6 +41,8 @@ INTERVALS = {"temperature": 3, "humidity": 5, "occupancy": 2}
 HEALTH_INTERVAL = 5
 OCCUPANCY_TOPIC = f"{TOPIC_ROOT}/building/occupancy"
 ADVISORY_TOPIC = f"{TOPIC_ROOT}/building/advisory"
+AUTOFIX_CMD_TOPIC = f"{TOPIC_ROOT}/building/cmd/autofix"
+AUTOFIX_STATE_TOPIC = f"{TOPIC_ROOT}/building/autofix"
 NOISE = 0.1
 
 # Tiered loop rates: rooms react fast, supervisors coordinate slowly. The gap
@@ -85,7 +88,7 @@ class Simulator:
     # ── MQTT ───────────────────────────────────────────────────────────────
 
     def on_connect(self, client, userdata, flags, reason_code, properties):
-        client.subscribe(CMD_WILDCARD)
+        client.subscribe([(CMD_WILDCARD, 0), (AUTOFIX_CMD_TOPIC, 0)])
         client.publish(STATUS_TOPIC, "online", retain=True)
         for twin in self.twins.values():
             self.publish_hvac_state(twin)
@@ -93,6 +96,9 @@ class Simulator:
         print(f"connected; {len(self.twins)} room twins on {CMD_WILDCARD}")
 
     def on_message(self, client, userdata, msg):
+        if msg.topic == AUTOFIX_CMD_TOPIC:
+            self.set_auto_fix(msg.payload)
+            return
         parsed = parse_command_topic(msg.topic)
         if parsed is None:
             return
@@ -230,15 +236,48 @@ class Simulator:
 
         # Risk scores arrive from ml_inference in Task 8; until then this is
         # empty and the coordinator simply raises no work orders.
-        for order in self.coordinator.advisories(self.risk_scores()):
+        now_h = self.sim_time_s / 3600.0
+        for order in self.coordinator.advisories(self.risk_scores(), now_h):
             self.client.publish(ADVISORY_TOPIC,
                                 json.dumps(order | {"timestamp": utc_now_iso()}))
-            print(f"WORK ORDER {order['twin_id']}: {order['action']} "
-                  f"(p={order['failure_prob']}, {order['top_factor']})")
+            if order.get("auto_dispatched"):
+                self.apply_maintenance(order["twin_id"], order["action"])
+                print(f"AUTO-FIX {order['twin_id']}: {order['action']} "
+                      f"(p={order['failure_prob']}, {order['top_factor']})")
+            else:
+                print(f"WORK ORDER {order['twin_id']}: {order['action']} "
+                      f"(p={order['failure_prob']}, {order['top_factor']}) - awaiting approval")
 
     def risk_scores(self) -> dict:
         """Latest scores, consumed by the building twin into work orders."""
         return self.latest_risk
+
+    def set_auto_fix(self, payload: bytes) -> None:
+        """Switch autonomous preventive maintenance on or off.
+
+        Off by default. When on, the building twin dispatches filter and motor
+        servicing itself instead of waiting for approval — bounded to those two
+        preventive actions, rate-limited per unit, and every dispatch still
+        published as an advisory so the audit trail is unchanged.
+        """
+        try:
+            data = json.loads(payload)
+            enabled = data.get("enabled")
+        except (json.JSONDecodeError, UnicodeDecodeError, AttributeError):
+            return
+        if not isinstance(enabled, bool):
+            return
+        self.coordinator.auto_fix = enabled
+        print(f"auto-remediation {'ENABLED' if enabled else 'disabled'}")
+        self.publish_autofix_state()
+
+    def publish_autofix_state(self) -> None:
+        self.client.publish(AUTOFIX_STATE_TOPIC, json.dumps({
+            "enabled": self.coordinator.auto_fix,
+            "actions": list(AUTO_FIX_ACTIONS),
+            "cooldown_hours": AUTO_FIX_COOLDOWN_H,
+            "timestamp": utc_now_iso(),
+        }), retain=True)
 
     def apply_maintenance(self, twin_id: str, action: str) -> None:
         """Service a unit from code (used by the dataset generator and tests),

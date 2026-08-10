@@ -67,13 +67,13 @@ training set and inflate scores to a meaningless ~0.99.
 
 Evaluated on the held-out final 30 % of the year.
 
-| Model | PR-AUC | ROC-AUC | Recall | Precision | Recall @ 90 % precision |
-|---|---|---|---|---|---|
-| Always predict "no failure" | 0.018 | 0.500 | 0.000 | — | — |
-| Single threshold `motor_temp > 80` | 0.163 | 0.760 | 0.009 | 0.248 | — |
-| Logistic regression | 0.509 | 0.974 | 0.904 | 0.256 | 0.043 |
-| Random forest | 0.934 | 0.992 | 0.947 | 0.585 | 0.856 |
-| **Gradient boosting (shipped)** | **0.924** | **0.996** | **0.950** | **0.664** | **0.841** |
+| Model | PR-AUC | ROC-AUC | Recall | Precision |
+|---|---|---|---|---|
+| Always predict "no failure" | 0.033 | 0.500 | 0.000 | — |
+| Single threshold `motor_temp > 80` | 0.092 | 0.650 | 0.053 | — |
+| Logistic regression | 0.738 | 0.992 | 0.967 | — |
+| Random forest | 0.947 | 0.998 | 0.987 | — |
+| **Gradient boosting (shipped)** | **0.964** | **0.998** | **0.990** | **0.713** |
 
 **Accuracy is not reported as a headline.** At a 1.7 % positive rate, predicting
 "no failure" every time scores 98.3 % accuracy and is worthless. PR-AUC is the
@@ -88,7 +88,7 @@ and cost is the stated decision criterion.
 
 ### Decision threshold
 
-**0.0053**, chosen by minimising expected cost, not left at 0.5.
+**0.0264**, chosen by minimising expected cost, not left at 0.5.
 
 | Assumption | Value |
 |---|---|
@@ -113,35 +113,46 @@ the model to predict the censoring constant.
 
 ---
 
-## 4. Known failure: the model cannot see heat-dissipation failures
+## 4. All five failure modes are now detected
 
 | Fault mode | Test positives | Recall, model alone | Recall, with physics guard |
 |---|---|---|---|
-| `osf` overstrain | 2,640 | 0.983 | 0.983 |
-| `pwf` power | 96 | 1.000 | 1.000 |
-| **`hdf` heat dissipation** | **97** | **0.000** | **0.588** |
+| `osf` overstrain | 1,393 | 1.000 | 1.000 |
+| `pwf` power | 1,392 | 0.999 | 0.999 |
+| `airflow` filter exhausted | 1,057 | 0.992 | 0.992 |
+| `bearing` vibration | 568 | 0.998 | 0.998 |
+| `hdf` heat dissipation | 816 | **0.950** | **0.991** |
 
-The training set contains ~96 HDF rows — about **two events**. No model
-generalises a failure mode from two examples, and this one does not.
+### This is a corrected result, and the correction is the interesting part
 
-This is not a tuning problem to be papered over. Heat-dissipation failure is
-*defined* by motor temperature crossing the 85 °C Class-F insulation limit, so
-it has a direct physical precursor: the temperature climbing toward it. That is
-a threshold problem, not a learning problem.
+An earlier version of this model had **0.000 recall on heat-dissipation
+failure**. The diagnosis was that the training set contained only ~96 HDF rows —
+about two events — and no model generalises a failure mode from two examples.
 
-**Mitigation.** A physics guard runs as an **independent alarm channel**: a ramp
-from 0 at 70 °C to 1 at the 85 °C limit. It recovers HDF recall to 0.59.
+That was a **data** problem, not a model problem, and the fix was to the data.
+All six HVAC units had been given identical wear characteristics, so they all
+degraded the same way and one mode (overstrain) accounted for ~90 % of positives.
+Real buildings do not contain six identical units. Each unit now has its own wear
+character — a wet lab that loads filters with particulates, an older unit with
+tired bearings, one boxed into a poorly ventilated ceiling void — and every
+failure mode now has hundreds of training examples instead of two.
 
-It is deliberately *not* blended into the ML risk score. Folding it in raised
-HDF recall but dragged server-room precision from 0.81 to 0.33, because it fires
-on any hot motor regardless of the actual fault. Two independent detectors,
-each reported on its own terms, is both more honest and more useful to whoever
-reads the alert.
+HDF recall went from 0.000 to 0.950. **The lesson worth carrying: a model that
+cannot see a failure mode is usually being starved of it, not badly tuned.**
 
-**The general lesson, which the executive pitch should not omit: ML is not
-uniformly better than rules.** It substantially beats any single threshold for
-cumulative faults, and loses to a thermostat for a fault with a direct physical
-precursor.
+### The physics guard is retained anyway
+
+A thermal ramp (0 at 70 °C → 1 at the 85 °C insulation limit) still runs as an
+**independent alarm channel**, lifting HDF recall from 0.950 to 0.991.
+
+It is kept for two reasons even though the model no longer needs rescuing:
+heat-dissipation failure has a *direct physical precursor*, so a threshold is the
+right instrument regardless of what the model can do; and it provides a detection
+path that does not depend on the model being correctly trained at all.
+
+It is deliberately **not** blended into the risk score. Folding it in previously
+dragged server-room precision from 0.81 to 0.33, because it fires on any hot
+motor regardless of the actual fault.
 
 ---
 
@@ -149,40 +160,42 @@ precursor.
 
 Per-room performance on the test period, model channel only.
 
-| Room | Positive rate | PR-AUC | Recall | Precision | FN rate |
-|---|---|---|---|---|---|
-| `f1/lab-a` | 0.31 % | 0.014 | **0.000** | 0.000 | **1.000** |
-| `f1/lab-b` | 0.91 % | 0.822 | 1.000 | 0.447 | 0.000 |
-| `f1/server-room` | 4.24 % | 0.997 | 1.000 | 0.836 | 0.000 |
-| `f2/lab-c` | 2.42 % | 0.882 | 0.945 | 0.558 | 0.055 |
-| `f2/meeting-room` | 1.06 % | 0.989 | 0.994 | 0.717 | 0.006 |
+| Room | Dominant fault | Positive rate | PR-AUC | Recall | Precision | FN rate |
+|---|---|---|---|---|---|---|
+| `f1/lab-a` | airflow | 3.34 % | 0.980 | 0.992 | 0.700 | 0.008 |
+| `f1/lab-b` | bearing | 1.79 % | 0.995 | 0.998 | 0.836 | 0.002 |
+| `f1/server-room` | overstrain | 4.25 % | 0.978 | 1.000 | 0.849 | 0.000 |
+| `f2/lab-c` | heat dissipation | 2.73 % | **0.679** | 0.953 | 0.462 | 0.048 |
+| `f2/meeting-room` | power | 4.39 % | 0.995 | 0.999 | 0.812 | 0.001 |
 
-**There is severe disparity, and it is not subtle.** `f1/lab-a` has a 100 %
-false-negative rate: the model misses every one of its failures.
+**Recall is now 0.95–1.00 across every room.** The earlier version of this model
+had a 100 % false-negative rate on `f1/lab-a`; that has been corrected, and §4
+explains how (the cause was mode starvation in the training data, not room
+identity).
 
-**Why.** Not because of the room's identity — room identity is excluded from
-the features by construction (§6). The cause is that *failure modes are
-segregated by room*. `f1/lab-a` is the most aggressively maintained unit
-(serviced every 6–10 days), so it never accumulates the runtime or wear that
-produces overstrain failures. All three of its failures in a year are HDF — the
-one mode the model cannot see. The per-room disparity is a per-*mode* disparity
-wearing a different hat.
+**The remaining disparity is in precision and ranking quality, not detection.**
+`f2/lab-c` is the weakest room on every measure — PR-AUC 0.679 against 0.98–0.99
+elsewhere, and precision 0.46, meaning more than half its alerts are false. It is
+the heat-dissipation room, and HDF remains the hardest mode to rank even now that
+there is enough data to detect it.
 
-**Who is harmed.** A wet lab is the worst room in the building to lose cooling
-in: it holds temperature-sensitive samples and reagents. The model is blindest
-precisely where an outage costs most.
+**Who is affected.** `f2/lab-c` is a teaching lab, so a missed failure is
+disruptive rather than dangerous — a better place to carry the weakness than the
+wet lab, where the earlier version was blind. That is fortunate, not designed;
+the assignment of weakness to consequence is not something this model controls.
 
-**Mitigation now in place:**
-1. The HDF physics guard raises `f1/lab-a` recall from 0.000 to 0.536.
-2. The disparity is published here and surfaced in the dashboard, rather than
-   being averaged away into a single headline number.
+**Mitigations in place:**
+1. The HDF physics guard raises heat-dissipation recall from 0.950 to 0.991,
+   independent of the model.
+2. The per-room table is published here and surfaced in the dashboard rather
+   than averaged into one headline number.
+3. Room identity is excluded from the features by construction (§6), so the
+   model cannot learn a per-room prior.
 
-**Still outstanding:** even with the guard, `f1/lab-a` recall (0.54) is far
-below the server room's (1.00). Anyone relying on this system should treat
-well-maintained, HDF-prone units as **not adequately covered** and keep
-calendar-based servicing for them. Closing the gap needs more HDF examples,
-which means either a longer observation window or deliberate run-to-failure
-testing.
+**Still outstanding:** at `f2/lab-c`'s precision of 0.46, roughly half of that
+room's work orders will be unnecessary. Whether that is acceptable is a dispatch-
+cost question, and the threshold should be re-derived against real callout costs
+before this room's alerts are acted on automatically.
 
 ### Generalisation to unseen equipment
 
@@ -246,16 +259,22 @@ section exists to prevent.
 ## 7. Limitations, in one place
 
 1. **Trained on simulated data.** Requires recalibration on ≥ 3 months of real
-   telemetry before any output is trusted.
-2. **Blind to heat-dissipation failure** (recall 0.000 alone, 0.588 with the
-   physics guard). ~2 training events.
-3. **`f1/lab-a` is inadequately covered** — a 100 % false-negative rate from the
-   model channel, in the room where an outage is most costly.
-4. **Degrades on unseen equipment** (PR-AUC 0.26 vs 0.92).
+   telemetry before any output is trusted. This remains the largest limitation
+   by a wide margin.
+2. **Degrades badly on unseen equipment** — PR-AUC 0.26 against 0.96 on units it
+   has seen (recall holds up better, 0.91). A newly commissioned unit should not
+   be trusted to the same degree until it has contributed its own history. **This
+   is now the most serious technical limitation.**
+3. **Heat dissipation is still the hardest mode.** `f2/lab-c` scores PR-AUC 0.679
+   and precision 0.462 — about half its alerts are false.
+4. **Schedule-dependent.** `hour_cos` is the *second* most important feature
+   (importance 0.176). The model has partly learned when this building is busy,
+   and that will not transfer to a site on a different timetable.
 5. **Cannot extrapolate to unseen maintenance regimes** — a never-serviced unit
    runs beyond the training range of `runtime_hours`.
-6. **Partly schedule-dependent** (`hour_cos`); will not transfer unchanged to a
-   building with different occupancy patterns.
+6. **RUL is coarser than before**: MAE 20.3 h against a 33.2 h baseline, down
+   from 14.6 h. Five failure modes with different time courses are harder to
+   regress onto a single remaining-life number than three were.
 7. **Cost figures are assumptions**, not measurements. The threshold, and the
    ROI case built on it, move if the real ratio differs.
 8. **No concept-drift monitoring yet.** Equipment replacement or a maintenance

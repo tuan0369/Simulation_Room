@@ -24,6 +24,7 @@ CMD_OCCUPANCY = "cmd/occupancy"
 CMD_SETPOINT = "cmd/setpoint"
 CMD_TIMESCALE = "cmd/timescale"
 CMD_MODE = "cmd/mode"
+CMD_AUTOFIX = "cmd/autofix"
 CMD_MAINTENANCE = "cmd/maintenance"
 
 VALID_TIME_SCALES = {1, 2, 5, 10}

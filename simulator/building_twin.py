@@ -42,15 +42,33 @@ ACTION_FOR_FACTOR = {
     "runtime_hours": "service_motor",
 }
 
+# Actions the building twin is permitted to dispatch without a human, when
+# auto-remediation is switched on. Both are PREVENTIVE: they service equipment.
+# Nothing that stops cooling, changes a setpoint or takes a room out of service
+# is ever eligible, whatever a model score says.
+AUTO_FIX_ACTIONS = ("replace_filter", "service_motor")
+
+# A unit may not be auto-serviced more often than this. Without it a model that
+# keeps scoring high would dispatch repair after repair.
+AUTO_FIX_COOLDOWN_H = 24.0
+
 
 class BuildingTwin:
     """Coordinates floors and raises maintenance advisories."""
 
-    def __init__(self, config: BuildingConfig):
+    def __init__(self, config: BuildingConfig, auto_fix: bool = False):
         self.config = config
         self._known_rooms = {r.twin_id for r in config.all_rooms()}
         # twin_id -> fault signature currently raised, for dedupe
         self._open_orders: dict[str, str] = {}
+
+        # Opt-in autonomous remediation. OFF by default: the default posture is
+        # that a human approves anything touching physical equipment. When on,
+        # the twin may dispatch PREVENTIVE servicing only (AUTO_FIX_ACTIONS) and
+        # every dispatch is still published as an advisory, so the audit trail
+        # is identical to the manual path.
+        self.auto_fix = bool(auto_fix)
+        self._last_auto_fix_h: dict[str, float] = {}
 
     def topic(self, suffix: str) -> str:
         return f"twin/building/{suffix}"
@@ -92,7 +110,19 @@ class BuildingTwin:
 
     # ── Maintenance advisories ─────────────────────────────────────────────
 
-    def advisories(self, risk_scores: dict) -> list[dict]:
+    def may_auto_fix(self, twin_id: str, action: str, now_h: float) -> bool:
+        """Whether this order can be dispatched without human approval."""
+        if not self.auto_fix:
+            return False
+        if action not in AUTO_FIX_ACTIONS:
+            return False
+        last = self._last_auto_fix_h.get(twin_id)
+        return last is None or (now_h - last) >= AUTO_FIX_COOLDOWN_H
+
+    def record_auto_fix(self, twin_id: str, now_h: float) -> None:
+        self._last_auto_fix_h[twin_id] = now_h
+
+    def advisories(self, risk_scores: dict, now_h: float = 0.0) -> list[dict]:
         """Convert risk scores into deduplicated work orders.
 
         A room re-alerts when the driving factor changes, or when it recovers
@@ -130,14 +160,21 @@ class BuildingTwin:
                 continue          # already raised for this fault
             self._open_orders[twin_id] = factor
 
+            action = ACTION_FOR_FACTOR.get(factor, "inspect")
+            auto = self.may_auto_fix(twin_id, action, now_h)
             orders.append({
                 "twin_id": twin_id,
                 "failure_prob": round(float(prob), 4),
                 "top_factor": factor,
-                "action": ACTION_FOR_FACTOR.get(factor, "inspect"),
+                "action": action,
                 "rul_hours": score.get("rul_hours"),
-                "requires_human_approval": True,
+                # False only when this order will be dispatched automatically.
+                # `inspect` always needs a human — the twin cannot inspect.
+                "requires_human_approval": not auto,
+                "auto_dispatched": auto,
             })
+            if auto:
+                self.record_auto_fix(twin_id, now_h)
         return orders
 
     # ── Summary ────────────────────────────────────────────────────────────

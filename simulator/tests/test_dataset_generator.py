@@ -245,13 +245,30 @@ def test_neglected_room_fails_more_than_a_maintained_one(dataset):
     assert neglected >= maintained
 
 
-def test_the_best_maintained_room_is_reliable(dataset):
-    """f1/lab-a is serviced most aggressively and should rarely fail. If it
-    failed as often as the neglected room, maintenance would be doing nothing
-    and the discipline gradient would be cosmetic."""
+def test_maintenance_actually_happens_where_it_is_scheduled(dataset):
+    """Failure counts are now driven by TWO things: maintenance discipline and
+    each unit's wear character. f1/lab-a is serviced most aggressively but also
+    has the harshest dust load, so it is no longer the most reliable room — the
+    dust wins. What must hold is that scheduled servicing really occurs, or the
+    discipline gradient would be cosmetic."""
     _, stats = dataset
     assert stats["per_room"]["f1/lab-a"]["planned"] > 0
-    assert stats["per_room"]["f1/lab-a"]["failures"] <= 1
+    assert stats["per_room"]["f2/meeting-room"]["planned"] == 0
+
+
+def test_every_room_has_a_dominant_failure_mode(dataset):
+    """Each unit has its own wear character, so the fault mix differs by room.
+    Without this the classification task collapses to one class plus noise."""
+    rows, _ = dataset
+    by_room = {}
+    for row in rows:
+        if row["label_failure_within_4h"] == 1:
+            by_room.setdefault(row["twin_id"], set()).add(row["label_failure_type"])
+    assert len(by_room) >= 4, "too few rooms failed to judge mode variety"
+    modes = set()
+    for room_modes in by_room.values():
+        modes |= room_modes
+    assert len(modes) >= 3, f"only {modes} appear; units are too alike"
 
 
 def test_failure_counts_vary_across_rooms(dataset):

@@ -60,7 +60,7 @@ SEED = 42
 # majority mode and goes blind to the others: f1/lab-a's failures are 100% HDF
 # and a binary model scored 0.000 recall on it. Predicting the FAULT TYPE keeps
 # the minority modes visible, and the work order needs the fault name anyway.
-FAULT_CLASSES = ["none", "hdf", "osf", "pwf"]
+FAULT_CLASSES = ["none", "hdf", "osf", "pwf", "airflow", "bearing"]
 TARGET_TYPE = "label_failure_type"
 
 # The HDF physics guard lives in simulator/hvac_health.py, with the rest of the

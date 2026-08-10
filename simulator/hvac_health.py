@@ -129,12 +129,27 @@ class HVACHealth:
     base_rpm: float = DEFAULT_BASE_RPM
     rated_power_w: float = DEFAULT_RATED_POWER_W
 
+    # Per-unit wear character. Real buildings do not contain six identical
+    # units: a wet lab loads its filters with particulates, an older unit has
+    # tired bearings, a boxed-in unit sheds heat poorly. These multipliers give
+    # each room a DIFFERENT dominant failure mode, which is what makes fault
+    # classification a real problem rather than one class with noise.
+    dust_factor: float = 1.0      # >1 clogs filters faster
+    bearing_factor: float = 1.0   # >1 wears bearings faster
+    cooling_factor: float = 1.0   # <1 sheds motor heat worse
+    load_factor: float = 1.0      # >1 draws more shaft power for the same duty
+
     @classmethod
     def for_room(cls, room) -> "HVACHealth":
-        """Build a fresh unit matching a RoomConfig's nameplate."""
+        """Build a fresh unit matching a RoomConfig's nameplate and wear character."""
+        wear = getattr(room, "wear_factors", None) or {}
         return cls(
             base_rpm=room.base_rpm,
             rated_power_w=room.hvac_max_power_w * FAN_POWER_FRACTION,
+            dust_factor=float(wear.get("dust_factor", 1.0)),
+            bearing_factor=float(wear.get("bearing_factor", 1.0)),
+            cooling_factor=float(wear.get("cooling_factor", 1.0)),
+            load_factor=float(wear.get("load_factor", 1.0)),
         )
 
 
@@ -160,6 +175,7 @@ def power_draw(health: HVACHealth, duty: float) -> float:
     if duty <= 0.0:
         return 0.0
     return (expected_power_w(health, duty)
+            * health.load_factor
             * (1.0 + CLOG_POWER_GAIN * health.filter_clog)
             * (1.0 + FRICTION_POWER_GAIN * health.bearing_wear))
 
@@ -190,7 +206,7 @@ def step_health(health: HVACHealth, ac_power_pct: float, occupancy: int,
     # shedding particulates into the room.
     clog = health.filter_clog
     if running:
-        clog += (CLOG_RATE_PER_HOUR * hours * duty
+        clog += (CLOG_RATE_PER_HOUR * hours * duty * health.dust_factor
                  * (1.0 + DUST_PER_PERSON * max(0, occupancy)))
     clog = _clamp(clog, 0.0, 1.0)
 
@@ -201,7 +217,7 @@ def step_health(health: HVACHealth, ac_power_pct: float, occupancy: int,
     if running:
         thermal = 1.0 + WEAR_THERMAL_STRESS * max(
             0.0, health.motor_temp - WEAR_THERMAL_KNEE) / 10.0
-        wear += WEAR_RATE_PER_HOUR * hours * duty * thermal
+        wear += WEAR_RATE_PER_HOUR * hours * duty * thermal * health.bearing_factor
     wear = _clamp(wear, 0.0, 1.0)
 
     runtime = health.runtime_hours + (hours if running else 0.0)
@@ -217,7 +233,7 @@ def step_health(health: HVACHealth, ac_power_pct: float, occupancy: int,
     # produces runaway rather than a hotter steady state.
     q_generated = power_w * (1.0 - MOTOR_EFFICIENCY)
     airflow = (rpm / interim.base_rpm) * (1.0 - clog) if interim.base_rpm else 0.0
-    h_total = H_NATURAL + H_FORCED * max(0.0, airflow)
+    h_total = (H_NATURAL + H_FORCED * max(0.0, airflow)) * interim.cooling_factor
     q_rejected = h_total * (health.motor_temp - room_temp)
     motor_temp = health.motor_temp + dt * (q_generated - q_rejected) / MOTOR_THERMAL_MASS
     motor_temp = _clamp(motor_temp, room_temp, MOTOR_TEMP_MAX)

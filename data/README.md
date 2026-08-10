@@ -21,10 +21,11 @@ geometry cannot drift from room physics.
 (25 000 J/°C, 3500 W, k = 0.05, 30 occupants). `simulator/tests/test_building.py`
 locks this as the regression guard for the multi-room refactor.
 
-Floor power budgets (22 + 22 kW) deliberately over-subscribe the building
-budget (40 kW). That conflict is what the building twin exists to arbitrate; a
-test asserts the over-subscription so the arbitration cannot quietly become
-dead code.
+Floor power budgets (9 + 8 kW) deliberately over-subscribe the building budget
+(15 kW), which itself sits below the 21.2 kW of installed cooling. That conflict
+is what the building twin exists to arbitrate; tests assert both the
+over-subscription and that the budget stays REACHABLE, so the arbitration cannot
+quietly become dead code.
 
 ---
 
@@ -107,12 +108,12 @@ Stated separately so the citation is not overclaimed:
 
 ## `building_telemetry.csv` — generated
 
-Produced by `simulator/dataset_generator.py`; git-ignored because it is 22 MB
-and fully reproducible. Regenerate with:
+Produced by `simulator/dataset_generator.py`; git-ignored because it is 114 MB
+and fully reproducible (about 4 minutes). Regenerate with:
 
 ```bash
 docker compose run --rm sim python simulator/dataset_generator.py \
-    --days 90 --seed 42 --out data/building_telemetry.csv
+    --days 365 --seed 42 --out data/building_telemetry.csv
 ```
 
 ### Statistics of the reference run (`--days 365 --seed 42`)
@@ -123,19 +124,36 @@ docker compose run --rm sim python simulator/dataset_generator.py \
 | Simulated span | 365 days from 2026-01-01 UTC |
 | Sampling | one row per room per 5 simulated minutes |
 | Physics timestep | 15 s |
-| **Failure events** | **228** |
-| Degradation segments | 612 |
-| Positive rate, 4 h horizon | **1.737 %** (primary target) |
-| Positive rate, 30 min horizon | 0.218 % |
+| **Failure events** | **391** |
+| Positive rate, 4 h horizon | **2.978 %** (primary target) |
+| Positive rate, 30 min horizon | 0.374 % |
 
-| Room | Failures | Planned services | 4 h positives | Rate |
-|---|---|---|---|---|
-| `f1/lab-a` | 3 | 95 | 145 | 0.14 % |
-| `f1/lab-b` | 22 | 61 | 1056 | 1.00 % |
-| `f1/server-room` | 92 | 144 | 4418 | 4.20 % |
-| `f2/lab-c` | 49 | 46 | 2353 | 2.24 % |
-| `f2/meeting-room` | 25 | 0 | 1201 | 1.14 % |
-| `f2/office` | 37 | 32 | 1780 | 1.69 % |
+| Room | Wear character | Dominant fault | Failures | Planned services | 4 h positives |
+|---|---|---|---|---|---|
+| `f1/lab-a` | Heavy dust load | **airflow** | 73 | 95 | 3506 |
+| `f1/lab-b` | Tired bearings | **bearing** | 37 | 61 | 1778 |
+| `f1/server-room` | Runs 24/7 | **overstrain** | 92 | 144 | 4418 |
+| `f2/lab-c` | Poorly ventilated | **heat dissipation** | 57 | 46 | 2737 |
+| `f2/meeting-room` | Undersized, straining | **power** | 95 | 0 | 4561 |
+| `f2/office` | Ordinary | mixed | 37 | 32 | 1780 |
+
+### Each unit has its own wear character
+
+Real buildings do not contain six identical units. Each room's `wear` block in
+the layout sets four multipliers — `dust_factor`, `bearing_factor`,
+`cooling_factor`, `load_factor` — that make it fail in a characteristic way.
+
+This is not decoration. An earlier version gave every unit identical wear, so
+overstrain accounted for ~90 % of positives and the rarest mode had **two**
+training examples. The model was consequently blind to heat-dissipation failure
+(recall 0.000) and had a 100 % false-negative rate on `f1/lab-a`. Distinct wear
+characters supply hundreds of examples of all five modes, and both problems
+disappeared — HDF recall 0.950, and every room 0.95–1.00. See
+`ml/models/model_card.md` §4.
+
+Note that maintenance discipline is now only one of two drivers. `f1/lab-a` is
+serviced most aggressively *and* has the harshest dust load, so it is no longer
+the most reliable room — the dust wins.
 
 ### Why a year, not 90 days
 
@@ -145,11 +163,10 @@ degradation segment are heavily autocorrelated, so that was a 53-sample problem
 wearing a 155k-row costume. A temporal split would have left ~15 events to test
 on, far too few for a stable PR-AUC.
 
-A full year gives 228 events (~68 in a held-out final third) and, as a side
-effect, fixed a subtler problem: at 90 days `f1/lab-a` recorded **zero**
-failures, so its per-room recall was undefined and any identity-aware model
-would have learned that room cannot fail. Over a year it fails 3 times. No room
-is immortal; the short window just had not observed it yet.
+A full year gives 391 events (~120 in a held-out final third). It also fixed a
+subtler problem: at 90 days `f1/lab-a` recorded **zero** failures, so its
+per-room recall was undefined. No room is immortal; the short window simply had
+not observed it yet.
 
 ### Time-series structure
 
@@ -191,19 +208,18 @@ days) to `f2/meeting-room` (never serviced). This is not incidental — it gives
 the Task 7 fairness audit real per-room shift to detect rather than an
 assumed-clean dataset.
 
-Two consequences to carry into that audit:
+One consequence to carry into that audit:
 
 **Room identity is never a feature.** `ml/features.py` excludes `twin_id`,
 `floor`, `room_profile` and `segment_id` by construction, and a test enforces
-it. `f1/lab-a` has 30× fewer positives than the server room purely because of
-its maintenance *policy*, not because its hardware is different — an
-identity-aware model would learn "lab-a is safe" and stay silent when its filter
-finally does clog. Risk is inferred from condition alone, so a healthy room
+it. Rooms differ in both maintenance policy and wear character. An identity-aware
+model would learn per-room priors from those artefacts instead of reading
+condition, and would stay silent when a "safe" room finally degraded. Risk is inferred from condition alone, so a healthy room
 scores low because it is healthy, not because of its name.
 
-**The per-room positive rate spans 0.14 % to 4.20 %.** That is real
-distribution shift, and the audit should expect worse recall on the sparse rooms
-rather than treating uniform performance as the default.
+**The per-room positive rate spans 1.69 % to 4.39 %, and each room fails in a
+different way.** That is real distribution shift; the audit should expect
+per-mode differences rather than treating uniform performance as the default.
 
 > **The limitation this project does not hide:** the models are trained on
 > simulated telemetry. AI4I constrains the failure *physics* so the thresholds

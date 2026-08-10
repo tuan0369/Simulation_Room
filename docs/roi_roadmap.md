@@ -41,7 +41,7 @@ term. **We do not claim it, because we did not measure it.**
 
 ### 1b. Avoided unplanned outages — **the dominant term**
 
-The simulation records 228 failure events per year across six units, but that
+The simulation records 391 failure events per year across six units, but that
 rate is accelerated by design and must not be used as a business input. For the
 ROI we use a conservative real-world rate.
 
@@ -50,12 +50,12 @@ ROI we use a conservative real-world rate.
 | Unplanned HVAC failures per unit per year | 0.5 | **Assumed** — conservative for commercial units on mixed maintenance |
 | Units | 6 | Measured (layout) |
 | Baseline unplanned failures/year | 3.0 | Derived |
-| Model recall, in-distribution | **0.950** | Measured (`feature_spec.json`) |
+| Model recall, in-distribution | **0.990** | Measured (`feature_spec.json`) |
 | Fraction convertible to planned work | 0.80 | **Assumed** — not every early warning gives usable lead time |
 | Cost per unplanned outage | €2,000 | **Assumed** — emergency callout, overtime, at-risk lab samples |
 | Cost of the planned service that replaces it | €300 | **Assumed** |
 
-Avoided cost = 3.0 × 0.95 × 0.80 × (€2,000 − €300) ≈ **€3,876/year**.
+Avoided cost = 3.0 × 0.99 × 0.80 × (€2,000 − €300) ≈ **€4,039/year**.
 
 ### 1c. Calendar-based → condition-based servicing — **moderate**
 
@@ -77,9 +77,9 @@ service-count reduction is an industry assumption, not a result.
 | Stream | €/year | Confidence |
 |---|---|---|
 | Fan energy | 155 | **Measured** in simulation |
-| Avoided unplanned outages | 3,876 | Assumed rate × measured recall |
+| Avoided unplanned outages | 4,039 | Assumed rate × measured recall |
 | Condition-based servicing | 1,800 | Assumed |
-| **Total** | **≈ €5,800** | |
+| **Total** | **≈ €5,994** | |
 | *Cooling capacity loss* | *unquantified* | *Not modelled — likely additional* |
 
 ---
@@ -104,13 +104,13 @@ posture in governance §1 is explicitly not deployable.
 
 ## 3. Payback and NPV
 
-Net annual benefit = €5,800 − €2,900 = **€2,900/year**.
+Net annual benefit = €5,994 − €2,900 ≈ **€3,100/year**.
 
 | | Value |
 |---|---|
-| Simple payback | €17,000 ÷ €2,900 ≈ **5.9 years** |
-| 3-year NPV @ 8 % | €2,900 × 2.577 − €17,000 = **−€9,527** |
-| 5-year NPV @ 8 % | €2,900 × 3.993 − €17,000 = **−€5,420** |
+| Simple payback | €17,000 ÷ €3,100 ≈ **5.5 years** |
+| 3-year NPV @ 8 % | €3,100 × 2.577 − €17,000 = **−€9,011** |
+| 5-year NPV @ 8 % | €3,100 × 3.993 − €17,000 = **−€4,622** |
 
 ### The finding this project will not hide
 
@@ -124,10 +124,10 @@ per-unit hardware linearly:
 
 | Units | Benefit/yr | Recurring/yr | One-off | Payback |
 |---|---|---|---|---|
-| 6 | €5,800 | €2,900 | €17,000 | 5.9 yr |
-| 12 | €11,600 | €3,300 | €19,400 | 2.3 yr |
-| 24 | €23,200 | €4,100 | €24,200 | 1.3 yr |
-| 50 | €48,300 | €5,700 | €34,600 | **0.8 yr** |
+| 6 | €5,994 | €2,900 | €17,000 | 5.5 yr |
+| 12 | €11,988 | €3,300 | €19,400 | 2.2 yr |
+| 24 | €23,976 | €4,100 | €24,200 | 1.2 yr |
+| 50 | €49,950 | €5,700 | €34,600 | **0.8 yr** |
 
 **The honest recommendation: do not deploy this on one building for the savings.
 Deploy the pilot to prove the model on real telemetry, then scale to the campus
@@ -140,7 +140,7 @@ Payback at 6 units, varying the two most uncertain assumptions:
 | Outage cost ↓ / Failures per unit → | 0.25/yr | 0.5/yr | 1.0/yr |
 |---|---|---|---|
 | €1,000 | 10.6 yr | 8.0 yr | 5.4 yr |
-| €2,000 | 7.5 yr | **5.9 yr** | 4.1 yr |
+| €2,000 | 7.1 yr | **5.5 yr** | 3.9 yr |
 | €5,000 | 4.5 yr | 3.4 yr | 2.3 yr |
 
 Even the most favourable cell at this scale is 2.3 years. The conclusion is
@@ -152,11 +152,12 @@ robust to the assumptions: **scale, not tuning, is what makes this pay.**
 
 ### Phase 0 — Pilot *(complete: this project)*
 
-Six simulated twins, federated coordination, a fault-type model with a documented
-blind spot, and the governance analysis.
+Six simulated twins with distinct wear characters, federated coordination, a
+five-class fault model, and the governance analysis.
 
-- **Exit criteria met:** 296 tests green; closed loop verified end to end;
-  fairness audit published; limitations documented.
+- **Exit criteria met:** full suite green; closed loop verified end to end;
+  fairness audit published and a severe early finding corrected at its root;
+  limitations documented.
 - **Risk carried forward:** everything rests on simulated data.
 
 ### Phase 1 — Instrumented pilot, one floor *(3–6 months)*

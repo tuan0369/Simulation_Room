@@ -64,7 +64,7 @@
   ],
   "target": "label_failure_within_4h",
   "model": "gradient_boosting",
-  "decision_threshold": 0.00528,
+  "decision_threshold": 0.026362,
   "threshold_rationale": "minimises expected cost with FN=2000.0 and FP=150.0 per event",
   "trained_on": "data/building_telemetry.csv",
   "train_days": [
@@ -75,6 +75,8 @@
   "model_version": "1.0.0",
   "task": "multiclass fault type; P(failure) = 1 - P(none)",
   "classes": [
+    "airflow",
+    "bearing",
     "hdf",
     "none",
     "osf",
@@ -83,42 +85,58 @@
   "recall_by_fault_mode": [
     {
       "fault": "hdf",
-      "positives": 97,
-      "recall_model": 0.0,
-      "recall_hybrid": 0.5876,
-      "mean_model_score": 0.0001,
+      "positives": 816,
+      "recall_model": 0.9498,
+      "recall_hybrid": 0.9914,
+      "mean_model_score": 0.6195,
       "note": ""
     },
     {
       "fault": "osf",
-      "positives": 2640,
-      "recall_model": 0.9833,
-      "recall_hybrid": 0.9833,
-      "mean_model_score": 0.9165,
+      "positives": 1393,
+      "recall_model": 1.0,
+      "recall_hybrid": 1.0,
+      "mean_model_score": 0.9568,
       "note": ""
     },
     {
       "fault": "pwf",
-      "positives": 96,
-      "recall_model": 1.0,
-      "recall_hybrid": 1.0,
-      "mean_model_score": 0.6081,
+      "positives": 1392,
+      "recall_model": 0.9993,
+      "recall_hybrid": 0.9993,
+      "mean_model_score": 0.9899,
+      "note": ""
+    },
+    {
+      "fault": "airflow",
+      "positives": 1057,
+      "recall_model": 0.9924,
+      "recall_hybrid": 0.9924,
+      "mean_model_score": 0.9519,
+      "note": ""
+    },
+    {
+      "fault": "bearing",
+      "positives": 568,
+      "recall_model": 0.9982,
+      "recall_hybrid": 0.9982,
+      "mean_model_score": 0.9748,
       "note": ""
     }
   ],
   "metrics": {
-    "pr_auc": 0.9245,
-    "roc_auc": 0.9962,
-    "recall": 0.9502,
-    "precision": 0.6644,
-    "unseen_room_recall": 0.5633,
-    "unseen_room_pr_auc": 0.261
+    "pr_auc": 0.9636,
+    "roc_auc": 0.9979,
+    "recall": 0.9902,
+    "precision": 0.713,
+    "unseen_room_recall": 0.9074,
+    "unseen_room_pr_auc": 0.2567
   },
   "rul": {
-    "mae_hours": 14.592,
-    "r2": 0.8121,
-    "n_train": 210526,
-    "n_test": 91590,
-    "baseline_mae_hours": 38.112
+    "mae_hours": 20.334,
+    "r2": 0.5375,
+    "n_train": 342439,
+    "n_test": 144925,
+    "baseline_mae_hours": 33.157
   }
 }

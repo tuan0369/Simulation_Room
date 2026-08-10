@@ -116,11 +116,13 @@ def test_model_metrics_are_quoted_consistently():
 
 
 def test_fairness_finding_is_stated_in_governance():
-    """The 100% false-negative rate on the wet lab is the most important
-    ethical finding; it must not be softened away."""
+    """The severe early finding - a 100% false-negative rate on the wet lab -
+    must remain in the record even though it has since been corrected, along
+    with whatever disparity remains."""
     text = DOCS["governance"]
     assert "lab-a" in text
-    assert "1.000" in text or "100 %" in text or "100%" in text
+    assert "100 %" in text or "100%" in text     # the historical finding
+    assert "lab-c" in text                        # what is still weakest
 
 
 def test_human_approval_is_documented_everywhere_it_matters():

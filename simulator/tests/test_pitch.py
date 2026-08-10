@@ -65,20 +65,23 @@ def test_charts_were_generated_from_artifacts():
 # ── The honesty slides must survive ─────────────────────────────────────────
 
 def test_deck_states_the_model_blind_spot(text):
-    assert "cannot do" in text or "Blind to" in text
+    """An earlier model was blind to one mode. The deck must still tell that
+    story - the correction is more informative than the final number."""
     assert "heat-dissipation" in text.lower() or "heat dissipation" in text.lower()
+    assert "0.00" in text or "invisible" in text.lower()
 
 
 def test_deck_states_the_fairness_finding(text):
-    assert "Wet Lab A" in text
-    assert "100 %" in text or "100%" in text
+    assert "fairness audit" in text.lower()
+    assert "precision" in text.lower()
+    assert "wet lab" in text.lower()   # the corrected finding is still told
 
 
 def test_deck_states_the_negative_npv(text):
     """The business case is negative at six units. A pitch that hides that is
     the exact failure this test exists to prevent."""
     assert "does not pay for itself" in text
-    assert "−€5,420" in text or "-€5,420" in text
+    assert "−€4,622" in text or "-€4,622" in text
 
 
 def test_deck_admits_the_data_is_simulated(text):
@@ -112,7 +115,7 @@ def test_metrics_match_the_trained_model(text):
 
 def test_roi_figures_match_the_roadmap(text):
     roadmap = Path("docs/roi_roadmap.md").read_text(encoding="utf-8")
-    for figure in ("17,000", "2,900", "5.9"):
+    for figure in ("17,000", "2,900", "5.5"):
         assert figure in text, f"{figure} missing from the deck"
         assert figure in roadmap, f"{figure} missing from the roadmap"
 

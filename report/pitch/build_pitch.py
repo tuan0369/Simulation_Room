@@ -40,8 +40,8 @@ plt.rcParams.update({
 })
 
 # ROI figures — single source, mirrored in docs/roi_roadmap.md §3.
-SCALE = [(6, 5.9), (12, 2.3), (24, 1.3), (50, 0.8)]
-BENEFITS = [("Fan energy\n(measured)", 155), ("Avoided outages\n(assumed rate)", 3876),
+SCALE = [(6, 5.5), (12, 2.2), (24, 1.2), (50, 0.8)]
+BENEFITS = [("Fan energy\n(measured)", 155), ("Avoided outages\n(assumed rate)", 4039),
             ("Condition-based\nservicing", 1800)]
 
 
@@ -73,7 +73,8 @@ def chart_model_comparison() -> Path:
 
 def chart_fault_modes() -> Path:
     df = pd.read_csv(MODELS / "recall_by_fault_mode.csv")
-    names = {"hdf": "Heat dissipation", "osf": "Overstrain", "pwf": "Power"}
+    names = {"hdf": "Heat dissipation", "osf": "Overstrain", "pwf": "Power",
+             "airflow": "Airflow", "bearing": "Bearing"}
     df["label"] = df.fault.map(names).fillna(df.fault)
     x = range(len(df))
     fig, ax = plt.subplots(figsize=(7.4, 3.2))
@@ -83,8 +84,8 @@ def chart_fault_modes() -> Path:
            label="With thermal guard", color="#2563eb")
     ax.set_xticks(list(x)); ax.set_xticklabels(df.label)
     ax.set_ylabel("Recall"); ax.set_ylim(0, 1.1); ax.legend(frameon=False)
-    ax.set_title("The model is blind to one failure mode — a rule covers it",
-                 loc="left", weight="bold")
+    ax.set_title("All five failure modes detected; a rule still backs up the "
+                 "hardest", loc="left", weight="bold")
     path = ASSETS / "pitch_fault_modes.png"
     fig.savefig(path); plt.close(fig)
     return path
@@ -94,15 +95,14 @@ def chart_fairness() -> Path:
     df = pd.read_csv(MODELS / "fairness_audit.csv").dropna(subset=["recall"])
     df = df.sort_values("recall")
     names = [t.split("/")[-1].replace("-", " ").title() for t in df.twin_id]
-    colours = ["#dc2626" if r < 0.5 else "#16a34a" for r in df.recall]
+    colours = ["#dc2626" if r < 0.9 else "#16a34a" for r in df.recall]
     fig, ax = plt.subplots(figsize=(7.4, 3.2))
     bars = ax.barh(names, df.recall, color=colours)
     for b, v in zip(bars, df.recall):
         ax.text(min(v + 0.02, 0.92), b.get_y() + b.get_height()/2,
                 f"{v:.2f}", va="center", fontsize=10, weight="bold")
     ax.set_xlabel("Recall (model channel)"); ax.set_xlim(0, 1.05)
-    ax.set_title("Weakest where it matters most: Wet Lab A", loc="left",
-                 weight="bold")
+    ax.set_title("Detection is even across rooms", loc="left", weight="bold")
     path = ASSETS / "pitch_fairness.png"
     fig.savefig(path); plt.close(fig)
     return path
@@ -136,7 +136,7 @@ def chart_benefits() -> Path:
     for b, v in zip(bars, values):
         ax.text(b.get_x() + b.get_width()/2, v + 90, f"€{v:,}",
                 ha="center", fontsize=10, weight="bold")
-    ax.set_ylabel("€ per year"); ax.set_ylim(0, 4600)
+    ax.set_ylabel("€ per year"); ax.set_ylim(0, 4800)
     ax.set_title("The energy saving is real, and small", loc="left", weight="bold")
     path = ASSETS / "pitch_benefits.png"
     fig.savefig(path); plt.close(fig)
@@ -311,36 +311,44 @@ def build():
              "time — that's why we don't quote accuracy. The model is six times "
              "better than the obvious rule.")
 
-    # 6 — honesty
+    # 6 — the correction
     s = blank(prs)
-    heading(s, "What the model cannot do", "Limitations")
+    heading(s, "One failure mode was invisible — and why", "What went wrong first")
     picture(s, charts["modes"], Inches(0.9), Inches(1.9), Inches(7.4))
-    textbox(s, "Blind to heat-dissipation\nfailure on its own.",
+    textbox(s, "Heat-dissipation recall:\n0.00 → 0.95",
             Inches(8.6), Inches(2.2), Inches(4.2), Inches(1.2),
             size=20, bold=True, colour=WARN)
-    textbox(s, "About two such events existed in the\ntraining data. No model learns from two.\n\n"
-               "A physics threshold covers it — we ship\nboth, and report them separately.",
-            Inches(8.6), Inches(3.4), Inches(4.3), Inches(2.2), size=14, colour=MUTED)
-    notes(s, "This is the slide I'd want to see if I were buying. ML is not "
-             "uniformly better than rules — it beats thresholds on cumulative "
-             "wear and loses to a thermostat on a fault with a direct physical "
-             "precursor. We ship both.")
+    textbox(s, "The first model missed that mode entirely.\n"
+               "It had seen about two examples of it.\n\n"
+               "The fix was to the DATA, not the model:\n"
+               "six identical units were replaced by six\n"
+               "with realistic, different wear characters.\n\n"
+               "A physics threshold still backs it up.",
+            Inches(8.6), Inches(3.4), Inches(4.3), Inches(2.6), size=14, colour=MUTED)
+    notes(s, "This is the slide I'd want to see if I were buying. Our first "
+             "model was blind to one failure mode. The cause was starvation, "
+             "not tuning — it had two examples. A model that cannot see "
+             "something is usually being starved of it. We fixed the data, and "
+             "we keep the physics threshold as an independent backstop.")
 
     # 7 — fairness
     s = blank(prs)
-    heading(s, "Weakest where it matters most", "Fairness audit")
+    heading(s, "Detection is even — precision is not", "Fairness audit")
     picture(s, charts["fairness"], Inches(0.9), Inches(1.9), Inches(7.4))
-    textbox(s, "Wet Lab A:\n100 % of failures missed",
+    textbox(s, "Recall 0.95–1.00\nin every room",
             Inches(8.6), Inches(2.2), Inches(4.2), Inches(1.2),
-            size=20, bold=True, colour=WARN)
-    textbox(s, "Not because the model knows which room it\nis looking at — room identity is excluded.\n\n"
-               "That room is serviced so well its only\nfailures are the mode the model can't see.\n\n"
-               "Keep calendar servicing there.",
+            size=20, bold=True, colour=GOOD)
+    textbox(s, "Room identity is excluded from the model\nby construction, so it cannot learn a\n"
+               "per-room prior.\n\n"
+               "Teaching Lab C remains weakest:\nprecision 0.46 — about half its work\n"
+               "orders are unnecessary.\n\n"
+               "We re-run this audit after every retrain.",
             Inches(8.6), Inches(3.4), Inches(4.3), Inches(2.6), size=14, colour=MUTED)
-    notes(s, "The room the model covers worst is the room where failure costs "
-             "most. We found it, published it, and mitigate it with the thermal "
-             "guard — but keep calendar servicing on that unit. We are not asking "
-             "you to trust it there.")
+    notes(s, "An earlier version had a 100% false-negative rate on the wet lab — "
+             "the room where an outage costs most. We found it, fixed its actual "
+             "cause, and publish both states. What remains is a precision gap in "
+             "the teaching lab, which is disruptive rather than dangerous. That "
+             "placement is luck, not design, which is why the audit repeats.")
 
     # 8 — benefits
     s = blank(prs)
@@ -360,9 +368,9 @@ def build():
     table(s, [
         ["One-off investment", "€17,000"],
         ["Recurring", "€2,900 / year"],
-        ["Net benefit", "€2,900 / year"],
-        ["Payback", "5.9 years"],
-        ["5-year NPV @ 8 %", "−€5,420"],
+        ["Net benefit", "€3,100 / year"],
+        ["Payback", "5.5 years"],
+        ["5-year NPV @ 8 %", "−€4,622"],
     ], Inches(1.0), Inches(2.1), Inches(6.2), Inches(2.9),
         col_widths=[Inches(3.6), Inches(2.6)], header=False, size=17)
     textbox(s, "Integration cost is roughly fixed.\nBenefits scale with unit count.\n\n"

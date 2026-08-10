@@ -165,6 +165,71 @@ def test_thermal_guard_raises_a_work_order_on_its_own(coordinator):
     assert orders[0]["action"] == "service_motor"
 
 
+def test_auto_fix_is_off_by_default(coordinator):
+    """The default posture is that a human approves anything touching physical
+    equipment. Autonomy must be opted into, never inherited."""
+    twin, _, _ = coordinator
+    assert twin.auto_fix is False
+    order = twin.advisories({"f1/lab-a": {"failure_prob": 0.9,
+                                          "threshold": 0.005,
+                                          "top_factor": "filter_clog"}})[0]
+    assert order["requires_human_approval"] is True
+    assert order["auto_dispatched"] is False
+
+
+def test_auto_fix_dispatches_preventive_work(building):
+    twin = BuildingTwin(building, auto_fix=True)
+    order = twin.advisories({"f1/lab-a": {"failure_prob": 0.9,
+                                          "threshold": 0.005,
+                                          "top_factor": "filter_clog"}}, now_h=10.0)[0]
+    assert order["auto_dispatched"] is True
+    assert order["requires_human_approval"] is False
+    assert order["action"] == "replace_filter"
+
+
+def test_auto_fix_never_dispatches_a_non_preventive_action(building):
+    """`inspect` needs a person — the twin cannot inspect anything. Only the
+    two servicing actions are ever eligible."""
+    from building_twin import AUTO_FIX_ACTIONS
+    twin = BuildingTwin(building, auto_fix=True)
+    assert "inspect" not in AUTO_FIX_ACTIONS
+    order = twin.advisories({"f1/lab-a": {"failure_prob": 0.9,
+                                          "threshold": 0.005,
+                                          "top_factor": "mystery"}}, now_h=10.0)[0]
+    assert order["action"] == "inspect"
+    assert order["auto_dispatched"] is False
+    assert order["requires_human_approval"] is True
+
+
+def test_auto_fix_respects_a_cooldown(building):
+    """Without this, a unit that keeps scoring high would be serviced over and
+    over."""
+    from building_twin import AUTO_FIX_COOLDOWN_H
+    twin = BuildingTwin(building, auto_fix=True)
+    score = {"f1/lab-a": {"failure_prob": 0.9, "threshold": 0.005,
+                          "top_factor": "filter_clog"}}
+    assert twin.advisories(score, now_h=0.0)[0]["auto_dispatched"] is True
+
+    twin._open_orders.clear()          # simulate the fault recurring
+    soon = twin.advisories(score, now_h=AUTO_FIX_COOLDOWN_H / 2)[0]
+    assert soon["auto_dispatched"] is False
+    assert soon["requires_human_approval"] is True
+
+    twin._open_orders.clear()
+    later = twin.advisories(score, now_h=AUTO_FIX_COOLDOWN_H + 1)[0]
+    assert later["auto_dispatched"] is True
+
+
+def test_auto_fix_can_be_switched_off_again(building):
+    twin = BuildingTwin(building, auto_fix=True)
+    twin.auto_fix = False
+    order = twin.advisories({"f1/lab-b": {"failure_prob": 0.9,
+                                          "threshold": 0.005,
+                                          "top_factor": "vibration_mm_s"}},
+                            now_h=99.0)[0]
+    assert order["auto_dispatched"] is False
+
+
 def test_advisories_are_recommendations_not_actions(coordinator):
     twin, _, _ = coordinator
     order = twin.advisories({"f2/office": {"failure_prob": 0.95,

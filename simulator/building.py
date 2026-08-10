@@ -40,10 +40,20 @@ class RoomConfig:
     always_on: bool               # true = AC ignores the "empty room -> off" rule
     solar_gain: float             # inherited from the floor
     neighbours: tuple[str, ...] = ()
+    furniture: str = "desks"      # read by the 3D view
+    # Per-unit wear character, so rooms fail in DIFFERENT ways. See
+    # hvac_health.HVACHealth for what each multiplier does.
+    wear: tuple = ()
 
     @property
     def volume_m3(self) -> float:
         return self.area_m2 * self.height_m
+
+    @property
+    def wear_factors(self) -> dict:
+        """Wear multipliers as a mapping. Stored as a tuple of pairs so the
+        config stays immutable and comparable."""
+        return dict(self.wear)
 
     @property
     def peak_internal_load_w(self) -> float:
@@ -119,6 +129,8 @@ def _room_from_json(raw: dict, floor_id: str, solar_gain: float) -> RoomConfig:
         always_on=bool(raw["always_on"]),
         solar_gain=solar_gain,
         neighbours=tuple(raw["neighbours"]),
+        furniture=raw.get("furniture", "desks"),
+        wear=tuple(sorted(raw.get("wear", {}).items())),
     )
 
 
