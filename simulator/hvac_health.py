@@ -55,6 +55,8 @@ VIBRATION_GAIN = 11.0
 CLOG_FAILURE = 0.85
 
 # Degradation rates (per running hour)
+LOAD_DRIFT_RATE_PER_HOUR = 0.0012  # connections loosen, contacts oxidise
+LOAD_DRIFT_GAIN = 0.55             # extra shaft power at full drift
 CLOG_RATE_PER_HOUR = 0.004
 DUST_PER_PERSON = 0.05
 WEAR_RATE_PER_HOUR = 0.0015
@@ -78,7 +80,27 @@ FAN_POWER_FRACTION = 0.08
 DEFAULT_BASE_RPM = 1500.0
 DEFAULT_RATED_POWER_W = 280.0   # 8% of Project 1's 3500 W unit
 
-MAINTENANCE_ACTIONS = ("replace_filter", "service_motor")
+# One remedy per failure mode. Before these existed the system could predict
+# five faults but only fix two, so three of them had no action a technician or
+# the twin could actually take.
+#
+#   replace_filter      airflow   clears the filter
+#   service_motor       bearing   replaces bearings; also resets runtime (OSF)
+#   electrical_service  power     clears accumulated load drift
+#   thermal_derate      heat      caps fan duty so the winding can cool
+#   post_room_notice    overstrain informs occupants; never forces anything
+#
+# The last two are NOT handled here: they act on the room twin, not on
+# equipment condition. See room_twin.RoomTwin.handle_command.
+MAINTENANCE_ACTIONS = ("replace_filter", "service_motor", "electrical_service")
+
+REMEDY_FOR_FAULT = {
+    "airflow": "replace_filter",
+    "bearing": "service_motor",
+    "osf": "service_motor",
+    "pwf": "electrical_service",
+    "hdf": "thermal_derate",
+}
 
 
 # Heat-dissipation failure has a direct physical precursor — the winding
@@ -118,6 +140,7 @@ class HVACHealth:
 
     filter_clog: float = 0.0        # 0..1
     bearing_wear: float = 0.0       # 0..1
+    load_drift: float = 0.0         # 0..1 - electrical/mechanical load creep
     runtime_hours: float = 0.0
     motor_temp: float = 25.0        # C
 
@@ -138,6 +161,7 @@ class HVACHealth:
     bearing_factor: float = 1.0   # >1 wears bearings faster
     cooling_factor: float = 1.0   # <1 sheds motor heat worse
     load_factor: float = 1.0      # >1 draws more shaft power for the same duty
+    drift_factor: float = 1.0     # >1 accumulates load drift faster
 
     @classmethod
     def for_room(cls, room) -> "HVACHealth":
@@ -150,6 +174,7 @@ class HVACHealth:
             bearing_factor=float(wear.get("bearing_factor", 1.0)),
             cooling_factor=float(wear.get("cooling_factor", 1.0)),
             load_factor=float(wear.get("load_factor", 1.0)),
+            drift_factor=float(wear.get("drift_factor", 1.0)),
         )
 
 
@@ -176,6 +201,7 @@ def power_draw(health: HVACHealth, duty: float) -> float:
         return 0.0
     return (expected_power_w(health, duty)
             * health.load_factor
+            * (1.0 + LOAD_DRIFT_GAIN * health.load_drift)
             * (1.0 + CLOG_POWER_GAIN * health.filter_clog)
             * (1.0 + FRICTION_POWER_GAIN * health.bearing_wear))
 
@@ -220,10 +246,19 @@ def step_health(health: HVACHealth, ac_power_pct: float, occupancy: int,
         wear += WEAR_RATE_PER_HOUR * hours * duty * thermal * health.bearing_factor
     wear = _clamp(wear, 0.0, 1.0)
 
+    # Electrical/mechanical load creep: terminals loosen, contacts oxidise, the
+    # belt tightens. Unlike `load_factor` (a fixed characteristic of the unit)
+    # this accumulates and is CLEARED by an electrical service, so a power
+    # failure has a remedy rather than being a permanent property of the room.
+    drift = health.load_drift
+    if running:
+        drift += LOAD_DRIFT_RATE_PER_HOUR * hours * duty * health.drift_factor
+    drift = _clamp(drift, 0.0, 1.0)
+
     runtime = health.runtime_hours + (hours if running else 0.0)
 
     interim = replace(health, filter_clog=clog, bearing_wear=wear,
-                      runtime_hours=runtime)
+                      load_drift=drift, runtime_hours=runtime)
 
     rpm = fan_speed(interim, duty)
     power_w = power_draw(interim, duty)
@@ -293,4 +328,8 @@ def apply_maintenance(health: HVACHealth, action: str) -> HVACHealth:
         return replace(health, filter_clog=0.0)
     if action == "service_motor":
         return replace(health, bearing_wear=0.0, runtime_hours=0.0)
+    if action == "electrical_service":
+        # Re-terminate and rebalance. Clears accumulated drift but not the
+        # unit's inherent load_factor, which is a property of the installation.
+        return replace(health, load_drift=0.0)
     return health

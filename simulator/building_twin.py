@@ -34,19 +34,30 @@ MIN_FLOOR_SHARE = 0.15       # fraction of the budget every floor keeps
 # Which factor drove the risk -> what a technician should actually do.
 ACTION_FOR_FACTOR = {
     "filter_clog": "replace_filter",
-    "power_draw_w": "replace_filter",
-    "motor_temp": "service_motor",
-    "motor_room_delta": "service_motor",
+    "load_drift": "electrical_service",
+    "power_draw_w": "electrical_service",
+    "motor_temp": "thermal_derate",
+    "motor_room_delta": "thermal_derate",
     "vibration_mm_s": "service_motor",
     "fan_rpm": "service_motor",
     "runtime_hours": "service_motor",
 }
 
-# Actions the building twin is permitted to dispatch without a human, when
-# auto-remediation is switched on. Both are PREVENTIVE: they service equipment.
-# Nothing that stops cooling, changes a setpoint or takes a room out of service
-# is ever eligible, whatever a model score says.
-AUTO_FIX_ACTIONS = ("replace_filter", "service_motor")
+# Actions the building twin may dispatch without a human when auto-remediation
+# is switched on.
+#
+# Four are unambiguously preventive — they service equipment and can only make
+# the unit healthier. `thermal_derate` is the one that needs justifying: it
+# REDUCES cooling. It is eligible because it is bounded exactly as a thermal
+# overload relay is — duty is capped at 50 %, never zero, and the cap releases
+# itself once the winding cools. Protecting a motor from burning out by easing
+# it off is a different act from switching cooling off, and only the first is
+# ever automatic.
+#
+# Still never eligible at any setting: switching a unit off, changing a
+# setpoint, taking a room out of service, or `inspect` (the twin cannot inspect).
+AUTO_FIX_ACTIONS = ("replace_filter", "service_motor", "electrical_service",
+                    "thermal_derate", "post_room_notice")
 
 # A unit may not be auto-serviced more often than this. Without it a model that
 # keeps scoring high would dispatch repair after repair.

@@ -238,11 +238,16 @@ def test_maintenance_discipline_differs_between_rooms(dataset):
     assert any(v > 0 for v in planned.values()), "nobody was serviced"
 
 
-def test_neglected_room_fails_more_than_a_maintained_one(dataset):
+def test_the_neglected_room_runs_to_failure_unassisted(dataset):
+    """It receives no planned servicing at all, so every reset it gets is a
+    corrective one. Note this does NOT make it the most failure-prone room:
+    wear character matters as much as discipline, and f1/lab-a fails more
+    often because its dust load is punishing."""
     _, stats = dataset
-    neglected = stats["per_room"]["f2/meeting-room"]["failures"]
-    maintained = stats["per_room"]["f1/lab-a"]["failures"]
-    assert neglected >= maintained
+    room = stats["per_room"]["f2/meeting-room"]
+    assert room["planned"] == 0
+    assert room["failures"] > 0
+    assert room["corrective"] == room["failures"]
 
 
 def test_maintenance_actually_happens_where_it_is_scheduled(dataset):

@@ -35,6 +35,30 @@ with st.sidebar:
     st.caption("Every room runs its own control loop. Switching rooms here does "
                "not disturb the others.")
 
+    st.divider()
+    st.markdown("**Remediation**")
+    st.caption("One remedy per failure mode. The same actions the predictive "
+               "model dispatches when auto-fix is on.")
+    _room = st.session_state.selected_room
+    for label, action, icon, help_text in [
+        ("Replace filter", "replace_filter", ":material/filter_alt:",
+         "Airflow failure — clears a loaded filter."),
+        ("Service motor", "service_motor", ":material/build:",
+         "Bearing or overstrain — new bearings, running hours reset."),
+        ("Electrical service", "electrical_service", ":material/bolt:",
+         "Power failure — re-terminate and rebalance, clearing load drift."),
+        ("Thermal derate", "thermal_derate", ":material/mode_cool:",
+         "Overheating — caps fan duty at 50 % so the winding cools. "
+         "Never switches cooling off; releases itself once the motor is cool."),
+        ("Post occupant notice", "post_room_notice", ":material/campaign:",
+         "Overstrain — warns occupants that the unit is overloaded. "
+         "Informational: the system never evacuates anyone."),
+    ]:
+        if st.button(label, icon=icon, width="stretch", help=help_text,
+                     key=f"act_{action}_{_room}"):
+            publish(client, _room, "cmd/maintenance", {"action": action})
+            st.toast(f"{label} → {room_name(_room)}")
+
 twin_id = st.session_state.selected_room
 
 with st.container(horizontal_alignment="center"):
@@ -147,6 +171,12 @@ def live():
                 colour, f":gray-badge[{label}]")
             + (f" &nbsp; {risk['explanation']}"
                if risk.get("explanation") and risk.get("alert") else ""))
+        if health.get("derate_active"):
+            st.caption(":material/mode_cool: Thermal derate active — fan duty "
+                       "capped at 50 % while the motor cools. Cooling continues.")
+        notice = health.get("notice")
+        if notice:
+            st.warning(notice.get("text", ""), icon=":material/campaign:")
 
     with bottom_left, st.container(border=True):
         st.markdown("##### :material/show_chart: Temperature trend")

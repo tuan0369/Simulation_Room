@@ -53,12 +53,12 @@ START_HOUR = 7.0
 # trajectories and gives the Task 7 fairness audit real per-room distribution
 # shift to detect, instead of an assumed-clean dataset.
 MAINTENANCE_POLICY = {
-    "f1/lab-a":        {"filter": 10, "motor": 6},    # well maintained
-    "f1/lab-b":        {"filter": 14, "motor": 10},   # good
-    "f1/server-room":  {"filter": 7, "motor": 4},     # critical, runs 24/7
-    "f2/lab-c":        {"filter": 18, "motor": 14},   # moderate
-    "f2/office":       {"filter": 25, "motor": 20},   # lax
-    "f2/meeting-room": {"filter": None, "motor": None},  # neglected
+    "f1/lab-a":        {"filter": 10, "motor": 6, "electrical": 30},
+    "f1/lab-b":        {"filter": 14, "motor": 10, "electrical": 40},
+    "f1/server-room":  {"filter": 7, "motor": 4, "electrical": 20},
+    "f2/lab-c":        {"filter": 18, "motor": 14, "electrical": 45},
+    "f2/office":       {"filter": 25, "motor": 20, "electrical": 60},
+    "f2/meeting-room": {"filter": None, "motor": None, "electrical": None},
 }
 
 # Reported when several conditions trip at once, most actionable first.
@@ -70,7 +70,7 @@ COLUMNS = [
     "occupancy", "room_temp", "humidity", "setpoint", "outdoor_temp",
     "hvac_on", "ac_power_pct",
     "motor_temp", "motor_room_delta", "fan_rpm", "vibration_mm_s",
-    "filter_clog", "power_draw_w", "runtime_hours", "torque_nm",
+    "filter_clog", "power_draw_w", "runtime_hours", "torque_nm", "load_drift",
     "label_failure_within_30min", "label_failure_within_4h",
     "label_failure_type", "label_rul_hours",
 ]
@@ -105,8 +105,8 @@ def generate(days: int = 365, seed: int = 42, sample_every: int = SAMPLE_EVERY,
     total_steps = int(days * steps_per_day)
     next_service = {
         tid: {
-            "filter": (policy["filter"] * steps_per_day) if policy["filter"] else None,
-            "motor": (policy["motor"] * steps_per_day) if policy["motor"] else None,
+            kind: (policy[kind] * steps_per_day) if policy.get(kind) else None
+            for kind in ("filter", "motor", "electrical")
         }
         for tid, policy in MAINTENANCE_POLICY.items()
     }
@@ -139,9 +139,12 @@ def generate(days: int = 365, seed: int = 42, sample_every: int = SAMPLE_EVERY,
             if failed and not was_failed[tid]:
                 events[tid].append(step_i)
                 fault_at[(tid, step_i)] = _fault_name(flags)
-                twin.health = apply_maintenance(
-                    apply_maintenance(twin.health, "replace_filter"),
-                    "service_motor")
+                # A corrective repair fixes everything found on site, including
+                # the electrical drift - otherwise a power failure would never
+                # clear and the unit would re-fail on the next step forever.
+                for _fix in ("replace_filter", "service_motor",
+                             "electrical_service"):
+                    twin.health = apply_maintenance(twin.health, _fix)
                 corrective[tid] += 1
                 segment[tid] += 1
                 # Planned work stays on its own calendar. Rescheduling it from
@@ -153,7 +156,8 @@ def generate(days: int = 365, seed: int = 42, sample_every: int = SAMPLE_EVERY,
             was_failed[tid] = failed
 
             for kind, action in (("filter", "replace_filter"),
-                                 ("motor", "service_motor")):
+                                 ("motor", "service_motor"),
+                                 ("electrical", "electrical_service")):
                 due = next_service[tid][kind]
                 if due is not None and step_i >= due:
                     twin.health = apply_maintenance(twin.health, action)
@@ -195,6 +199,7 @@ def generate(days: int = 365, seed: int = 42, sample_every: int = SAMPLE_EVERY,
                     "power_draw_w": t["power_draw_w"],
                     "runtime_hours": t["runtime_hours"],
                     "torque_nm": t["torque_nm"],
+                    "load_drift": t["load_drift"],
                     "_step": step_i,
                 })
 

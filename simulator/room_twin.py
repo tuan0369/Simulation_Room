@@ -26,7 +26,7 @@ TELEMETRY_FIELDS = (
     "occupancy", "room_temp", "humidity", "setpoint", "outdoor_temp",
     "hvac_on", "ac_power_pct",
     "motor_temp", "fan_rpm", "vibration_mm_s", "filter_clog",
-    "power_draw_w", "runtime_hours", "torque_nm",
+    "power_draw_w", "runtime_hours", "torque_nm", "load_drift",
     "motor_room_delta",
 )
 
@@ -38,6 +38,21 @@ ADVISORY_LIMIT_C = 1.5
 # Unoccupied setback ceiling. An empty room may drift up to here, but no
 # further — standing equipment load would otherwise cook it overnight.
 UNOCCUPIED_SETBACK_C = 28.0
+
+# Thermal derate: cap fan duty so an overheating winding can cool.
+#
+# This is the one remedy that REDUCES cooling, so it is bounded hard. It never
+# takes duty below DERATE_FLOOR — the room keeps cooling at half power, it is
+# not switched off — and it expires on its own once the motor is back below
+# DERATE_CLEAR_C. That is exactly what a thermal overload relay does on any
+# real motor, which is why it is safe to apply automatically while a full
+# shutdown never is.
+DERATE_FLOOR = 0.5           # never cap below 50 % duty
+DERATE_CLEAR_C = 68.0        # release once the winding is back under this
+DERATE_MAX_S = 3600.0        # and in any case after an hour
+
+# Occupant notices. The system posts them; it never evacuates anyone.
+NOTICE_LEVELS = ("info", "warning", "evacuate")
 
 # Defaults for a freshly built twin. These are NOT arbitrary: the model was
 # trained on telemetry generated with auto mode and this setpoint, so a live
@@ -58,6 +73,8 @@ class RoomTwin:
         self.pid = PIDController()
         self.health = HVACHealth.for_room(config)
         self.advisory_offset = 0.0
+        self.derate_remaining_s = 0.0
+        self.notice: dict | None = None
         # Remembered from the last tick so telemetry() is self-contained. The
         # ML feature set needs outdoor_temp, and having the caller attach it
         # separately let the training and live paths diverge.
@@ -130,8 +147,15 @@ class RoomTwin:
                     self._stop_cooling()
 
         if self.state.hvac_on:
-            self.state = replace(self.state, ac_power_pct=self.pid.compute(
-                self.state.temperature, target, dt))
+            duty = self.pid.compute(self.state.temperature, target, dt)
+            # A thermal derate caps duty but never removes cooling.
+            if self.derate_remaining_s > 0.0:
+                duty = min(duty, DERATE_FLOOR)
+                self.derate_remaining_s -= dt
+                if (self.health.motor_temp <= DERATE_CLEAR_C
+                        or self.derate_remaining_s <= 0.0):
+                    self.derate_remaining_s = 0.0
+            self.state = replace(self.state, ac_power_pct=duty)
         elif self.state.ac_power_pct:
             self.state = replace(self.state, ac_power_pct=0.0)
 
@@ -165,7 +189,21 @@ class RoomTwin:
         payloads leave the twin untouched."""
         if topic.endswith(CMD_MAINTENANCE):
             action = parse_maintenance(payload)
-            if action:
+            if not action:
+                return
+            if action == "thermal_derate":
+                # Protective, bounded, self-clearing. Never switches the unit
+                # off — the room keeps cooling at DERATE_FLOOR.
+                self.derate_remaining_s = DERATE_MAX_S
+            elif action == "post_room_notice":
+                self.notice = {
+                    "level": "warning",
+                    "text": "HVAC unit overstrained — service scheduled. "
+                            "Consider relocating heat-sensitive work.",
+                }
+            elif action == "clear_room_notice":
+                self.notice = None
+            else:
                 self.health = apply_maintenance(self.health, action)
             return
 
@@ -197,9 +235,18 @@ class RoomTwin:
             "power_draw_w": round(self.health.power_draw_w, 2),
             "runtime_hours": round(self.health.runtime_hours, 4),
             "torque_nm": round(self.health.torque_nm, 4),
+            "load_drift": round(self.health.load_drift, 5),
             # The HDF driver: without a gradient the motor cannot shed heat.
             "motor_room_delta": round(
                 self.health.motor_temp - self.state.temperature, 3),
+        }
+
+    def status_payload(self) -> dict:
+        """Operational extras published alongside telemetry - not ML features."""
+        return {
+            "derate_active": self.derate_remaining_s > 0.0,
+            "derate_remaining_s": round(max(0.0, self.derate_remaining_s), 1),
+            "notice": self.notice,
         }
 
     def failure_flags(self) -> dict[str, bool]:

@@ -40,8 +40,8 @@ plt.rcParams.update({
 })
 
 # ROI figures — single source, mirrored in docs/roi_roadmap.md §3.
-SCALE = [(6, 5.5), (12, 2.2), (24, 1.2), (50, 0.8)]
-BENEFITS = [("Fan energy\n(measured)", 155), ("Avoided outages\n(assumed rate)", 4039),
+SCALE = [(6, 5.7), (12, 2.2), (24, 1.2), (50, 0.8)]
+BENEFITS = [("Fan energy\n(measured)", 155), ("Avoided outages\n(assumed rate)", 3974),
             ("Condition-based\nservicing", 1800)]
 
 
@@ -368,9 +368,9 @@ def build():
     table(s, [
         ["One-off investment", "€17,000"],
         ["Recurring", "€2,900 / year"],
-        ["Net benefit", "€3,100 / year"],
-        ["Payback", "5.5 years"],
-        ["5-year NPV @ 8 %", "−€4,622"],
+        ["Net benefit", "€3,000 / year"],
+        ["Payback", "5.7 years"],
+        ["5-year NPV @ 8 %", "−€5,021"],
     ], Inches(1.0), Inches(2.1), Inches(6.2), Inches(2.9),
         col_widths=[Inches(3.6), Inches(2.6)], header=False, size=17)
     textbox(s, "Integration cost is roughly fixed.\nBenefits scale with unit count.\n\n"

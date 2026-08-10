@@ -17,7 +17,7 @@ Two models plus one rule, serving the maintenance planning of a 2-floor,
 
 | Component | Type | Job |
 |---|---|---|
-| `failure_classifier.joblib` | HistGradientBoosting, 4-class | Predict the *fault type* (`none` / `hdf` / `osf` / `pwf`) within 4 hours. Risk = 1 − P(none) |
+| `failure_classifier.joblib` | HistGradientBoosting, 6-class | Predict the *fault type* (`none` / `hdf` / `osf` / `pwf` / `airflow` / `bearing`) within 4 hours. Risk = 1 − P(none) |
 | `rul_regressor.joblib` | Linear regression | Estimate remaining useful life in hours |
 | HDF physics guard | Threshold rule | Independent alarm on motor temperature approaching its insulation limit |
 
@@ -33,7 +33,7 @@ advisories carrying `requires_human_approval: true`, and a technician decides.
 ## 2. Training data
 
 `data/building_telemetry.csv` — a 365-day simulated trace of six HVAC units:
-630,720 rows, 228 failure events, 1.74 % positive rate on the 4-hour horizon.
+630,720 rows, 339 failure events, 2.58 % positive rate on the 4-hour horizon.
 See [`data/README.md`](../../data/README.md) for full statistics.
 
 **It is simulated.** This is the single most important limitation and it is not
@@ -53,9 +53,9 @@ in the roadmap, not a footnote.
 
 | Split | Definition | Rows | Positives |
 |---|---|---|---|
-| Train | Days 0–255, five rooms | 367,200 | 6,726 |
-| Test (time) | Days 256–365, same five rooms | 158,400 | 3,026 |
-| Test (unseen room) | Days 256–365, `f2/office`, never trained on | 31,680 | 529 |
+| Train | Days 0–255, five rooms | 367,200 | 9,282 |
+| Test (time) | Days 256–365, same five rooms | 158,400 | 4,209 |
+| Test (unseen room) | Days 256–365, `f2/office`, never trained on | 31,680 | 673 |
 
 Splits are **temporal**, never a random shuffle. Rows five minutes apart are
 near-duplicates; a shuffled split would place a row's own neighbours in the
@@ -73,22 +73,21 @@ Evaluated on the held-out final 30 % of the year.
 | Single threshold `motor_temp > 80` | 0.092 | 0.650 | 0.053 | — |
 | Logistic regression | 0.738 | 0.992 | 0.967 | — |
 | Random forest | 0.947 | 0.998 | 0.987 | — |
-| **Gradient boosting (shipped)** | **0.964** | **0.998** | **0.990** | **0.713** |
+| **Gradient boosting (shipped)** | **0.953** | **0.999** | **0.974** | **0.734** |
 
 **Accuracy is not reported as a headline.** At a 1.7 % positive rate, predicting
 "no failure" every time scores 98.3 % accuracy and is worthless. PR-AUC is the
 primary metric.
 
-**The model earns its place**: PR-AUC 0.92 against 0.16 for the best single
-threshold. But see §4 — that headline is not true of every failure mode.
+**The model earns its place**: PR-AUC 0.95 against 0.09 for the best single
+threshold — a ten-fold gap.
 
-Random forest ranks marginally higher on PR-AUC (0.934 vs 0.924); gradient
-boosting is shipped because it is ~17 % cheaper at its own best operating point,
-and cost is the stated decision criterion.
+Gradient boosting is shipped because it is cheapest at its own best operating
+point, and cost is the stated decision criterion.
 
 ### Decision threshold
 
-**0.0264**, chosen by minimising expected cost, not left at 0.5.
+**0.0153**, chosen by minimising expected cost, not left at 0.5.
 
 | Assumption | Value |
 |---|---|
@@ -103,9 +102,9 @@ the model is deliberately tuned to over-call rather than miss.
 
 | Metric | Value |
 |---|---|
-| MAE | 14.6 hours |
-| R² | 0.812 |
-| Predict-the-mean baseline MAE | 38.1 hours |
+| MAE | 20.0 hours |
+| R² | 0.632 |
+| Predict-the-mean baseline MAE | 36.9 hours |
 
 Trained only on uncensored rows. Rows pinned at the 168-hour censoring horizon
 are not observations of a real remaining life, and training on them would teach
@@ -117,11 +116,11 @@ the model to predict the censoring constant.
 
 | Fault mode | Test positives | Recall, model alone | Recall, with physics guard |
 |---|---|---|---|
-| `osf` overstrain | 1,393 | 1.000 | 1.000 |
-| `pwf` power | 1,392 | 0.999 | 0.999 |
-| `airflow` filter exhausted | 1,057 | 0.992 | 0.992 |
-| `bearing` vibration | 568 | 0.998 | 0.998 |
-| `hdf` heat dissipation | 816 | **0.950** | **0.991** |
+| `airflow` filter exhausted | 1,039 | 0.994 | 0.994 |
+| `pwf` power | 480 | 0.985 | 0.985 |
+| `bearing` vibration | 576 | 0.984 | 0.984 |
+| `osf` overstrain | 1,394 | 0.974 | 0.974 |
+| `hdf` heat dissipation | 720 | **0.928** | **0.943** |
 
 ### This is a corrected result, and the correction is the interesting part
 
@@ -137,13 +136,13 @@ character — a wet lab that loads filters with particulates, an older unit with
 tired bearings, one boxed into a poorly ventilated ceiling void — and every
 failure mode now has hundreds of training examples instead of two.
 
-HDF recall went from 0.000 to 0.950. **The lesson worth carrying: a model that
+HDF recall went from 0.000 to 0.928. **The lesson worth carrying: a model that
 cannot see a failure mode is usually being starved of it, not badly tuned.**
 
 ### The physics guard is retained anyway
 
 A thermal ramp (0 at 70 °C → 1 at the 85 °C insulation limit) still runs as an
-**independent alarm channel**, lifting HDF recall from 0.950 to 0.991.
+**independent alarm channel**, lifting HDF recall from 0.928 to 0.943.
 
 It is kept for two reasons even though the model no longer needs rescuing:
 heat-dissipation failure has a *direct physical precursor*, so a threshold is the
@@ -162,20 +161,21 @@ Per-room performance on the test period, model channel only.
 
 | Room | Dominant fault | Positive rate | PR-AUC | Recall | Precision | FN rate |
 |---|---|---|---|---|---|---|
-| `f1/lab-a` | airflow | 3.34 % | 0.980 | 0.992 | 0.700 | 0.008 |
-| `f1/lab-b` | bearing | 1.79 % | 0.995 | 0.998 | 0.836 | 0.002 |
-| `f1/server-room` | overstrain | 4.25 % | 0.978 | 1.000 | 0.849 | 0.000 |
-| `f2/lab-c` | heat dissipation | 2.73 % | **0.679** | 0.953 | 0.462 | 0.048 |
-| `f2/meeting-room` | power | 4.39 % | 0.995 | 0.999 | 0.812 | 0.001 |
+| `f1/lab-a` | airflow | 3.28 % | 0.988 | 0.994 | 0.823 | 0.006 |
+| `f1/lab-b` | bearing | 1.82 % | 0.977 | 0.984 | 0.739 | 0.016 |
+| `f1/server-room` | overstrain | 4.09 % | 0.985 | 1.000 | 0.910 | 0.000 |
+| `f2/lab-c` | heat dissipation | 2.58 % | **0.633** | 0.891 | 0.451 | **0.109** |
+| `f2/meeting-room` | power | 1.52 % | 0.996 | 0.985 | 0.908 | 0.015 |
 
-**Recall is now 0.95–1.00 across every room.** The earlier version of this model
+**Recall is now 0.89–1.00 across every room.** The earlier version of this model
 had a 100 % false-negative rate on `f1/lab-a`; that has been corrected, and §4
 explains how (the cause was mode starvation in the training data, not room
 identity).
 
 **The remaining disparity is in precision and ranking quality, not detection.**
-`f2/lab-c` is the weakest room on every measure — PR-AUC 0.679 against 0.98–0.99
-elsewhere, and precision 0.46, meaning more than half its alerts are false. It is
+`f2/lab-c` is the weakest room on every measure — PR-AUC 0.633 against 0.98–0.99
+elsewhere, precision 0.45, and a 10.9 % false-negative rate against near-zero
+elsewhere. It is
 the heat-dissipation room, and HDF remains the hardest mode to rank even now that
 there is enough data to detect it.
 
@@ -192,8 +192,9 @@ the assignment of weakness to consequence is not something this model controls.
 3. Room identity is excluded from the features by construction (§6), so the
    model cannot learn a per-room prior.
 
-**Still outstanding:** at `f2/lab-c`'s precision of 0.46, roughly half of that
-room's work orders will be unnecessary. Whether that is acceptable is a dispatch-
+**Still outstanding:** at `f2/lab-c`'s precision of 0.45, roughly half of that
+room's work orders will be unnecessary, and it also misses about one failure in
+nine. Whether that is acceptable is a dispatch-
 cost question, and the threshold should be re-derived against real callout costs
 before this room's alerts are acted on automatically.
 
@@ -261,19 +262,18 @@ section exists to prevent.
 1. **Trained on simulated data.** Requires recalibration on ≥ 3 months of real
    telemetry before any output is trusted. This remains the largest limitation
    by a wide margin.
-2. **Degrades badly on unseen equipment** — PR-AUC 0.26 against 0.96 on units it
-   has seen (recall holds up better, 0.91). A newly commissioned unit should not
+2. **Degrades badly on unseen equipment** — PR-AUC 0.20 against 0.95 on units it
+   has seen (recall holds up better, 0.87). A newly commissioned unit should not
    be trusted to the same degree until it has contributed its own history. **This
    is now the most serious technical limitation.**
-3. **Heat dissipation is still the hardest mode.** `f2/lab-c` scores PR-AUC 0.679
-   and precision 0.462 — about half its alerts are false.
+3. **Heat dissipation is still the hardest mode.** `f2/lab-c` scores PR-AUC 0.633,
+   precision 0.451, and misses about one failure in nine.
 4. **Schedule-dependent.** `hour_cos` is the *second* most important feature
-   (importance 0.176). The model has partly learned when this building is busy,
+   (importance 0.141). The model has partly learned when this building is busy,
    and that will not transfer to a site on a different timetable.
 5. **Cannot extrapolate to unseen maintenance regimes** — a never-serviced unit
    runs beyond the training range of `runtime_hours`.
-6. **RUL is coarser than before**: MAE 20.3 h against a 33.2 h baseline, down
-   from 14.6 h. Five failure modes with different time courses are harder to
+6. **RUL is coarse**: MAE 20.0 h against a 36.9 h baseline. Five failure modes with different time courses are harder to
    regress onto a single remaining-life number than three were.
 7. **Cost figures are assumptions**, not measurements. The threshold, and the
    ROI case built on it, move if the real ratio differs.

@@ -40,7 +40,7 @@ SAMPLE_INTERVAL_S = 300.0
 FACTOR_FOR_FAULT = {
     "hdf": "motor_temp",
     "osf": "runtime_hours",
-    "pwf": "power_draw_w",
+    "pwf": "load_drift",
     "airflow": "filter_clog",
     "bearing": "vibration_mm_s",
 }
@@ -48,6 +48,7 @@ FACTOR_FOR_FAULT = {
 PLAIN_LANGUAGE = {
     "motor_temp": "fan motor running hot",
     "runtime_hours": "running hours past the rated service interval",
+    "load_drift": "drawing more power than the duty cycle warrants",
     "power_draw_w": "drawing more power than the duty cycle warrants",
     "filter_clog": "airflow restricted by a loaded filter",
     "vibration_mm_s": "bearing vibration rising",

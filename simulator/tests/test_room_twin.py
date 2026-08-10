@@ -274,6 +274,62 @@ def test_maintenance_command_clears_filter_clog(twins):
     assert lab.health.bearing_wear == 0.5
 
 
+def test_electrical_service_clears_load_drift(twins):
+    lab = twins["f2/meeting-room"]
+    lab.health = lab.health.__class__(load_drift=0.8, filter_clog=0.4)
+    lab.handle_command(cmd(lab, CMD_MAINTENANCE), b'{"action": "electrical_service"}')
+    assert lab.health.load_drift == 0.0
+    assert lab.health.filter_clog == 0.4      # a different fault, untouched
+
+
+def test_thermal_derate_caps_duty_without_stopping_cooling(twins):
+    """The one remedy that reduces cooling. It must never reach zero — the
+    room keeps cooling at the floor while the winding recovers."""
+    from room_twin import DERATE_FLOOR
+    lab = twins["f2/lab-c"]
+    lab.state = lab.state.__class__(temperature=34.0, humidity=45.0,
+                                    occupancy=20, hvac_on=True, mode="auto",
+                                    setpoint=22.0)
+    lab.health = lab.health.__class__(motor_temp=84.0,
+                                      base_rpm=lab.health.base_rpm,
+                                      rated_power_w=lab.health.rated_power_w)
+    lab.handle_command(cmd(lab, CMD_MAINTENANCE), b'{"action": "thermal_derate"}')
+    for _ in range(30):
+        lab.tick(dt=1.0)
+    assert 0.0 < lab.state.ac_power_pct <= DERATE_FLOOR + 1e-9
+    assert lab.state.hvac_on is True, "derate must not switch the unit off"
+
+
+def test_thermal_derate_releases_itself_once_the_motor_cools(twins):
+    from room_twin import DERATE_CLEAR_C
+    lab = twins["f2/lab-c"]
+    lab.state = lab.state.__class__(temperature=26.0, humidity=45.0,
+                                    occupancy=5, hvac_on=True, mode="auto")
+    lab.health = lab.health.__class__(motor_temp=DERATE_CLEAR_C - 5,
+                                      base_rpm=lab.health.base_rpm,
+                                      rated_power_w=lab.health.rated_power_w)
+    lab.handle_command(cmd(lab, CMD_MAINTENANCE), b'{"action": "thermal_derate"}')
+    lab.tick(dt=1.0)
+    assert lab.derate_remaining_s == 0.0, "derate did not self-clear"
+
+
+def test_occupant_notice_is_posted_and_clearable(twins):
+    """The system informs occupants. It never evacuates anyone."""
+    lab = twins["f1/server-room"]
+    lab.handle_command(cmd(lab, CMD_MAINTENANCE), b'{"action": "post_room_notice"}')
+    assert lab.notice is not None
+    assert lab.status_payload()["notice"]["level"] == "warning"
+    lab.handle_command(cmd(lab, CMD_MAINTENANCE), b'{"action": "clear_room_notice"}')
+    assert lab.notice is None
+
+
+def test_a_notice_does_not_change_control(twins):
+    lab = twins["f1/lab-b"]
+    before = lab.state
+    lab.handle_command(cmd(lab, CMD_MAINTENANCE), b'{"action": "post_room_notice"}')
+    assert lab.state == before, "posting a notice altered room control"
+
+
 def test_maintenance_command_is_idempotent(twins):
     lab = twins["f1/lab-a"]
     lab.health = lab.health.__class__(filter_clog=0.9)

@@ -81,7 +81,7 @@ def test_deck_states_the_negative_npv(text):
     """The business case is negative at six units. A pitch that hides that is
     the exact failure this test exists to prevent."""
     assert "does not pay for itself" in text
-    assert "−€4,622" in text or "-€4,622" in text
+    assert "−€5,021" in text or "-€5,021" in text
 
 
 def test_deck_admits_the_data_is_simulated(text):
@@ -115,7 +115,7 @@ def test_metrics_match_the_trained_model(text):
 
 def test_roi_figures_match_the_roadmap(text):
     roadmap = Path("docs/roi_roadmap.md").read_text(encoding="utf-8")
-    for figure in ("17,000", "2,900", "5.5"):
+    for figure in ("17,000", "2,900", "5.7"):
         assert figure in text, f"{figure} missing from the deck"
         assert figure in roadmap, f"{figure} missing from the roadmap"
 

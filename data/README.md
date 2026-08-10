@@ -124,18 +124,18 @@ docker compose run --rm sim python simulator/dataset_generator.py \
 | Simulated span | 365 days from 2026-01-01 UTC |
 | Sampling | one row per room per 5 simulated minutes |
 | Physics timestep | 15 s |
-| **Failure events** | **391** |
-| Positive rate, 4 h horizon | **2.978 %** (primary target) |
-| Positive rate, 30 min horizon | 0.374 % |
+| **Failure events** | **339** |
+| Positive rate, 4 h horizon | **2.583 %** (primary target) |
+| Positive rate, 30 min horizon | 0.325 % |
 
 | Room | Wear character | Dominant fault | Failures | Planned services | 4 h positives |
 |---|---|---|---|---|---|
-| `f1/lab-a` | Heavy dust load | **airflow** | 73 | 95 | 3506 |
-| `f1/lab-b` | Tired bearings | **bearing** | 37 | 61 | 1778 |
-| `f1/server-room` | Runs 24/7 | **overstrain** | 92 | 144 | 4418 |
-| `f2/lab-c` | Poorly ventilated | **heat dissipation** | 57 | 46 | 2737 |
-| `f2/meeting-room` | Undersized, straining | **power** | 95 | 0 | 4561 |
-| `f2/office` | Ordinary | mixed | 37 | 32 | 1780 |
+| `f1/lab-a` | Heavy dust load | **airflow** | 73 | 108 | 3507 |
+| `f1/lab-b` | Tired bearings | **bearing** | 37 | 71 | 1777 |
+| `f1/server-room` | Runs 24/7 | **overstrain** | 90 | 160 | 4324 |
+| `f2/lab-c` | Poorly ventilated | **heat dissipation** | 58 | 54 | 2789 |
+| `f2/meeting-room` | Undersized, high load drift | **power** | 34 | 0 | 1636 |
+| `f2/office` | Ordinary | mixed | 47 | 38 | 2256 |
 
 ### Each unit has its own wear character
 
@@ -148,7 +148,7 @@ overstrain accounted for ~90 % of positives and the rarest mode had **two**
 training examples. The model was consequently blind to heat-dissipation failure
 (recall 0.000) and had a 100 % false-negative rate on `f1/lab-a`. Distinct wear
 characters supply hundreds of examples of all five modes, and both problems
-disappeared — HDF recall 0.950, and every room 0.95–1.00. See
+disappeared — HDF recall 0.928, and every room 0.89–1.00. See
 `ml/models/model_card.md` §4.
 
 Note that maintenance discipline is now only one of two drivers. `f1/lab-a` is
@@ -163,7 +163,7 @@ degradation segment are heavily autocorrelated, so that was a 53-sample problem
 wearing a 155k-row costume. A temporal split would have left ~15 events to test
 on, far too few for a stable PR-AUC.
 
-A full year gives 391 events (~120 in a held-out final third). It also fixed a
+A full year gives 339 events (~120 in a held-out final third). It also fixed a
 subtler problem: at 90 days `f1/lab-a` recorded **zero** failures, so its
 per-room recall was undefined. No room is immortal; the short window simply had
 not observed it yet.

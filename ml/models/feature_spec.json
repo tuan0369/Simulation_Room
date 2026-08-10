@@ -15,6 +15,7 @@
     "power_draw_w",
     "runtime_hours",
     "torque_nm",
+    "load_drift",
     "hour_sin",
     "hour_cos",
     "motor_temp_mean_30m",
@@ -23,6 +24,12 @@
     "motor_temp_slope_2h",
     "motor_temp_mean_6h",
     "motor_temp_slope_6h",
+    "load_drift_mean_30m",
+    "load_drift_slope_30m",
+    "load_drift_mean_2h",
+    "load_drift_slope_2h",
+    "load_drift_mean_6h",
+    "load_drift_slope_6h",
     "motor_room_delta_mean_30m",
     "motor_room_delta_slope_30m",
     "motor_room_delta_mean_2h",
@@ -64,7 +71,7 @@
   ],
   "target": "label_failure_within_4h",
   "model": "gradient_boosting",
-  "decision_threshold": 0.026362,
+  "decision_threshold": 0.015266,
   "threshold_rationale": "minimises expected cost with FN=2000.0 and FP=150.0 per event",
   "trained_on": "data/building_telemetry.csv",
   "train_days": [
@@ -85,58 +92,58 @@
   "recall_by_fault_mode": [
     {
       "fault": "hdf",
-      "positives": 816,
-      "recall_model": 0.9498,
-      "recall_hybrid": 0.9914,
-      "mean_model_score": 0.6195,
+      "positives": 720,
+      "recall_model": 0.9278,
+      "recall_hybrid": 0.9431,
+      "mean_model_score": 0.7927,
       "note": ""
     },
     {
       "fault": "osf",
-      "positives": 1393,
-      "recall_model": 1.0,
-      "recall_hybrid": 1.0,
-      "mean_model_score": 0.9568,
+      "positives": 1394,
+      "recall_model": 0.9735,
+      "recall_hybrid": 0.9735,
+      "mean_model_score": 0.9494,
       "note": ""
     },
     {
       "fault": "pwf",
-      "positives": 1392,
-      "recall_model": 0.9993,
-      "recall_hybrid": 0.9993,
-      "mean_model_score": 0.9899,
+      "positives": 480,
+      "recall_model": 0.9854,
+      "recall_hybrid": 0.9854,
+      "mean_model_score": 0.9636,
       "note": ""
     },
     {
       "fault": "airflow",
-      "positives": 1057,
-      "recall_model": 0.9924,
-      "recall_hybrid": 0.9924,
-      "mean_model_score": 0.9519,
+      "positives": 1039,
+      "recall_model": 0.9942,
+      "recall_hybrid": 0.9942,
+      "mean_model_score": 0.936,
       "note": ""
     },
     {
       "fault": "bearing",
-      "positives": 568,
-      "recall_model": 0.9982,
-      "recall_hybrid": 0.9982,
-      "mean_model_score": 0.9748,
+      "positives": 576,
+      "recall_model": 0.9844,
+      "recall_hybrid": 0.9844,
+      "mean_model_score": 0.9499,
       "note": ""
     }
   ],
   "metrics": {
-    "pr_auc": 0.9636,
-    "roc_auc": 0.9979,
-    "recall": 0.9902,
-    "precision": 0.713,
-    "unseen_room_recall": 0.9074,
-    "unseen_room_pr_auc": 0.2567
+    "pr_auc": 0.9532,
+    "roc_auc": 0.9986,
+    "recall": 0.9736,
+    "precision": 0.7338,
+    "unseen_room_recall": 0.8735,
+    "unseen_room_pr_auc": 0.2041
   },
   "rul": {
-    "mae_hours": 20.334,
-    "r2": 0.5375,
-    "n_train": 342439,
-    "n_test": 144925,
-    "baseline_mae_hours": 33.157
+    "mae_hours": 20.01,
+    "r2": 0.6317,
+    "n_train": 319063,
+    "n_test": 132599,
+    "baseline_mae_hours": 36.912
   }
 }

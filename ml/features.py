@@ -42,11 +42,13 @@ BASE_FEATURES = [
     "power_draw_w",
     "runtime_hours",
     "torque_nm",
+    "load_drift",
 ]
 
 # Signals whose trend matters more than their level — degradation is a slope.
 ROLLING_SIGNALS = [
     "motor_temp",
+    "load_drift",
     "motor_room_delta",
     "vibration_mm_s",
     "filter_clog",

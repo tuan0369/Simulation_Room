@@ -78,9 +78,9 @@ Every risk message carries the evidence for its own claim:
   freshly-serviced unit is scored from a short window, and a consumer can tell.
 
 The dashboard's maintenance page states the model's limitations **in the UI**,
-not only in the model card: that it is blind to heat-dissipation failure alone,
-that Wet Lab A is inadequately covered, that it is trained on simulated data, and
-that it never switches anything off.
+not only in the model card: that Teaching Lab C is the weakest room, that the
+model degrades on unseen equipment, that it is trained on simulated data, and
+what it may and may not do without approval.
 
 Full detail, including the decision-threshold rationale:
 [`ml/models/model_card.md`](../ml/models/model_card.md).
@@ -93,11 +93,11 @@ A full audit is in the model card §5.
 
 | Room | Dominant fault | Positive rate | PR-AUC | Recall | Precision |
 |---|---|---|---|---|---|
-| `f1/lab-a` | airflow | 3.34 % | 0.980 | 0.992 | 0.700 |
-| `f1/lab-b` | bearing | 1.79 % | 0.995 | 0.998 | 0.836 |
-| `f1/server-room` | overstrain | 4.25 % | 0.978 | 1.000 | 0.849 |
-| `f2/lab-c` | heat dissipation | 2.73 % | **0.679** | 0.953 | **0.462** |
-| `f2/meeting-room` | power | 4.39 % | 0.995 | 0.999 | 0.812 |
+| `f1/lab-a` | airflow | 3.28 % | 0.988 | 0.994 | 0.823 |
+| `f1/lab-b` | bearing | 1.82 % | 0.977 | 0.984 | 0.739 |
+| `f1/server-room` | overstrain | 4.09 % | 0.985 | 1.000 | 0.910 |
+| `f2/lab-c` | heat dissipation | 2.58 % | **0.633** | **0.891** | **0.451** |
+| `f2/meeting-room` | power | 1.52 % | 0.996 | 0.985 | 0.908 |
 
 ### A correction we are documenting rather than quietly deleting
 
@@ -115,7 +115,7 @@ The real cause was **mode starvation**: all six units had been modelled with
 identical wear characteristics, so one failure mode accounted for ~90 % of
 positives and the rarest had about two training examples. Giving each unit a
 distinct wear character — as real buildings have — supplied hundreds of examples
-of every mode, and recall on the affected room went from 0.000 to 0.992.
+of every mode, and recall on the affected room went from 0.000 to 0.994.
 
 **The generalisable point: a model blind to a subgroup is usually being starved
 of it, not badly tuned.** Reaching for a fairness-specific fix before checking
@@ -123,9 +123,10 @@ the data distribution would have papered over it.
 
 ### What disparity remains
 
-Detection is now even (recall 0.95–1.00 everywhere). The remaining gap is in
-**precision and ranking quality**: `f2/lab-c` scores PR-AUC 0.679 and precision
-0.462, so roughly half its work orders are unnecessary.
+Detection is now broadly even (recall 0.89–1.00). The remaining gap is
+concentrated in one room: `f2/lab-c` scores PR-AUC 0.633 and precision 0.451, so
+roughly half its work orders are unnecessary, and it misses about one failure in
+nine — an order of magnitude worse than anywhere else.
 
 That room is a teaching lab, where a missed or spurious alert is disruptive
 rather than dangerous. **That is fortunate, not designed** — nothing in the
@@ -138,7 +139,7 @@ repeat the audit after every retraining, not a reason to relax.
 - At `f2/lab-c`'s precision, alert fatigue is a real risk. The decision threshold
   should be re-derived against real dispatch costs before that room's alerts are
   acted on automatically.
-- Generalisation to unseen equipment is weak (PR-AUC 0.26). A newly commissioned
+- Generalisation to unseen equipment is weak (PR-AUC 0.20). A newly commissioned
   unit is not adequately covered until it has contributed its own history.
 
 We do not claim to have solved fairness. We claim to have measured it, found a
@@ -178,7 +179,35 @@ bound is enforced by the *room*, not by the supervisor that sent the advice
 never colder, so load shedding cannot be inverted into a demand spike. Critical
 loads are exempt from shedding entirely.
 
-**3. Autonomous preventive maintenance — opt-in, OFF by default.**
+**3. Remediation — one action per failure mode.**
+
+The system used to predict five faults but could only fix two, which left three
+predictions with nothing anyone could do about them. Each mode now has a remedy,
+and they are not equally consequential:
+
+| Fault | Remedy | What it does | Reduces cooling? |
+|---|---|---|---|
+| Airflow | `replace_filter` | Clears the filter | No |
+| Bearing | `service_motor` | New bearings; resets running hours | No |
+| Overstrain | `service_motor` + `post_room_notice` | Overhaul, and warn occupants | No |
+| Power | `electrical_service` | Re-terminate, rebalance, clear load drift | No |
+| Heat dissipation | `thermal_derate` | Caps fan duty at 50 % so the winding cools | **Yes — bounded** |
+
+Two need explicit justification.
+
+**`thermal_derate` is the only remedy that reduces cooling**, and it is bounded
+so that it cannot become a shutdown by degrees: duty is capped at 50 %, never
+zero; the cap releases itself once the winding drops below 68 °C, and expires
+after an hour regardless. This is what a thermal overload relay does on any real
+motor. Easing a motor off to stop it burning out is a different act from
+switching cooling off, and the bounds are what keep it different.
+
+**`post_room_notice` informs; it never evacuates.** An overstrained unit posts a
+warning that occupants can read and act on. The system has no authority to clear
+a room, and adding one would be a materially different governance question from
+anything in this document.
+
+**4. Autonomous preventive maintenance — opt-in, OFF by default.**
 
 The system can be configured to dispatch servicing without waiting for approval.
 This is a deliberate, bounded delegation, not an erosion of the rule above:

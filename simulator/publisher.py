@@ -158,7 +158,7 @@ class Simulator:
                             make_payload(sensor, value, unit), retain=True)
 
     def publish_health(self, twin: RoomTwin):
-        payload = twin.telemetry() | {
+        payload = twin.telemetry() | twin.status_payload() | {
             "timestamp": utc_now_iso(),
             "failure_flags": twin.failure_flags(),
         }

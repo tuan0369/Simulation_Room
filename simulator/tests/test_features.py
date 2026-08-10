@@ -172,6 +172,7 @@ def test_slope_features_detect_a_rising_trend():
         "power_draw_w": [280.0] * n,
         "runtime_hours": [float(i) for i in range(n)],
         "torque_nm": [1.8] * n,
+        "load_drift": [0.01 * i for i in range(n)],
     })
     matrix = feature_matrix(frame)
     assert matrix["motor_temp_slope_30m"].iloc[-1] > 0

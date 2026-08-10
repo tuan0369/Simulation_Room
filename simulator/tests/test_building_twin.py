@@ -7,7 +7,7 @@ scores into maintenance work orders. It advises; it never actuates.
 import pytest
 
 from building import load_building
-from building_twin import BuildingTwin
+from building_twin import ACTION_FOR_FACTOR, BuildingTwin
 from floor_twin import FloorTwin
 from room_twin import RoomTwin
 
@@ -162,7 +162,33 @@ def test_thermal_guard_raises_a_work_order_on_its_own(coordinator):
                                            "thermal_guard": 0.8,
                                            "top_factor": "motor_temp"}})
     assert len(orders) == 1
-    assert orders[0]["action"] == "service_motor"
+    # An overheating winding calls for a thermal derate, not a strip-down.
+    assert orders[0]["action"] == "thermal_derate"
+
+
+def test_every_failure_mode_has_a_remedy():
+    """The system predicted five faults but could only fix two, so three had no
+    action anyone could take. Every mode must map to something."""
+    from hvac_health import REMEDY_FOR_FAULT
+    from ml_inference import FACTOR_FOR_FAULT
+    for fault in ("hdf", "osf", "pwf", "airflow", "bearing"):
+        assert fault in REMEDY_FOR_FAULT, f"{fault} has no remedy"
+        factor = FACTOR_FOR_FAULT[fault]
+        assert factor in ACTION_FOR_FACTOR, f"{factor} maps to no action"
+        assert ACTION_FOR_FACTOR[factor] != "inspect", (
+            f"{fault} falls through to a manual inspection")
+
+
+def test_remedies_agree_between_the_two_mappings():
+    """hvac_health.REMEDY_FOR_FAULT and the factor->action table must not
+    disagree about how a fault is fixed."""
+    from hvac_health import REMEDY_FOR_FAULT
+    from ml_inference import FACTOR_FOR_FAULT
+    for fault, remedy in REMEDY_FOR_FAULT.items():
+        via_factor = ACTION_FOR_FACTOR[FACTOR_FOR_FAULT[fault]]
+        assert via_factor == remedy, (
+            f"{fault}: REMEDY_FOR_FAULT says {remedy}, factor table says "
+            f"{via_factor}")
 
 
 def test_auto_fix_is_off_by_default(coordinator):
