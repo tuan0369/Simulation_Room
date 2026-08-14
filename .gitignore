@@ -5,3 +5,4 @@ venv/
 .pytest_cache/
 mosquitto/data/
 mosquitto/log/
+.claude/worktrees/

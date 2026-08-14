@@ -3,7 +3,7 @@ name = "smart-lab-digital-twin"
 version = "0.1.0"
 description = "A real-time laboratory room Digital Twin with PID HVAC automation"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "streamlit>=1.37.0",
     "paho-mqtt>=2.0.0,<3.0.0",

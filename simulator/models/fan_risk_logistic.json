@@ -1,0 +1,39 @@
+{
+  "artifact_type": "standardized_logistic_regression",
+  "coefficients": [
+    0.52486318,
+    0.32268269,
+    0.72890271,
+    0.65599373,
+    0.39002046
+  ],
+  "description": "Synthetic-data fan failure risk model. It estimates simulated failure risk, not real-world equipment failure probability.",
+  "feature_names": [
+    "filter_clog_pct",
+    "fan_speed_pct",
+    "vibration_mm_s",
+    "bearing_temp_c",
+    "run_hours"
+  ],
+  "generator_seed": 20260805,
+  "high_threshold": 0.65,
+  "holdout_rows": 480,
+  "intercept": -1.45350261,
+  "means": [
+    0.48097131,
+    0.54311963,
+    2.39246047,
+    54.29740422,
+    4392.58951949
+  ],
+  "medium_threshold": 0.35,
+  "model_version": "fan-risk-logistic-v1",
+  "scales": [
+    0.27703595,
+    0.26961559,
+    0.79832257,
+    7.94594929,
+    2595.06254848
+  ],
+  "training_rows": 1920
+}

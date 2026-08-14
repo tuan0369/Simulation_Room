@@ -19,12 +19,13 @@
 </head>
 <body>
 <div id="hud">
-  <div class="hud-title">🏢 Smart Lab Digital Twin — 3D View</div>
+  <div class="hud-title">🏢 Smart Lab Ecosystem — <span id="room-label">Room 1</span></div>
   <div class="hud-stat"><span>Room Temp:</span> <span class="hud-val" id="val-temp">--°C</span></div>
   <div class="hud-stat"><span>Occupants:</span> <span class="hud-val" id="val-occ">0</span></div>
   <div class="hud-stat"><span>AC State:</span> <span class="hud-val" id="val-hvac">OFF</span></div>
   <div class="hud-stat"><span>AC Power:</span> <span class="hud-val" id="val-power">0%</span></div>
   <div class="hud-stat"><span>Setpoint:</span> <span class="hud-val" id="val-sp">--°C</span></div>
+  <div class="hud-stat"><span>Airflow Grant:</span> <span class="hud-val" id="val-allocation">--</span></div>
 </div>
 
 <script src="vendor/mqtt.min.js"></script>
@@ -318,14 +319,21 @@ function syncPeopleCount(targetCount) {
 
 // ─── 6. MQTT & Telemetry Handling ────────────────────────────
 let temp = 24.0, hvacOn = false, acPowerPct = 0.0, setpoint = 25.0;
+const validRooms = new Set(['room1', 'room2']);
+const requestedRoom = new URLSearchParams(window.location.search).get('room');
+const roomId = validRooms.has(requestedRoom) ? requestedRoom : 'room1';
+const roomBase = `twin/${roomId}`;
+document.getElementById('room-label').innerText = roomId === 'room2' ? 'Room 2' : 'Room 1';
 
+document.title = `Smart Lab Ecosystem — ${roomId === 'room2' ? 'Room 2' : 'Room 1'}`;
 const client = mqtt.connect('ws://localhost:9001');
 client.on('connect', () => {
   client.subscribe([
-    'twin/room1/temperature',
-    'twin/room1/occupancy',
-    'twin/room1/hvac/state',
-    'twin/room1/ac/detail'
+    `${roomBase}/temperature`,
+    `${roomBase}/occupancy`,
+    `${roomBase}/hvac/state`,
+    `${roomBase}/hvac/allocation`,
+    `${roomBase}/ac/detail`
   ]);
 });
 
@@ -344,6 +352,11 @@ client.on('message', (topic, payload) => {
       acPowerPct = d.ac_power_pct || 0;
       document.getElementById('val-hvac').innerText = hvacOn ? '🟢 ON' : '⚪ OFF';
       document.getElementById('val-power').innerText = `${Math.round(acPowerPct * 100)}%`;
+    } else if (topic.endsWith('/hvac/allocation')) {
+      const requested = Number(d.requested_airflow_m3_s || 0);
+      const granted = Number(d.granted_airflow_m3_s || 0);
+      const ratio = requested > 0 ? granted / requested : 1;
+      document.getElementById('val-allocation').innerText = `${Math.round(ratio * 100)}% (${granted.toFixed(3)} m³/s)`;
     } else if (topic.endsWith('/ac/detail')) {
       acPowerPct = d.ac_power_pct || 0;
       setpoint = d.setpoint || 25;
