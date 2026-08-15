@@ -24,3 +24,8 @@ mosquitto/log/
 *.out
 *.synctex.gz
 *.toc
+node_modules/
+~$*.pptx
+~$*.docx
+.DS_Store
+

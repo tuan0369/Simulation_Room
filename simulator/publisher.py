@@ -1,9 +1,11 @@
 """MQTT publisher for the two-room intelligent HVAC ecosystem.
 
 The legacy Room 1 topics are preserved so the original dashboard and 3D room
-view continue to work. Room 2, the shared AHU, fan health, energy, and
-coordinator topics extend that contract without replacing it.
+view continue to work. Room 2, the shared AHU, fan health, energy, coordinator,
+predictive intelligence, and knowledge-base topics extend that contract without replacing it.
 """
+from __future__ import annotations
+
 import hashlib
 import json
 import os
@@ -13,7 +15,7 @@ import sys
 import threading
 import time
 import uuid
-from dataclasses import replace
+from dataclasses import asdict, replace
 from datetime import datetime, timezone
 
 import paho.mqtt.client as mqtt
@@ -64,6 +66,10 @@ SIMULATION_COMMAND_TOPIC = "twin/ecosystem/cmd/simulation"
 COMMAND_RESULT_TOPIC = "twin/ecosystem/command/result"
 SCENARIO_STATE_TOPIC = "twin/ecosystem/scenario/state"
 PRESENTATION_STATE_TOPIC = "twin/ecosystem/presentation/state"
+INTELLIGENCE_DEMAND_TOPIC = "twin/ecosystem/intelligence/demand"
+INTELLIGENCE_ACTIONS_TOPIC = "twin/ecosystem/intelligence/actions"
+KNOWLEDGE_STATE_TOPIC = "twin/ecosystem/knowledge/state"
+
 ESTIMATED_TARIFF_SGD_PER_KWH = 0.30
 
 INTERVALS = {"temperature": 3, "humidity": 5, "occupancy": 2}
@@ -178,73 +184,51 @@ class Simulator:
                 if stress
                 else "Canonical two-room baseline restored; guided degradation is not active."
             ),
-            "error": None,
         }
 
-    def on_connect(self, client, userdata, flags, reason_code, properties):
-        room_commands = [(f"{room_base(room_id)}/cmd/+", 0) for room_id in ROOM_IDS]
-        client.subscribe(
-            room_commands
-            + [
-                (f"{AHU_BASE}/cmd/+", 0),
-                (SCENARIO_COMMAND_TOPIC, 0),
-                (SIMULATION_COMMAND_TOPIC, 0),
-            ]
-        )
+    def on_connect(self, client, userdata, flags, reason_code, properties=None):
+        print(f"MQTT connected: {reason_code}")
         client.publish(ECOSYSTEM_STATUS_TOPIC, "online", retain=True)
         for room_id in ROOM_IDS:
             client.publish(f"{room_base(room_id)}/status", "online", retain=True)
-        self._force_publish.set()
-        print("connected, subscribed to room and shared-AHU command topics")
+        subscriptions = [
+            (f"{room_base(room_id)}/cmd/+", 0)
+            for room_id in ROOM_IDS
+        ]
+        subscriptions.extend([
+            (f"{AHU_BASE}/cmd/+", 0),
+            (SCENARIO_COMMAND_TOPIC, 0),
+            (SIMULATION_COMMAND_TOPIC, 0),
+            ("twin/ecosystem/cmd/+", 0),
+        ])
+        client.subscribe(subscriptions)
 
     def on_message(self, client, userdata, msg):
-        """Queue non-retained commands so callback threads never mutate state."""
-        if bool(getattr(msg, "retain", False)):
-            envelope, rejection = decode_command_payload(msg.topic, msg.payload)
-            result = (
-                rejection
-                if rejection is not None
-                else rejected_outcome(
-                    msg.topic,
-                    "retained_command_rejected",
-                    command_id=envelope.command_id if envelope else None,
-                    source=envelope.source if envelope else "unknown",
-                )
-            )
-            payload = result.as_payload()
-            self._audit_command(msg.topic, msg.payload, payload, retained=True)
-            self._publish(COMMAND_RESULT_TOPIC, payload, retain=False)
+        if msg.retain:
+            outcome = rejected_outcome(msg.topic, "retained_command_rejected")
+            self._audit_command(msg.topic, msg.payload, outcome.as_payload(), retained=True)
+            self._publish(COMMAND_RESULT_TOPIC, outcome.as_payload(), retain=False)
             return
         try:
             self._commands.put_nowait((msg.topic, msg.payload))
         except queue.Full:
-            result = {
-                "accepted": False,
-                "changed": False,
-                "topic": msg.topic,
-                "reason": "command_queue_full",
-                "timestamp": utc_now_iso(),
-            }
-            self._audit_command(msg.topic, msg.payload, result, retained=False)
-            self._publish(COMMAND_RESULT_TOPIC, result, retain=False)
+            outcome = rejected_outcome(msg.topic, "queue_full")
+            self._audit_command(msg.topic, msg.payload, outcome.as_payload(), retained=False)
+            self._publish(COMMAND_RESULT_TOPIC, outcome.as_payload(), retain=False)
 
     @staticmethod
     def _request_fingerprint(topic: str, payload: bytes) -> str:
-        digest = hashlib.sha256()
-        digest.update(topic.encode("utf-8", errors="replace"))
-        digest.update(b"\0")
-        digest.update(payload)
-        return digest.hexdigest()
+        digest = hashlib.sha256(payload).hexdigest()
+        return f"{topic}:{digest}"
 
     def _audit_command(self, topic: str, payload: bytes, result: dict, *, retained: bool) -> None:
-        """Append sanitized command metadata and result, surfacing write failures."""
         if self.audit_journal is None:
             return
         envelope, _ = decode_command_payload(topic, payload)
         sanitized_request = {
             "topic": topic,
-            "command_id": envelope.command_id if envelope else result.get("command_id"),
-            "source": envelope.source if envelope else result.get("source", "unknown"),
+            "source": envelope.source if envelope else "unknown",
+            "command_id": envelope.command_id if envelope else None,
             "retained": retained,
             "payload_sha256": hashlib.sha256(payload).hexdigest(),
             "payload_bytes": len(payload),
@@ -460,6 +444,42 @@ class Simulator:
         payload = decision_payload(snapshot.coordination)
         payload["timestamp"] = timestamp
         self._publish(COORDINATOR_DECISION_TOPIC, payload)
+
+        # Predictive demand forecast stream
+        if snapshot.demand_forecast is not None:
+            df = snapshot.demand_forecast
+            self._publish(
+                INTELLIGENCE_DEMAND_TOPIC,
+                {
+                    "timestamp": df.timestamp,
+                    "total_required_airflow_m3_s": df.total_required_airflow_m3_s,
+                    "available_airflow_m3_s": df.available_airflow_m3_s,
+                    "capacity_shortfall_m3_s": df.capacity_shortfall_m3_s,
+                    "is_capacity_deficit_projected": df.is_capacity_deficit_projected,
+                    "rooms": {r_id: asdict(rf) for r_id, rf in df.rooms.items()},
+                },
+            )
+
+        # Recommended and automated actions stream
+        self._publish(
+            INTELLIGENCE_ACTIONS_TOPIC,
+            {
+                "timestamp": timestamp,
+                "auto_action_enabled": snapshot.auto_action_enabled,
+                "recommendations": [asdict(rec) for rec in snapshot.recommendations],
+            },
+        )
+
+        # Knowledge repository and active validation session stream
+        self._publish(
+            KNOWLEDGE_STATE_TOPIC,
+            {
+                "timestamp": timestamp,
+                "active_evaluation": snapshot.active_evaluation,
+                "entries": self.ecosystem.knowledge_repo.get_entries_payload(),
+                "auto_action_enabled": snapshot.auto_action_enabled,
+            },
+        )
 
     def _presentation_payload(self, snapshot, timestamp: str) -> dict:
         """Create one coherent retained payload for presentation clients."""

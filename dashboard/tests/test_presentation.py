@@ -208,3 +208,22 @@ def test_illustrative_roi_rejects_non_finite_or_non_numeric_inputs(invalid_value
             annual_support_cost_sgd=1_000,
             implementation_cost_sgd=invalid_value,
         )
+
+
+def test_demand_forecast_summary_and_policy_badge():
+    from ..presentation import demand_forecast_summary, policy_status_badge
+
+    status, headline, details = demand_forecast_summary({
+        "is_capacity_deficit_projected": True,
+        "total_required_airflow_m3_s": 0.28,
+        "available_airflow_m3_s": 0.15,
+        "capacity_shortfall_m3_s": 0.13,
+    })
+    assert status == "DEFICIT PROJECTED"
+    assert "0.280" in headline
+    assert "0.130" in details
+
+    assert "Candidate" in policy_status_badge("CANDIDATE_PENDING_CONFIRMATION")
+    assert "Approved" in policy_status_badge("HUMAN_APPROVED")
+    assert "Rejected" in policy_status_badge("HUMAN_REJECTED")
+

@@ -2,7 +2,7 @@
 \label{ch:results}
 
 \section{Evidence protocol}
-The figures were captured from the current Project~2 source during a local run on 14 August 2026. They are state evidence, not a substitute for a machine-readable experiment log. The stress state was created using validated individual room/AHU MQTT commands because the dashboard's guided scenario button publishes \code{twin/ecosystem/cmd/scenario}, to which the simulator does not subscribe. The dashboard also waits for scenario/result topics the simulator never publishes. Therefore, no claim is made that the button caused the captured state.
+The figures were captured from the then-current Project~2 source during a local run on 14 August 2026. They are state evidence, not a substitute for a machine-readable experiment log. The stress capture was created using validated individual room/AHU MQTT commands. The current implementation now supports correlated \code{twin/ecosystem/cmd/scenario} baseline/stress commands and retained scenario/application-result topics; this historical image is not retroactively evidence that the newer guided button caused the captured state.
 
 For a repeatable submission experiment, occupancy randomness should be seeded or disabled, $\Delta t$, initial state, command sequence, duration, artifact/model hashes, and raw MQTT decisions should be recorded. The expected invariants are $0\le g_i\le r_i$, $\sum g_i\le F^{avail}$, and deterministic priorities from the same snapshot.
 
@@ -18,7 +18,7 @@ E1 & Clean/default AHU; aggregate request no greater than available flow & All r
 E2 & Both rooms hot/occupied with aggregate request above capacity & Priority creates unequal grants while conserving capacity & deterministic ranking; grant sum within capacity\\
 E3 & Same demand, inject $c=0.85,w=0.75$ & Capacity falls; denied flow, comfort, fan telemetry, and risk change & $F^{avail}=0.0953175$ m$^3$/s and complete telemetry\\
 E4 & Equal demand/occupancy/error for both rooms & Stable room-ID tie is exposed & repeatable Room~1-first result; fairness limitation recorded\\
-E5 & Broker/model loss or malformed input & System rejects invalid commands and enters explicit degraded state & partially tested for command validation; degraded model state not implemented\\
+E5 & Model loss/OOD, malformed/retained/replayed command, or simulation stop & Reject unsafe command, explicitly abstain/unavailable, and freeze instantaneous actuation on stop & unit-tested; browser plus real-broker end-to-end evidence remains\\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -54,9 +54,9 @@ This provides existence and integration evidence: the loaded model consumes live
 \caption{Simultaneous room-specific Three.js views consuming retained topics. Visualization is useful evidence of distinct room state but is not itself evidence of intelligent allocation.}
 \label{fig:3d}
 \end{figure}
-The 3D client supports only \code{room1} and \code{room2}, hard-codes \code{ws://localhost:9001}, and lacks an explicit disconnected indicator. It is local demonstration evidence, not proof of remote or secure deployment.
+The 3D client supports only \code{room1} and \code{room2}. It derives a same-host WebSocket endpoint, accepts a validated \code{ws:}/\code{wss:} query override, and exposes connected, reconnecting, offline, and error state. This is configurable local demonstration behavior, not proof of authenticated or secure remote deployment.
 
 \section{Automated verification}
-The recorded project run reports 75 tests passing, covering AHU physics, coordination, ecosystem command routing, fan-health inference, synthetic reproducibility, legacy room physics/PID, MQTT payloads, and presentation helpers. The README's 54-test statement is stale. The run lacks an archived JUnit/coverage file tied to a commit; this report consequently treats 75 as recorded test evidence, not a signed release certificate.
+The final project run reports 145 tests passing, covering AHU thermal/electrical semantics, comfort-debt coordination, PID actuator feedback, ecosystem stop/scenarios, strict command validation, retained-command rejection, command-ID replay/conflict handling, optional integrated audit writes/failure visibility, model artifact/OOD/unavailable behavior, exact default-dataset/model/metric reproduction, MQTT payloads, dashboard telemetry/correlation, and presentation helpers. Raw console and JUnit evidence are archived under \code{release-evidence/project2/}; source state is disclosed as a pre-final-commit working tree and must be refreshed after commit.
 
-Gaps include browser-level Project~2 tests, guided-scenario end-to-end tests, real-broker integration, broker-loss recovery, calibration/OOD/model-corruption tests, production authentication/TLS/ACL tests, and proof that risk changes an autonomous action. The latter absence is expected because model action is intentionally advisory.
+A real local classroom-broker run additionally archived correlated accepted stress, pause, and baseline results; constrained grants; paused zero instantaneous values with unchanged cumulative energy; and fresh-subscriber retained recovery. Remaining gaps include browser-level automation, broker-loss recovery, field calibration and multivariate drift tests, deployed authentication/TLS/ACL tests, externally anchored comprehensive audit, and proof that risk changes an autonomous action. The latter absence is expected because model action is intentionally advisory.

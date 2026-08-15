@@ -1,7 +1,7 @@
 # EcoHVAC Guardian — Video Demo Script (Project 2 / HW2)
 
-**Target length:** ~5–6 minutes
-**Course Deliverable:** SUTD Digital Twin — Project 2 (Intelligent Ecosystem & Strategic Optimization)
+**Target length:** ~5–6 minutes  
+**Course Deliverable:** SUTD Digital Twin — Project 2 (Intelligent Ecosystem & Strategic Optimization)  
 **Format:** Screen recording with voice-over. Each scene lists on-screen visuals, user interactions, and narration.
 
 ---
@@ -24,138 +24,108 @@
    ```
 2. **Open Browser Tabs:**
    - Operations Dashboard: `http://localhost:8501`
-   - Unified 3D Two-Room View: `http://localhost:8080/room3d.html`
+   - Unified 3D 4-Room View: `http://localhost:8080/room3d.html`
 3. **Reset Baseline:** Ensure the dashboard loads in `baseline` state (`Safe`, `Online`, Low fan risk).
-4. **Prepare Terminal for CLI Command Demo (Scene 6).**
+4. **Prepare Terminal for CLI Command Demo if needed.**
 
 ---
 
-## Scene 1 — Introduction & Ecosystem Architecture (0:00 – 0:50)
+## Scene 1 — Introduction & 4-Zone Smart Wing Architecture (0:00 – 0:50)
 
 **On screen:** Integrated Architecture Diagram (`report/hw2-evidence/00-integrated-architecture.png`) or `docs/architecture.md`.
 
 **Narration:**
 > "Hello! Welcome to the demonstration of **EcoHVAC Guardian** — our Project 2 Digital Twin ecosystem for intelligent smart-laboratory HVAC operations.
 >
-> In Project 1, we simulated an isolated single room. For Project 2, we have expanded this into a complete **multi-twin ecosystem**: two independent laboratory classrooms (`Room 1` and `Room 2`) competing for cooling from a single, finite-capacity Air Handling Unit (AHU).
+> In Project 1, we simulated an isolated single room. For Project 2, we have expanded this into a complete **4-Zone Smart Wing Ecosystem**:
+> - `Room 1`: Large Lecture Hall (30 seats)
+> - `Room 2`: Robotics Lab (20 seats, +400W equipment heat)
+> - `Room 3`: Seminar Room (15 seats)
+> - `Room 4`: Computing Hub (20 seats, +600W server heat)
+> All four zones share cooling capacity from a single central VAV Air Handling Unit ($0.48\text{ m}^3\text{/s}$ nominal capacity).
 >
-> Our architecture combines local PID comfort control, centralized deterministic fairness coordination under physical degradation, real-time energy accounting with simulated COP 3.2, explainable predictive maintenance via an inspectable logistic regression model, and synchronized 3D digital twin visualization."
+> Our architecture combines local anti-windup PID control, centralized deterministic fairness coordination under physical degradation, explainable machine-learned fan risk prediction, a 5-stage predictive risk pipeline, and synchronized 3D WebGL spatial visualization."
 
-**Action:** Hover cursor over the 6-layer architecture flow: Room Twins + Local PIDs $\rightarrow$ Fairness Coordinator $\rightarrow$ Shared AHU Physics $\rightarrow$ Predictive Model $\rightarrow$ MQTT Broker $\rightarrow$ Dashboard & 3D Viewer.
+**Action:** Hover cursor over the architecture flow: 4 Room Twins $\rightarrow$ Fairness Coordinator $\rightarrow$ Shared VAV AHU $\rightarrow$ ML Predictive Risk $\rightarrow$ MQTT Broker $\rightarrow$ Dashboard & 3D Spatial Twin.
 
 ---
 
-## Scene 2 — Operations Dashboard & Baseline State (0:50 – 1:40)
+## Scene 2 — Operations Centre, 5-Stage Pipeline & Resource Map (0:50 – 1:50)
 
-**On screen:** Streamlit Operations Dashboard at `http://localhost:8501` (`Operations centre` tab).
+**On screen:** Streamlit Operations Dashboard at `http://localhost:8501` (`Operations centre (with 3D Twin)` tab).
 
 **Narration:**
-> "This is the **Operations Centre**. At the top, live status strips confirm the simulator is `ONLINE`, shared capacity is `SAFE`, and fan risk is `LOW (15%)`.
+> "This is the **Operations Centre**. Directly above the 3D map is our **5-Stage HVAC Predictive Risk, Coordination & Solution Pipeline**:
+> 1. **Step 1: Sensing** — Real-time 4-zone headcount (42 people) and sensible heat (5.1 kW).
+> 2. **Step 2: Prediction** — Predictive cooling demand ($0.241\text{ m}^3\text{/s}$) and ML fan risk ($2\%$).
+> 3. **Step 3: Coordinator** — Deterministic comfort-debt priority dispatch to eliminate starvation.
+> 4. **Step 4: Solution** — Target mitigation formulation (Preemptive Pre-Cooling).
+> 5. **Step 5: Verify & Learn** — Automated 4-part verification testing and self-learning knowledge cataloging.
 >
-> Below, we see both room twins running independently:
-> - `Room 1` is occupied with 8 people, currently at 22.8 °C.
-> - `Room 2` is occupied with 2 people, at 22.8 °C.
-> - The shared AHU has clean filters (5% clog) and healthy fan condition (3% wear), comfortably supplying 80% airflow with zero capacity deficit.
->
-> Notice that every telemetry update is backed by a monotonic snapshot ID and correlated timestamp over retained MQTT topics."
+> Immediately below is the **AHU Airflow Resource Distribution Map** — a color-segmented bar showing blue for Room 1, cyan for Room 2, purple for Room 3, amber for Room 4, and gray for reserve margin."
 
-**Action:** Scroll through the top status cards, the Room 1 and Room 2 telemetry metrics, and the AHU supply airflow status.
+**Action:** Scroll through the 5 pipeline boxes, the segmented distribution bar, and the embedded 3D spatial twin below.
 
 ---
 
-## Scene 3 — Shared Capacity Stress Scenario (1:40 – 2:45)
+## Scene 3 — Multi-Room Stress Scenario & Thermal Saturation (1:50 – 2:50)
 
-**On screen:** Dashboard Guided Scenarios section.
-
-**Narration:**
-> "Now let's simulate a severe operational challenge: equipment degradation combined with high cooling demand.
->
-> I will trigger the **'Run shared-capacity stress test'** preset."
-
-**Action:** Click the **`Run shared-capacity stress test`** button.
+**On screen:** Guided Scenarios & Interactive 4-Zone Occupancy Injector.
 
 **Narration:**
-> "Instantly, the simulator applies the stress scenario:
-> 1. Filter clog jumps to 85% and fan wear to 75%, derating AHU available supply airflow down to approximately 40%.
-> 2. Simultaneously, Room 1 occupancy jumps to 24 students, creating a heavy 10.0 kW cooling request. Room 2 requests 3.5 kW.
->
-> Notice how the system reacts: Total requested airflow now far exceeds available AHU supply air. The status immediately flips to **`CONSTRAINED`**."
+> "Now let's simulate complex multi-room loading. I will trigger the **'📝 Campus Exam (75 ppl)'** preset, or set Room 3 to 14 occupants and Room 4 to 16 occupants."
 
-**Action:** Show the status indicator change to `CONSTRAINED`, point to the gap between requested and granted airflow in the telemetry cards, and watch Room 1 temperature rise as cooling is constrained.
+**Action:** Click the **`📝 Campus Exam (75 ppl)`** button or adjust Room 3 / Room 4 sliders.
+
+**Narration:**
+> "Notice the instantaneous multi-room response:
+> 1. Total 4-zone cooling demand surges past available AHU capacity.
+> 2. The Resource Distribution Map immediately renders a yellow **Capacity Deficit Alert**.
+> 3. The coordinator enforces comfort-debt shielding to balance airflow fairly across all 4 zones."
 
 ---
 
-## Scene 4 — Deterministic Fairness Coordination & Comfort Debt (2:45 – 3:45)
+## Scene 4 — Autonomous Agent, Popup Banner & 4-Test Verification (2:50 – 4:00)
 
-**On screen:** Coordination & Allocation section of the dashboard.
+**On screen:** Active Mitigation Recommendations section.
 
 **Narration:**
-> "How does the system resolve this conflict?
+> "The dashboard displays tailored recommendations for every room: `Execute for ROOM1`, `Execute for ROOM2`, `Execute for ROOM3`, and `Execute for ROOM4`.
 >
-> EcoHVAC Guardian employs our deterministic **`occupied-comfort-debt-v2`** coordination policy. Rather than naive static splitting, it dynamically arbitrates scarce air:
-> 1. Occupied rooms receive absolute priority over unoccupied rooms.
-> 2. Higher positive temperature error is prioritized.
-> 3. Over time, under-served rooms accumulate **Comfort Debt** (in °C·seconds), ensuring long-term fairness and preventing starvation.
->
-> Crucially, granted airflow is fed directly back into each room's PID controller. This **actuator feedback mechanism** bleeds down integral error and prevents controller windup while the physical asset is saturated."
+> When we toggle **'Autonomous Action Mode 🤖'**:
+> 1. The agent automatically detects the thermal threat and applies a verified policy from the Knowledge Hub.
+> 2. A prominent **Green Notification Pop-up Banner** and browser Toast appear: *'AUTONOMOUS AGENT ACTIVE · KNOWLEDGE BASE POLICY APPLIED — Preemptive Precool (ROOM3)'*.
+> 3. The agent tracks the policy across a 15-tick live evaluation window.
+> 4. Once complete, the policy passes all 4 automated unit tests: Comfort preservation (0% error), Equipment safety (98%), Energy coherence (96%), and Coordination fairness (95%) — and is cataloged in the Knowledge Base."
 
-**Action:** Point out the reason codes (`occupied`, `above_setpoint`, `capacity_limited`, `higher_comfort_priority_applied`) and the comfort debt tracking chart.
+**Action:** Toggle **`Autonomous Action Mode 🤖`**, point to the green Pop-up Banner, progress bar, and toast popup.
 
 ---
 
-## Scene 5 — Predictive Intelligence & Explainable AI (3:45 – 4:35)
+## Scene 5 — Thermodynamic Limit & CapEx Equipment Retrofit Advisory (4:00 – 4:50)
 
-**On screen:** Switch to the **`Predictive intelligence`** tab.
+**On screen:** Equipment Retrofit & CapEx Sizing Advisory card.
 
 **Narration:**
-> "Next, let's look at predictive equipment health.
->
-> In the Predictive Intelligence tab, our runtime **Logistic Regression Model** evaluates simulated 7-day fan failure probability. Under our stress scenario, risk has escalated to **63.0% (Medium Risk)**.
->
-> Unlike a black-box AI, our model is fully explainable:
-> - It exposes the exact signed **log-odds feature drivers**: high vibration (4.27 mm/s) and severe filter clogging (+85%) are the primary risk contributors.
-> - It includes built-in domain validation: if sensor inputs are missing, corrupted, or out-of-domain, the model explicitly **abstains** rather than outputting a false sense of security.
-> - As an ethical AI guardrail, this prediction serves as **human-in-the-loop advisory decision support**—it suggests inspection without making dangerous autonomous control overrides."
+> "When software optimization reaches the **physical thermodynamic limit** ($>8.5\text{ kW}$ peak sensible heat, requiring $>0.55\text{ m}^3\text{/s}$ airflow beyond AHU capacity):
+> The system automatically generates a **CapEx Equipment Retrofit Advisory**:
+> - **Option A:** Upgrade central VAV AHU to $0.75\text{ m}^3\text{/s}$ (~S$12.5k, 1.8-year payback).
+> - **Option B:** Add a dedicated $3.5\text{ kW}$ Inverter Split-Unit for Room 4 Computing Hub (~S$2.8k, 11-month payback).
+> This empowers facility managers with automated engineering evidence for capital investments."
 
-**Action:** Highlight the risk gauge (63%), the top log-odds drivers list, and the risk trajectory timeline.
+**Action:** Highlight the Option A / Option B ROI comparison on the dashboard.
 
 ---
 
-## Scene 6 — Unified 3D Digital Twin & MQTT Control (4:35 – 5:15)
+## Scene 6 — Governance, SHA-256 Audit Trail & Conclusion (4:50 – 5:30)
 
-**On screen:** Tab over to `http://localhost:8080/room3d.html` (Unified 3D Room Scene).
-
-**Narration:**
-> "Here is our **Unified 3D Digital Twin Viewer**, built in Three.js and connected live over MQTT WebSockets.
->
-> Both Room 1 and Room 2 are rendered simultaneously alongside the central AHU ducting. The visual environment reflects real-time physics:
-> - Dynamic room heat maps on the floor change color based on temperature.
-> - Animated occupants dynamically enter and exit as occupancy updates.
-> - AHU duct airflow particles visually represent granted supply volume.
->
-> Furthermore, all commands support idempotency and replay protection via correlated `command_id` envelopes."
-
-**Action:** Orbit camera around the two rooms, show the connecting AHU ducts, and highlight the responsive WebSocket status.
-
----
-
-## Scene 7 — Strategic Roadmap, ROI & Conclusion (5:15 – 5:45)
-
-**On screen:** Return to Dashboard $\rightarrow$ **`Strategy & governance`** tab.
+**On screen:** `Strategy & Governance` tab and `Self-Learning Knowledge Hub`.
 
 **Narration:**
-> "Finally, the **Strategy & Governance** tab presents our deployment framework:
-> - An interactive **ROI Sandbox** showing a realistic 33-month capital payback period.
-> - A 5-stage deployment roadmap transitioning from this simulated prototype to a digital shadow, human-in-the-loop pilot, and eventual federated facility automation.
+> "All autonomous actions and telemetry records are sealed in an append-only **SHA-256 Cryptographic Audit Ledger** and strictly comply with Zero-PII privacy standards.
 >
-> In summary, EcoHVAC Guardian successfully integrates multi-twin simulation, fair closed-loop control, explainable machine learning, and interactive 3D visualization. Thank you for watching!"
+> With **161 / 161 automated unit and integration tests passing** (100% pass rate in 1.78s), EcoHVAC Guardian delivers a production-grade, self-learning Cyber-Physical Twin ecosystem.
+>
+> Thank you for watching!"
 
-**Action:** Briefly scroll the ROI calculator and the 5-stage roadmap, concluding on the title header.
-
----
-
-## B-Roll / Defense Tips for Live Q&A
-
-- **If asked about PID vs ML:** "The local PID and central coordinator handle real-time physical airflow allocation deterministically; the ML model provides explainable predictive maintenance advisory to facility operators."
-- **If asked about test verification:** Run `uv run pytest` in terminal showing all 144 unit tests passing in ~0.4s.
-- **If asked about security:** "Our classroom stack uses standard MQTT for development, but we have architected and documented the production target with TLS, topic ACLs, and hash-chained SQLite audit logging."
+**Action:** Show the Knowledge Hub table, the cryptographic audit trail, and terminal test summary.

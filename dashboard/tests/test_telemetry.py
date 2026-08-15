@@ -193,3 +193,28 @@ def test_new_store_can_preserve_distinct_sensor_history_limits():
     assert store["rooms"]["lab"]["temperature"].maxlen == 3
     assert store["rooms"]["lab"]["occupancy"].maxlen == 3
     assert store["rooms"]["lab"]["humidity"].maxlen == 2
+
+
+def test_apply_message_stores_intelligence_and_knowledge():
+    store = new_store(("lab",))
+    assert apply_message(
+        store,
+        "twin/ecosystem/intelligence/demand",
+        b'{"total_required_airflow_m3_s": 0.25, "is_capacity_deficit_projected": true}',
+    )
+    assert apply_message(
+        store,
+        "twin/ecosystem/intelligence/actions",
+        b'{"auto_action_enabled": true, "recommendations": [{"action_type": "PREEMPTIVE_PRECOOL"}]}',
+    )
+    assert apply_message(
+        store,
+        "twin/ecosystem/knowledge/state",
+        b'{"entries": [{"id": "KB-1", "status": "HUMAN_APPROVED"}]}',
+    )
+
+    snapshot = snapshot_store(store)
+    assert snapshot["demand_forecast"]["total_required_airflow_m3_s"] == 0.25
+    assert snapshot["actions"]["auto_action_enabled"] is True
+    assert snapshot["knowledge"]["entries"][0]["id"] == "KB-1"
+

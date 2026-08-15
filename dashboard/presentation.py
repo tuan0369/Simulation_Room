@@ -175,3 +175,34 @@ def allocation_explanation(decision: dict, room_labels: dict[str, str]) -> str:
     if limited:
         return f"Shared airflow is scarce: {', '.join(limited)} received less than requested."
     return "Shared capacity is constrained; the coordinator has distributed the currently available airflow."
+
+
+def demand_forecast_summary(forecast: dict) -> tuple[str, str, str]:
+    """Return headline badge, title, and detailed explanation for predictive demand."""
+    if not forecast:
+        return "WAITING", "Predictive demand model initializing…", "Awaiting sensor baseline."
+    is_deficit = bool(forecast.get("is_capacity_deficit_projected", False))
+    total_req = float(forecast.get("total_required_airflow_m3_s", 0.0))
+    avail = float(forecast.get("available_airflow_m3_s", 0.0))
+    shortfall = float(forecast.get("capacity_shortfall_m3_s", 0.0))
+    if is_deficit:
+        return (
+            "DEFICIT PROJECTED",
+            f"Predicted Demand ({total_req:.3f} m³/s) Exceeds AHU Supply ({avail:.3f} m³/s)",
+            f"AHU is {shortfall:.3f} m³/s short of total required thermal pull-down. Proactive prioritization active.",
+        )
+    return (
+        "DEMAND BALANCED",
+        f"AHU Capacity ({avail:.3f} m³/s) Sufficient for Projected Load ({total_req:.3f} m³/s)",
+        "Both zones projected to maintain comfort setpoints within allowable envelope.",
+    )
+
+
+def policy_status_badge(status: str) -> str:
+    """Return human badge for learned knowledge policy status."""
+    mapping = {
+        "CANDIDATE_PENDING_CONFIRMATION": "🟡 Candidate (Pending Review)",
+        "HUMAN_APPROVED": "🟢 Approved Standard",
+        "HUMAN_REJECTED": "🔴 Rejected",
+    }
+    return mapping.get(status, status)

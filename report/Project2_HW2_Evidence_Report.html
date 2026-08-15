@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>EcoHVAC Guardian — Official Evidence Report</title>
+<base href="/Users/lacle/Desktop/SUTD/DigitalTwin/GroupHW2/Simulation_Room/report/">
+<style>
+
+@page {
+    size: A4 portrait;
+    margin: 14mm 12mm 14mm 12mm;
+    @top-left {
+        content: "EcoHVAC Guardian — Cyber-Physical Digital Twin";
+        font-size: 8pt;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: #718096;
+        border-bottom: 0.5px solid #e2e8f0;
+        padding-bottom: 4px;
+    }
+    @top-right {
+        content: "Technical Evidence & Strategic Optimization Report";
+        font-size: 8pt;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: #718096;
+        border-bottom: 0.5px solid #e2e8f0;
+        padding-bottom: 4px;
+    }
+    @bottom-left {
+        content: "EcoHVAC Guardian · Commercial Educational Facility Smart Wing";
+        font-size: 8pt;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: #a0aec0;
+    }
+    @bottom-right {
+        content: "Page " counter(page) " of " counter(pages);
+        font-size: 8pt;
+        font-weight: 600;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: #4a5568;
+    }
+}
+
+@page:first {
+    margin-top: 14mm;
+    @top-left {
+        content: none;
+    }
+    @top-right {
+        content: none;
+    }
+}
+
+*, *:before, *:after {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #1a202c;
+    line-height: 1.42;
+    font-size: 8.8pt;
+    background: #ffffff;
+    margin: 0;
+    padding: 0;
+}
+
+h1 {
+    font-size: 16pt;
+    font-weight: 800;
+    color: #071525;
+    margin-top: 0;
+    margin-bottom: 4px;
+    letter-spacing: -0.3px;
+}
+
+h2 {
+    font-size: 11.5pt;
+    font-weight: 700;
+    color: #0c2340;
+    border-bottom: 1.5px solid #2c7be5;
+    padding-bottom: 3px;
+    margin-top: 14px;
+    margin-bottom: 6px;
+    page-break-after: avoid;
+    break-after: avoid;
+}
+
+h3 {
+    font-size: 10pt;
+    font-weight: 700;
+    color: #1a365d;
+    margin-top: 9px;
+    margin-bottom: 3px;
+    page-break-after: avoid;
+    break-after: avoid;
+}
+
+h4 {
+    font-size: 9pt;
+    font-weight: 700;
+    color: #2d3748;
+    margin-top: 7px;
+    margin-bottom: 2px;
+    page-break-after: avoid;
+    break-after: avoid;
+}
+
+p {
+    margin-top: 2px;
+    margin-bottom: 5px;
+}
+
+/* =========================================
+   Clean Nested Lists & TOC Styling
+   ========================================= */
+ul {
+    margin-top: 2px;
+    margin-bottom: 6px;
+    padding-left: 20px;
+}
+
+ul li {
+    margin-bottom: 2.5px;
+    line-height: 1.35;
+}
+
+/* Second-level nested sub-items (clean indented circle bullets) */
+ul ul {
+    margin-top: 2px;
+    margin-bottom: 4px;
+    padding-left: 22px;
+    list-style-type: circle;
+}
+
+ul ul li {
+    font-size: 8.1pt;
+    font-weight: normal;
+    color: #2b6cb0;
+    margin-bottom: 1.5px;
+}
+
+ul ul li a {
+    color: #2b6cb0;
+    text-decoration: none;
+}
+
+ul ul li a:hover {
+    text-decoration: underline;
+}
+
+ol {
+    margin-top: 2px;
+    margin-bottom: 5px;
+    padding-left: 18px;
+}
+
+ol li {
+    margin-bottom: 2px;
+}
+
+a {
+    color: #2b6cb0;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+hr {
+    border: 0;
+    height: 1px;
+    background: #e2e8f0;
+    margin: 10px 0;
+}
+
+/* =========================================
+   Standard Typography & Elements
+   ========================================= */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 6px 0;
+    font-size: 7.8pt;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+th, td {
+    border: 1px solid #cbd5e0;
+    padding: 4px 5.5px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+th {
+    background-color: #f0f4f8;
+    color: #0c2340;
+    font-weight: 700;
+}
+
+tr:nth-child(even) {
+    background-color: #f8fafc;
+}
+
+code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    background-color: #edf2f7;
+    padding: 1px 3px;
+    border-radius: 3px;
+    font-size: 7.8pt;
+    color: #b83280;
+}
+
+pre {
+    background-color: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 5px 7px;
+    font-size: 7.2pt;
+    line-height: 1.3;
+    overflow-x: auto;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin: 5px 0;
+}
+
+pre code {
+    background: none;
+    padding: 0;
+    color: #2d3748;
+}
+
+img {
+    max-width: 100%;
+    max-height: 275px;
+    height: auto;
+    display: block;
+    margin: 6px auto;
+    border: 1px solid #cbd5e0;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+.math-block {
+    text-align: center;
+    margin: 6px 0;
+    padding: 4px;
+    background: #f8fafc;
+    border-radius: 4px;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+math {
+    font-size: 9pt;
+    font-family: "Latin Modern Math", "Cambria Math", STIXGeneral, serif;
+}
+
+blockquote {
+    border-left: 3px solid #2c7be5;
+    background-color: #f4f8fc;
+    margin: 5px 0;
+    padding: 4px 8px;
+    color: #2d3748;
+    font-style: italic;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+</style>
+</head>
+<body>
+<h1 id="ecohvac-guardian-closed-loop-digital-twin-ecosystem">EcoHVAC Guardian: Closed-Loop Digital Twin Ecosystem</h1>
+<h2 id="technical-evidence-predictive-machine-learning-strategic-optimization-report">Technical Evidence, Predictive Machine Learning &amp; Strategic Optimization Report</h2>
+<hr />
+<h2 id="table-of-contents">📑 Table of Contents</h2>
+<ul>
+<li><strong><a href="#executive-summary--system-architecture">Executive Summary &amp; System Architecture</a></strong></li>
+<li><strong><a href="#section-1-predictive-intelligence--operational-forecasting">Section 1: Predictive Intelligence &amp; Operational Forecasting</a></strong><ul>
+<li><a href="#11-machine-learning-model-architecture--synthetic-telemetry-dataset">1.1 Machine Learning Model Architecture &amp; Synthetic Telemetry Dataset</a></li>
+<li><a href="#12-mathematical-formulation--holdout-performance-results">1.2 Mathematical Formulation &amp; Holdout Performance Results</a></li>
+<li><a href="#13-explainability--out-of-domain-ood-protection">1.3 Explainability &amp; Out-of-Domain (OOD) Protection</a></li>
+<li><a href="#14-forward-thermal-trajectory-forecasting--multi-zone-proactive-airflow">1.4 Forward Thermal Trajectory Forecasting &amp; Multi-Zone Proactive Airflow</a></li>
+<li><a href="#15-predictive-intelligence-workspace-in-the-web-portal">1.5 Predictive Intelligence Workspace in the Web Portal</a></li>
+</ul>
+</li>
+<li><strong><a href="#section-2-ecosystem-integration--multi-twin-architecture">Section 2: Ecosystem Integration &amp; Multi-Twin Architecture</a></strong><ul>
+<li><a href="#21-4-zone-multi-twin-architecture--data-flow">2.1 4-Zone Multi-Twin Architecture &amp; Data Flow</a></li>
+<li><a href="#22-resource-coordination-policy-occupied-comfort-debt-v2">2.2 Resource Coordination Policy: occupied-comfort-debt-v2</a></li>
+<li><a href="#23-operations-centre-dashboard--5-stage-pipeline-ui">2.3 Operations Centre Dashboard &amp; 5-Stage Pipeline UI</a></li>
+<li><a href="#24-3d-spatial-webgl-digital-twin-room3dhtml--streamlit-tab-5">2.4 3D Spatial WebGL Digital Twin (room3d.html &amp; Streamlit Tab 5)</a></li>
+</ul>
+</li>
+<li><strong><a href="#section-3-governance-ethics--autonomous-control-systems">Section 3: Governance, Ethics &amp; Autonomous Control Systems</a></strong><ul>
+<li><a href="#31-autonomous-mode-core-function--real-ui-presentation">3.1 Autonomous Mode: Core Function &amp; Real UI Presentation</a></li>
+<li><a href="#32-knowledge-base-governance-core-function--approval-ui">3.2 Knowledge Base Governance: Core Function &amp; Approval UI</a></li>
+<li><a href="#33-privacy-by-design--zero-pii-compliance">3.3 Privacy-by-Design &amp; Zero-PII Compliance</a></li>
+<li><a href="#34-algorithmic-fairness--bias-mitigation">3.4 Algorithmic Fairness &amp; Bias Mitigation</a></li>
+<li><a href="#35-system-resilience--idempotency-replay-protection">3.5 System Resilience &amp; Idempotency Replay Protection</a></li>
+<li><a href="#36-cryptographic-sha-256-hash-chain-audit-logging">3.6 Cryptographic SHA-256 Hash-Chain Audit Logging</a></li>
+</ul>
+</li>
+<li><strong><a href="#section-4-strategic-roadmap-financial-roi--equipment-retrofit-advisory">Section 4: Strategic Roadmap, Financial ROI &amp; Equipment Retrofit Advisory</a></strong><ul>
+<li><a href="#41-strategy--governance-workspace-in-the-web-portal">4.1 Strategy &amp; Governance Workspace in the Web Portal</a></li>
+<li><a href="#42-5-year-financial-cash-flow-engine--roi-derivations">4.2 5-Year Financial Cash Flow Engine &amp; ROI Derivations</a></li>
+<li><a href="#43-sensitivity-analysis-matrix">4.3 Sensitivity Analysis Matrix</a></li>
+<li><a href="#44-physical-thermodynamic-saturation--capex-equipment-retrofit-advisory">4.4 Physical Thermodynamic Saturation &amp; CapEx Equipment Retrofit Advisory</a></li>
+<li><a href="#45-5-stage-phased-scalability-roadmap">4.5 5-Stage Phased Scalability Roadmap</a></li>
+</ul>
+</li>
+<li><strong><a href="#section-5-system-verification-artifacts--architecture-summary">Section 5: System Verification, Artifacts &amp; Architecture Summary</a></strong><ul>
+<li><a href="#51-predictive-model-implementation--executed-notebook">5.1 Predictive Model Implementation &amp; Executed Notebook</a></li>
+<li><a href="#52-integrated-cyber-physical-architecture-specification">5.2 Integrated Cyber-Physical Architecture Specification</a></li>
+<li><a href="#53-executive-briefing-deck--technical-walkthrough-scripts">5.3 Executive Briefing Deck &amp; Technical Walkthrough Scripts</a></li>
+<li><a href="#54-digital-twin-core-capabilities-matrix">5.4 Digital Twin Core Capabilities Matrix</a></li>
+</ul>
+</li>
+</ul>
+<hr />
+<h2 id="executive-summary-system-architecture">Executive Summary &amp; System Architecture</h2>
+<p>EcoHVAC Guardian expands the foundational single-room digital twin into a complete <strong>Intelligent, Multi-Twin Cyber-Physical Ecosystem</strong> for commercial educational facilities. The system operates across a <strong>4-Zone Smart Wing</strong> (<code>Room 1</code> Lecture Hall, <code>Room 2</code> Robotics Lab, <code>Room 3</code> Seminar Room, <code>Room 4</code> Computing Hub) served by a central Variable Air Volume (VAV) Air Handling Unit (0.480 m³/s nominal capacity).</p>
+<p><img alt="Integrated Multi-Twin Architecture Diagram" src="images/00_integrated_architecture.png" /></p>
+<hr />
+<h2 id="section-1-predictive-intelligence-operational-forecasting">Section 1: Predictive Intelligence &amp; Operational Forecasting</h2>
+<h3 id="11-machine-learning-model-architecture-synthetic-telemetry-dataset">1.1 Machine Learning Model Architecture &amp; Synthetic Telemetry Dataset</h3>
+<ul>
+<li><strong>Objective:</strong> Predict equipment failure risk (fan motor breakdown within 7 days) and forecast thermal load dynamics before comfort degradation occurs.</li>
+<li><strong>Dataset Generation:</strong> N = 2,400 independent operating episodes generated deterministically (<code>generator_seed = 20260805</code>) with zero train-to-test leakage.</li>
+<li><strong>Train/Holdout Split:</strong> 80% Training (1,920 episodes) / 20% Holdout Testing (480 episodes).</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Feature Name</th>
+<th style="text-align: center;">Physics Unit</th>
+<th style="text-align: center;">Mean (μ)</th>
+<th style="text-align: center;">Std (σ)</th>
+<th style="text-align: center;">Training Min</th>
+<th style="text-align: center;">Training Max</th>
+<th style="text-align: center;">30% Domain Min</th>
+<th style="text-align: center;">30% Domain Max</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>filter_clog_pct</code></td>
+<td style="text-align: center;">%</td>
+<td style="text-align: center;">48.1%</td>
+<td style="text-align: center;">27.7%</td>
+<td style="text-align: center;">0.0%</td>
+<td style="text-align: center;">95.0%</td>
+<td style="text-align: center;">0.0%</td>
+<td style="text-align: center;">100.0%</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>fan_speed_pct</code></td>
+<td style="text-align: center;">%</td>
+<td style="text-align: center;">54.3%</td>
+<td style="text-align: center;">27.0%</td>
+<td style="text-align: center;">0.0%</td>
+<td style="text-align: center;">100.0%</td>
+<td style="text-align: center;">0.0%</td>
+<td style="text-align: center;">100.0%</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>vibration_mm_s</code></td>
+<td style="text-align: center;">mm/s</td>
+<td style="text-align: center;">2.39</td>
+<td style="text-align: center;">0.80</td>
+<td style="text-align: center;">0.42</td>
+<td style="text-align: center;">4.85</td>
+<td style="text-align: center;">0.00</td>
+<td style="text-align: center;">5.65</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bearing_temp_c</code></td>
+<td style="text-align: center;">°C</td>
+<td style="text-align: center;">54.30</td>
+<td style="text-align: center;">7.95</td>
+<td style="text-align: center;">28.50</td>
+<td style="text-align: center;">75.80</td>
+<td style="text-align: center;">20.91</td>
+<td style="text-align: center;">86.09</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>run_hours</code></td>
+<td style="text-align: center;">hours</td>
+<td style="text-align: center;">4,392.6</td>
+<td style="text-align: center;">2,595.1</td>
+<td style="text-align: center;">50.0</td>
+<td style="text-align: center;">9,850.0</td>
+<td style="text-align: center;">0.0</td>
+<td style="text-align: center;">11,696.7</td>
+</tr>
+</tbody>
+</table>
+<h3 id="12-mathematical-formulation-holdout-performance-results">1.2 Mathematical Formulation &amp; Holdout Performance Results</h3>
+<p>The model is an L2-regularized standardized Logistic Regression classifier:</p>
+<div class="math-block"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mi>P</mi><mo stretchy="false">&#x00028;</mo><mtext>Failure&#x000A0;within&#x000A0;7&#x000A0;days</mtext><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><mi>&#x003C3;</mi><mo stretchy="false">&#x00028;</mo><mi>z</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><mfrac><mrow><mn>1</mn></mrow><mrow><mn>1</mn><mo>&#x0002B;</mo><msup><mi>e</mi><mrow><mo>&#x02212;</mo><mi>z</mi></mrow></msup></mrow></mfrac></mrow></math></div>
+<div class="math-block"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mi>z</mi><mo>&#x0003D;</mo><mo>&#x02212;</mo><mn>1.4535</mn><mo>&#x0002B;</mo><mn>0.5249</mn><mo>&#x000B7;</mo><msub><mover><mrow><mi>x</mi></mrow><mo stretchy="false">&#x0007E;</mo></mover><mrow><mtext>clog</mtext></mrow></msub><mo>&#x0002B;</mo><mn>0.3227</mn><mo>&#x000B7;</mo><msub><mover><mrow><mi>x</mi></mrow><mo stretchy="false">&#x0007E;</mo></mover><mrow><mtext>speed</mtext></mrow></msub><mo>&#x0002B;</mo><mn>0.7289</mn><mo>&#x000B7;</mo><msub><mover><mrow><mi>x</mi></mrow><mo stretchy="false">&#x0007E;</mo></mover><mrow><mtext>vib</mtext></mrow></msub><mo>&#x0002B;</mo><mn>0.6560</mn><mo>&#x000B7;</mo><msub><mover><mrow><mi>x</mi></mrow><mo stretchy="false">&#x0007E;</mo></mover><mrow><mtext>temp</mtext></mrow></msub><mo>&#x0002B;</mo><mn>0.3900</mn><mo>&#x000B7;</mo><msub><mover><mrow><mi>x</mi></mrow><mo stretchy="false">&#x0007E;</mo></mover><mrow><mtext>hours</mtext></mrow></msub></mrow></math></div>
+
+<p><img alt="ROC and Precision-Recall Curves" src="images/fig1_ml_roc_pr_curve.png" /></p>
+<p><img alt="Confusion Matrix Heatmap" src="images/fig2_ml_confusion_matrix.png" /></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Performance Metric</th>
+<th style="text-align: center;">Holdout Value</th>
+<th style="text-align: center;">Target Benchmark</th>
+<th style="text-align: left;">Academic Evaluation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Accuracy</strong></td>
+<td style="text-align: center;"><strong>80.42%</strong></td>
+<td style="text-align: center;">&gt; 75.0%</td>
+<td style="text-align: left;">Strong overall classification reliability</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Balanced Accuracy</strong></td>
+<td style="text-align: center;"><strong>74.91%</strong></td>
+<td style="text-align: center;">&gt; 70.0%</td>
+<td style="text-align: left;">Robust across imbalanced failure distribution</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Precision (PPV)</strong></td>
+<td style="text-align: center;"><strong>74.80%</strong></td>
+<td style="text-align: center;">&gt; 70.0%</td>
+<td style="text-align: left;">74.8% of dispatched maintenance alerts are true risks</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Recall (Sensitivity)</strong></td>
+<td style="text-align: center;"><strong>59.35%</strong></td>
+<td style="text-align: center;">&gt; 55.0%</td>
+<td style="text-align: left;">Successfully catches nearly 60% of impending 7-day failures</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Specificity (TNR)</strong></td>
+<td style="text-align: center;"><strong>90.46%</strong></td>
+<td style="text-align: center;">&gt; 85.0%</td>
+<td style="text-align: left;">Very low false alarm rate on healthy equipment</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>F1 Score</strong></td>
+<td style="text-align: center;"><strong>0.6619</strong></td>
+<td style="text-align: center;">&gt; 0.600</td>
+<td style="text-align: left;">Solid harmonic balance between precision and recall</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ROC-AUC</strong></td>
+<td style="text-align: center;"><strong>0.8449</strong></td>
+<td style="text-align: center;">&gt; 0.800</td>
+<td style="text-align: left;">Excellent class separability</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Brier Score</strong></td>
+<td style="text-align: center;"><strong>0.1467</strong></td>
+<td style="text-align: center;">&lt; 0.200</td>
+<td style="text-align: left;">Well-calibrated probabilistic confidence score</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Log Loss (Cross-Entropy)</strong></td>
+<td style="text-align: center;"><strong>0.4471</strong></td>
+<td style="text-align: center;">&lt; 0.500</td>
+<td style="text-align: left;">Strong confidence margin without extreme penalty</td>
+</tr>
+</tbody>
+</table>
+<h3 id="13-explainability-out-of-domain-ood-protection">1.3 Explainability &amp; Out-of-Domain (OOD) Protection</h3>
+<ul>
+<li><strong>Transparent Signed Drivers:</strong> Vibration (+0.73) and Bearing Temperature (+0.66) represent the top mechanical failure contributors, giving technicians actionable diagnostic context.</li>
+<li><strong>OOD Abstention Protocol:</strong> If any sensor input exceeds its 30%-padded domain envelope (e.g. vibration &gt; 5.65 mm/s or sensor disconnect producing NaN), the model explicitly <strong>abstains</strong> (<code>UnavailableRiskModel</code>) rather than outputting misleading risk numbers.</li>
+</ul>
+<p><img alt="Feature Importance and Signed Log-Odds Drivers" src="images/fig3_ml_feature_importance.png" /></p>
+<h3 id="14-forward-thermal-trajectory-forecasting-multi-zone-proactive-airflow">1.4 Forward Thermal Trajectory Forecasting &amp; Multi-Zone Proactive Airflow</h3>
+<p>The Digital Twin projects room temperatures +5 and +15 minutes ahead across all 4 zones by continuously calculating sensible occupant loads (100 W/person), internal equipment heat, and building envelope conduction:</p>
+<div class="math-block"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mfrac><mrow><mi>d</mi><msub><mi>T</mi><mrow><mtext>room</mtext><mo>&#x0002C;</mo><mi>i</mi></mrow></msub></mrow><mrow><mi>d</mi><mi>t</mi></mrow></mfrac><mo>&#x0003D;</mo><mfrac><mrow><msub><mi>Q</mi><mrow><mtext>people</mtext><mo>&#x0002C;</mo><mi>i</mi></mrow></msub><mo stretchy="false">&#x00028;</mo><mi>t</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0002B;</mo><msub><mi>Q</mi><mrow><mtext>equip</mtext><mo>&#x0002C;</mo><mi>i</mi></mrow></msub><mo stretchy="false">&#x00028;</mo><mi>t</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0002B;</mo><msub><mi>Q</mi><mrow><mtext>envelope</mtext><mo>&#x0002C;</mo><mi>i</mi></mrow></msub><mo stretchy="false">&#x00028;</mo><mi>t</mi><mo stretchy="false">&#x00029;</mo><mo>&#x02212;</mo><msub><mi>Q</mi><mrow><mtext>cooling</mtext><mo>&#x0002C;</mo><mi>i</mi></mrow></msub><mo stretchy="false">&#x00028;</mo><mi>t</mi><mo stretchy="false">&#x00029;</mo></mrow><mrow><msub><mi>C</mi><mrow><mtext>thermal</mtext><mo>&#x0002C;</mo><mi>i</mi></mrow></msub></mrow></mfrac></mrow></math></div>
+<div class="math-block"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><msub><mi>q</mi><mrow><mtext>required</mtext><mo>&#x0002C;</mo><mi>i</mi></mrow></msub><mo stretchy="false">&#x00028;</mo><mi>t</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><mfrac><mrow><msub><mi>Q</mi><mrow><mtext>total</mtext><mo>&#x0002C;</mo><mi>i</mi></mrow></msub><mo stretchy="false">&#x00028;</mo><mi>t</mi><mo stretchy="false">&#x00029;</mo></mrow><mrow><msub><mi>&#x003C1;</mi><mrow><mtext>air</mtext></mrow></msub><mo>&#x000B7;</mo><msub><mi>C</mi><mrow><mi>p</mi><mo>&#x0002C;</mo><mtext>air</mtext></mrow></msub><mo>&#x000B7;</mo><mrow><mo stretchy="true" fence="true" form="prefix">&#x00028;</mo><msub><mi>T</mi><mrow><mtext>target</mtext><mo>&#x0002C;</mo><mi>i</mi></mrow></msub><mo>&#x02212;</mo><msub><mi>T</mi><mrow><mtext>supply</mtext></mrow></msub><mo stretchy="true" fence="true" form="postfix">&#x00029;</mo></mrow></mrow></mfrac></mrow></math></div>
+
+<ul>
+<li><strong>Pre-Cooling Triggers (Capacity-Proportional):</strong></li>
+<li><code>Room 1</code> (Lecture Hall, Cap 30): Triggers at ≥ 12 students (40%) or T_proj &gt; T_set + 0.2°C</li>
+<li><code>Room 2</code> (Robotics Lab, Cap 20, +400 W equip): Triggers at ≥ 8 students (40%) or Q_thermal ≥ 1000 W</li>
+<li><code>Room 3</code> (Seminar Room, Cap 15): Triggers at ≥ 6 students (40%) or T_proj &gt; T_set + 0.2°C</li>
+<li><code>Room 4</code> (Computing Hub, Cap 20, +600 W PCs): Triggers at ≥ 6 students (30%) or Q_thermal ≥ 1000 W</li>
+</ul>
+<p><img alt="Dynamic Thermal Trajectories &amp; Multi-Zone Stability" src="images/fig4_thermal_trajectories.png" /></p>
+<h3 id="15-predictive-intelligence-workspace-in-the-web-portal">1.5 Predictive Intelligence Workspace in the Web Portal</h3>
+<p>The <strong>Predictive Intelligence Workspace</strong> exposes full model diagnostics and live trajectory curves:</p>
+<p><img alt="Predictive Intelligence Hub UI" src="images/02_predictive_intelligence_hub.png" /></p>
+<ul>
+<li><strong>Forward Thermal Trajectory Projection Chart:</strong> Interactive Plotly timeline showing room temperature trajectories projected +5 and +15 minutes ahead.</li>
+<li><strong>Explainable Logistic Model Hub:</strong> Risk probability gauge (Low &lt; 35%, Medium 35–65%, High &gt; 65%), physical inputs, signed log-odds drivers, and direct maintenance dispatch buttons.</li>
+<li><strong>Live Action Performance &amp; 4-Part Automated Test Suite Monitor:</strong> Continuously evaluates active mitigation policies over 15 simulation ticks across 4 automated unit tests:</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Test Name</th>
+<th style="text-align: left;">Physical Criterion</th>
+<th style="text-align: center;">Pass Threshold</th>
+<th style="text-align: left;">Operational Guarantee</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>1. Thermal Comfort Preservation</strong></td>
+<td style="text-align: left;">Temperature tracking error |T - T_set|</td>
+<td style="text-align: center;">≤ 1.0°C</td>
+<td style="text-align: left;">Prevents occupant discomfort</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>2. Equipment Degradation Risk</strong></td>
+<td style="text-align: left;">ML fan failure risk probability</td>
+<td style="text-align: center;">&lt; 40%</td>
+<td style="text-align: left;">Protects mechanical asset health</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>3. Energy &amp; Electrical Coherence</strong></td>
+<td style="text-align: left;">Fan affinity power consumption</td>
+<td style="text-align: center;">≤ 250 W</td>
+<td style="text-align: left;">Ensures COP thermodynamic efficiency</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>4. Coordination Fairness &amp; Stability</strong></td>
+<td style="text-align: left;">Starvation debt across all 4 zones</td>
+<td style="text-align: center;">≤ 20.0°C·s</td>
+<td style="text-align: left;">Prevents unserved rooms from starving</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="section-2-ecosystem-integration-multi-twin-architecture">Section 2: Ecosystem Integration &amp; Multi-Twin Architecture</h2>
+<h3 id="21-4-zone-multi-twin-architecture-data-flow">2.1 4-Zone Multi-Twin Architecture &amp; Data Flow</h3>
+<p>EcoHVAC Guardian integrates 7 interacting cyber-physical twins communicating over standard MQTT (TCP 1883) and WebSockets (TCP 9001):
+1. <strong>Room 1 Twin (Lecture Hall, 30 cap):</strong> V = 200 m³, C_th = 600 kJ/K, PID setpoint tracking.
+2. <strong>Room 2 Twin (Robotics Lab, 20 cap):</strong> V = 140 m³, C_th = 420 kJ/K, +400 W robotics thermal bias.
+3. <strong>Room 3 Twin (Seminar Room, 15 cap):</strong> V = 100 m³, C_th = 300 kJ/K, agile conference thermal dynamics.
+4. <strong>Room 4 Twin (Computing Hub, 20 cap):</strong> V = 140 m³, C_th = 420 kJ/K, +600 W high-density server/workstation heat.
+5. <strong>Occupancy Twin:</strong> Real-time multi-room headcount disturbance modeling (100 W/person).
+6. <strong>Central VAV AHU Twin:</strong> Supply plenum capacity (0.480 m³/s), filter resistance, fan degradation, and vibration dynamics.
+7. <strong>Energy &amp; Sustainability Twin:</strong> Thermodynamic power conversion (COP 3.20), fan cubic affinity (P = 250W · speed³), and Singapore grid carbon accounting (0.408 kg CO₂e/kWh).</p>
+<h3 id="22-resource-coordination-policy-occupied-comfort-debt-v2">2.2 Resource Coordination Policy: <code>occupied-comfort-debt-v2</code></h3>
+<p>When total requested airflow exceeds available AHU supply capacity, the coordinator arbitrates air using a deterministic lexicographic priority:</p>
+<div class="math-block"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mtext>Priority&#x000A0;Tuple</mtext><mo>&#x0003D;</mo><mo minsize="1.623em" maxsize="1.623em">(</mo><mtext>is\_occupied</mtext><mspace width="0.167em" /><mo stretchy="false">&#x00028;</mo><mn>1</mn><mo>&#x0002F;</mo><mn>0</mn><mo stretchy="false">&#x00029;</mo><mo>&#x0002C;</mo><mspace width="0.278em" /><msub><mi>e</mi><mi>T</mi></msub><mo>&#x0003D;</mo><mo>max</mo><mo stretchy="false">&#x00028;</mo><mn>0</mn><mo>&#x0002C;</mo><msub><mi>T</mi><mrow><mtext>room</mtext></mrow></msub><mo>&#x02212;</mo><msub><mi>T</mi><mrow><mtext>setpoint</mtext></mrow></msub><mo stretchy="false">&#x00029;</mo><mo>&#x0002C;</mo><mspace width="0.278em" /><msub><mi>D</mi><mrow><mtext>comfort</mtext></mrow></msub><mo>&#x0002C;</mo><mspace width="0.278em" /><msub><mi>N</mi><mrow><mtext>occupants</mtext></mrow></msub><mo>&#x0002C;</mo><mspace width="0.278em" /><mtext>room\_id</mtext><mo minsize="1.623em" maxsize="1.623em">)</mo></mrow></math></div>
+
+<ul>
+<li><strong>Comfort Debt Formulation:</strong> D_comfort accumulates during unserved demand and bleeds down at -2.0°C·s / s when fully served, with a saturation ceiling of 3,600°C·s.</li>
+<li><strong>Anti-Windup Integral Bleed:</strong> When granted airflow is less than demanded airflow, the room's PID controller bleeds its integral error accumulation, preventing dangerous overshoot (+4.5°C) upon capacity restoration.</li>
+</ul>
+<p><img alt="Resource Contention and Comfort Debt Allocation" src="images/fig5_comfort_debt_allocation.png" /></p>
+<h3 id="23-operations-centre-dashboard-5-stage-pipeline-ui">2.3 Operations Centre Dashboard &amp; 5-Stage Pipeline UI</h3>
+<p>The web presentation layer provides complete real-time visibility across the <strong>Operations Centre Workspace</strong>:</p>
+<p><img alt="Operations Centre Web Dashboard" src="images/01_operations_centre_dashboard.png" /></p>
+<ol>
+<li><strong>Top Status Strip:</strong> 5 uniform metric cards reporting Simulator status, Shared AHU supply demand, Predictive Fan Risk, Demand Forecast deficit, and Closed-Loop Agent mode (<code>AUTO 🤖</code> vs <code>HITL 👤</code>).</li>
+<li><strong>Symmetrical 2x3 Guided Scenario Grid:</strong> One-click presets (<code>Baseline Safe</code>, <code>Lecture Surge</code>, <code>Campus Exam</code>, <code>Balanced Workshop</code>, <code>Night Off-Hours</code>, and <code>Capacity Stress Test</code>) with a live pill badge displaying the active preset.</li>
+<li><strong>The 5-Stage HVAC Predictive Risk, Coordination &amp; Solution Pipeline:</strong></li>
+<li><em>Step 1 (Sensing):</em> Total headcount and sensible heat load (kW).</li>
+<li><em>Step 2 (Prediction):</em> Predictive airflow requirement and fan ML risk band.</li>
+<li><em>Step 3 (Coordinator):</em> Fair dispatch priority and accumulated comfort debt (°C·s).</li>
+<li><em>Step 4 (Solution):</em> Active mitigation action and delivered airflow rate.</li>
+<li><em>Step 5 (Verify &amp; Learn):</em> Closed-loop 4-part automated test verification score.</li>
+<li><strong>Segmented AHU Airflow Resource Distribution Bar:</strong> Visual bar chart showing exact proportions of airflow dedicated to Room 1 (blue), Room 2 (cyan), Room 3 (purple), Room 4 (amber), and the reserve margin (gray).</li>
+<li><strong>Embedded 3D Spatial Map:</strong> Directly embeds the Three.js WebGL digital twin beneath the pipeline.</li>
+<li><strong>4-Zone Manual &amp; Autonomous Mitigation Dispatch Cards:</strong> Individual control cards (<code>Execute for ROOM1</code>, <code>Execute for ROOM2</code>, <code>Execute for ROOM3</code>, <code>Execute for ROOM4</code>) enabling instant closed-loop intervention.</li>
+</ol>
+<h3 id="24-3d-spatial-webgl-digital-twin-room3dhtml-streamlit-tab-5">2.4 3D Spatial WebGL Digital Twin (<code>room3d.html</code> &amp; Streamlit Tab 5)</h3>
+<p>The 3D digital twin renders the entire 4-zone facility in real time:</p>
+<p><img alt="3D Digital Twin with Dynamic Holographic Billboards" src="images/06_3d_digital_twin_hologram.png" /></p>
+<p><img alt="3D Digital Twin Full-Screen Unobstructed Inspection" src="images/07_3d_digital_twin_fullscreen.png" /></p>
+<p><img alt="Full-Screen 3D Facility Tab View" src="images/05_full_screen_3d_facility.png" /></p>
+<ul>
+<li><strong>Floating Holographic 3D Billboards:</strong> 512×200 dynamic canvas textures floating above Room 1, Room 2, Room 3, Room 4, and the AHU displaying live telemetry, occupant counts, airflow rates, and status badges (<code>COOLING</code>, <code>STARVED</code>, <code>CAPPED</code>, <code>CRITICAL</code>).</li>
+<li><strong>Semi-Transparent Glass Ducts &amp; Neon Particles:</strong> Acrylic ducts with glowing cyan, blue, purple, and amber particle streams showing real-time airflow distribution.</li>
+<li><strong>Ceiling Diffuser Cooling Jets:</strong> Diffuser mist cones that scale opacity with granted airflow volume.</li>
+<li><strong>AHU Distress Warning Beacon:</strong> Flashes red during high filter clog or bearing wear.</li>
+<li><strong>HUD Toggle:</strong> Press <strong><code>H</code></strong> or click <strong><code>Hide HUD</code></strong> for an unobstructed full-screen 3D view.</li>
+</ul>
+<hr />
+<h2 id="section-3-governance-ethics-autonomous-control-systems">Section 3: Governance, Ethics &amp; Autonomous Control Systems</h2>
+<h3 id="31-autonomous-mode-core-function-real-ui-presentation">3.1 Autonomous Mode: Core Function &amp; Real UI Presentation</h3>
+<ul>
+<li><strong>Core Function:</strong> Enables <strong>instantaneous (&lt; 50 ms) closed-loop mitigation</strong> by pattern-matching live operational disturbances (e.g. thermal deficit <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mo>&#x0003E;</mo><mn>0.100</mn><msup><mtext>&#x000A0;m</mtext><mn>3</mn></msup><mtext>/s</mtext></mrow></math> or fan risk <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mo>&#x0003E;</mo><mn>35</mn><mi>&#x00025;</mi></mrow></math>) against verified knowledge base policies, dispatching preemptive cooling or fan derating without waiting for operator intervention.</li>
+</ul>
+<p><img alt="Operations Centre Dashboard Real UI — Live Autonomous Mode, Banner, Metrics &amp; 5-Stage Pipeline" src="images/01_autonomous_mode_live_ui.png" /></p>
+<ul>
+<li><strong>Real UI Visual Indicators (Operations Centre Workspace):</strong></li>
+<li><strong>Top Metric Strip:</strong> The <code>Closed-Loop Agent</code> indicator card displays <code>AUTO 🤖</code> with a glowing green status pill.</li>
+<li><strong>Live Autonomous Pop-Up Banner:</strong> A prominent notification banner announces:<br />
+    &gt; <strong>🤖 AUTONOMOUS AGENT ACTIVE · KNOWLEDGE BASE POLICY APPLIED</strong><br />
+    &gt; <em>Preemptive Precool (ROOM3)</em> — The closed-loop agent automatically dispatched this verified mitigation policy from the Knowledge Hub. <code>LIVE EXECUTION</code></li>
+<li><strong>5-Stage Pipeline State:</strong> Step 4 reflects <code>Mode: AUTO 🤖</code>, while Step 5 displays a live 15-tick physical response tracking progress bar (<code>Evaluating Response: Tick X / 15</code>).</li>
+<li><strong>Segmented Airflow Bar &amp; 3D Twin:</strong> Airflow allocation instantly expands for the target zone, diffuser cooling mist cones grow in Three.js, and holographic billboards update to <code>COOLING 🟢</code>.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Operational Dimension</th>
+<th style="text-align: left;">Autonomous Mode (<code>AUTO 🤖</code>)</th>
+<th style="text-align: left;">Human-in-the-Loop Mode (<code>HITL 👤</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Execution Trigger</strong></td>
+<td style="text-align: left;">Real-time pattern match against the <strong>Approved Knowledge Catalog</strong></td>
+<td style="text-align: left;">Operator manual click (<code>Execute for ROOM X</code> / Maintenance Buttons)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Dispatch Latency</strong></td>
+<td style="text-align: left;"><strong>Instantaneous (&lt; 50 ms)</strong> upon risk detection</td>
+<td style="text-align: left;">Waits for human operator review and confirmation</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Safety Governance</strong></td>
+<td style="text-align: left;">Hardcoded physical clamp bounds (18.0°C – 30.0°C, P ≤ 250 W)</td>
+<td style="text-align: left;">Human engineer verifies operational suitability before execution</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>UI Notification</strong></td>
+<td style="text-align: left;"><strong>Prominent Green Notification Banner</strong> + High-Priority Browser Toast</td>
+<td style="text-align: left;">Advisory badge + Manual action recommendation card</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Pipeline Step 4/5</strong></td>
+<td style="text-align: left;"><code>Mode: AUTO 🤖</code> ➔ Live tick progress bar displayed</td>
+<td style="text-align: left;"><code>Mode: MANUAL 👤</code> ➔ Waits for operator dispatch</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Audit Ledger</strong></td>
+<td style="text-align: left;">Committed with <code>actor: "AUTONOMOUS_AGENT_CLOSED_LOOP"</code></td>
+<td style="text-align: left;">Committed with <code>actor: "OPERATOR_HITL"</code> and reviewer notes</td>
+</tr>
+</tbody>
+</table>
+<h3 id="32-knowledge-base-governance-core-function-approval-ui">3.2 Knowledge Base Governance: Core Function &amp; Approval UI</h3>
+<ul>
+<li><strong>Core Function:</strong> Provides <strong>strict human engineering oversight</strong> by allowing facility engineers to inspect candidate policies, review test verification scores, attach technical rationale notes, and formally approve/reject policies before autonomous deployment.</li>
+</ul>
+<p><img alt="Self-Learning Knowledge Hub Real UI — Candidate Learned Policies Queue, Reviewer Notes Input, Approval Buttons &amp; Approved Catalog" src="images/03_hitl_approval_form_ui.png" /></p>
+<ul>
+<li><strong>Real UI Visual Indicators (Self-Learning Knowledge Hub Workspace):</strong></li>
+<li><strong>🟡 Candidate Learned Policies Queue:</strong> Candidate cards display the trigger scenario, dispatched physical action, and the <strong>100% 4/4 Test Verification Score</strong>.</li>
+<li><strong>Interactive Reviewer Notes Field:</strong> A dedicated text input area for facility engineers to type mandatory engineering justification (e.g. <em>"Verified safe thermal pull-down under 28-student lecture surge"</em>).</li>
+<li><strong>Reviewer ID &amp; Action Buttons:</strong> Includes the reviewer selector (<code>FACILITY-CHIEF-01</code>) and the green <strong><code>✅ Confirm &amp; Approve</code></strong> / red <strong><code>❌ Reject Policy</code></strong> buttons.</li>
+<li><strong>🟢 Approved Operational Knowledge Catalog:</strong> The table below displaying approved policies, complete with their cryptographic <strong>SHA-256 Hash Signatures</strong>, enabling immediate autonomous execution by the closed-loop agent.</li>
+</ul>
+<h3 id="33-privacy-by-design-zero-pii-compliance">3.3 Privacy-by-Design &amp; Zero-PII Compliance</h3>
+<ul>
+<li><strong>Zero PII Collection:</strong> The system ingests only aggregate numerical headcounts (N_occupants ∈ ℕ). No facial recognition, video cameras, biometric scanning, or personal device identifiers (MAC/Bluetooth) are collected or stored.</li>
+</ul>
+<h3 id="34-algorithmic-fairness-bias-mitigation">3.4 Algorithmic Fairness &amp; Bias Mitigation</h3>
+<ul>
+<li><strong>Starvation Prevention:</strong> Pure proportional splitting unfairly penalizes low-occupancy rooms during hot afternoons. The <code>occupied-comfort-debt-v2</code> policy guarantees that unserved rooms accumulate priority weight over time, ensuring equal comfort access across all student cohorts.</li>
+</ul>
+<h3 id="35-system-resilience-idempotency-replay-protection">3.5 System Resilience &amp; Idempotency Replay Protection</h3>
+<ul>
+<li><strong>Idempotency Guard:</strong> A 1,024-command deduplication cache (<code>simulator/audit.py</code>) validates monotonic sequence IDs and timestamps, blocking duplicate or out-of-order control packet replay attacks over MQTT.</li>
+<li><strong>Physical Safety Bounds:</strong> Hardcoded low/high temperature bounds (18.0°C – 30.0°C) and fan current limiters prevent equipment freeze or motor burnout regardless of upstream cyber commands.</li>
+</ul>
+<h3 id="36-cryptographic-sha-256-hash-chain-audit-logging">3.6 Cryptographic SHA-256 Hash-Chain Audit Logging</h3>
+<p>Every state mutation, coordinator allocation, operator mitigation dispatch, and policy sign-off is committed to an immutable SQLite audit log using SHA-256 hash-chaining:</p>
+<div class="math-block"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><msub><mi>H</mi><mi>i</mi></msub><mo>&#x0003D;</mo><mtext>SHA-256</mtext><mo minsize="1.623em" maxsize="1.623em">(</mo><msub><mi>H</mi><mrow><mi>i</mi><mo>&#x02212;</mo><mn>1</mn></mrow></msub><mspace width="0.167em" /><mo fence="false" stretchy="false">&#x02016;</mo><mspace width="0.167em" /><mtext>Timestamp</mtext><mspace width="0.167em" /><mo fence="false" stretchy="false">&#x02016;</mo><mspace width="0.167em" /><mtext>Actor</mtext><mspace width="0.167em" /><mo fence="false" stretchy="false">&#x02016;</mo><mspace width="0.167em" /><mtext>Event\_Type</mtext><mspace width="0.167em" /><mo fence="false" stretchy="false">&#x02016;</mo><mspace width="0.167em" /><mtext>Payload\_JSON</mtext><mo minsize="1.623em" maxsize="1.623em">)</mo></mrow></math></div>
+
+<p><img alt="Cryptographic SHA-256 Audit Trail Table" src="images/05_sha256_audit_trail.png" /></p>
+<hr />
+<h2 id="section-4-strategic-roadmap-financial-roi-equipment-retrofit-advisory">Section 4: Strategic Roadmap, Financial ROI &amp; Equipment Retrofit Advisory</h2>
+<h3 id="41-strategy-governance-workspace-in-the-web-portal">4.1 Strategy &amp; Governance Workspace in the Web Portal</h3>
+<p>The <strong>Strategy &amp; Governance Workspace</strong> integrates live sustainability metrics, policy simulation, and financial models:</p>
+<p><img alt="Strategy &amp; Governance Workspace" src="images/04_strategy_governance_sustainability.png" /></p>
+<ol>
+<li><strong>Real-Time Sustainability &amp; Power Telemetry:</strong></li>
+<li>Thermal Cooling Load vs Electrical Grid Power (COP = 3.20).</li>
+<li>Live Energy Cost per Hour (S$0.30/kWh).</li>
+<li>Carbon Emission Rate (0.408 kg CO₂e/kWh).</li>
+<li><strong>Interactive "What-If" Policy Sandbox:</strong></li>
+<li><strong>Standard Comfort Tracking:</strong> Rigid 23.0°C baseline tracking.</li>
+<li><strong>Green Eco Peak-Shaving:</strong> Flexible 24.0°C setpoint reducing peak grid power by 18.4%.</li>
+<li><strong>Equipment Life-Extension:</strong> 75% fan speed ceiling reducing mechanical motor thermal stress by 35%.</li>
+</ol>
+<h3 id="42-5-year-financial-cash-flow-engine-roi-derivations">4.2 5-Year Financial Cash Flow Engine &amp; ROI Derivations</h3>
+<ul>
+<li><strong>Implementation CAPEX:</strong> S$25,000.00 (IoT edge controllers, vibration transmitters, differential pressure sensors, gateway, and software commissioning).</li>
+<li><strong>Baseline Facility HVAC Consumption:</strong> 45,000 kWh/year at S0.30/kWh ➔ S13,500.00/year.</li>
+<li><strong>Annual Energy Savings (8% Efficiency):</strong> S$1,080.00/year.</li>
+<li><strong>Avoided Equipment Outage Incidents:</strong> S$12,000.00/year (Avoided catastrophic fan motor burnout, emergency contractor fees, and student lab downtime).</li>
+<li><strong>Annual Cloud &amp; Software Support OPEX:</strong> S$4,000.00/year.</li>
+</ul>
+<div class="math-block"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mtext>Annual&#x000A0;Net&#x000A0;Benefit</mtext><mo>&#x0003D;</mo><mtext>S</mtext><mi>&#x00024;</mi><mn>12</mn><mo>&#x0002C;</mo><mn>000</mn><mo>&#x0002B;</mo><mtext>S</mtext><mi>&#x00024;</mi><mn>1</mn><mo>&#x0002C;</mo><mn>080</mn><mo>&#x02212;</mo><mtext>S</mtext><mi>&#x00024;</mi><mn>4</mn><mo>&#x0002C;</mo><mn>000</mn><mo>&#x0003D;</mo><mtext>S</mtext><mi>&#x00024;</mi><mn>9</mn><mo>&#x0002C;</mo><mn>080.00</mn><mo>&#x0002F;</mo><mtext>year</mtext><mspace width="1em" /><mo stretchy="false">&#x00028;</mo><mtext>S</mtext><mi>&#x00024;</mi><mn>756.67</mn><mo>&#x0002F;</mo><mtext>month</mtext><mo stretchy="false">&#x00029;</mo></mrow></math></div>
+<div class="math-block"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mtext>Payback&#x000A0;Period</mtext><mo>&#x0003D;</mo><mfrac><mrow><mtext>CAPEX</mtext></mrow><mrow><mtext>Monthly&#x000A0;Net&#x000A0;Benefit</mtext></mrow></mfrac><mo>&#x0003D;</mo><mfrac><mrow><mtext>S</mtext><mi>&#x00024;</mi><mn>25</mn><mo>&#x0002C;</mo><mn>000</mn></mrow><mrow><mtext>S</mtext><mi>&#x00024;</mi><mn>756.67</mn></mrow></mfrac><mo>&#x0003D;</mo><mn>33.04</mn><mtext>&#x000A0;Months&#x000A0;(Month&#x000A0;33)</mtext></mrow></math></div>
+
+<p><img alt="5-Year Financial Cash Flow Curve" src="images/fig6_5year_cash_flow_curve.png" /></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Timeline Milestone</th>
+<th style="text-align: center;">Cumulative Investment Outflow</th>
+<th style="text-align: center;">Cumulative Gross Benefits</th>
+<th style="text-align: center;">Cumulative OPEX Support</th>
+<th style="text-align: center;">Cumulative Net Cash Flow</th>
+<th style="text-align: left;">Financial Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Month 0 (Kickoff)</strong></td>
+<td style="text-align: center;">-S25,000</td>
+<td style="text-align: center;">S0</td>
+<td style="text-align: center;">S0</td>
+<td style="text-align: center;"><strong>-S25,000</strong></td>
+<td style="text-align: left;">Initial CAPEX Outlay</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Month 12 (Year 1 End)</strong></td>
+<td style="text-align: center;">-S25,000</td>
+<td style="text-align: center;">+S13,080</td>
+<td style="text-align: center;">-S4,000</td>
+<td style="text-align: center;"><strong>-S15,920</strong></td>
+<td style="text-align: left;">First-Year Net Yield -63.7%</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Month 24 (Year 2 End)</strong></td>
+<td style="text-align: center;">-S25,000</td>
+<td style="text-align: center;">+S26,160</td>
+<td style="text-align: center;">-S8,000</td>
+<td style="text-align: center;"><strong>-S6,840</strong></td>
+<td style="text-align: left;">Capital 72.6% Recouped</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Month 33 (Breakeven ★)</strong></td>
+<td style="text-align: center;">-S25,000</td>
+<td style="text-align: center;">+S36,000</td>
+<td style="text-align: center;">-S11,000</td>
+<td style="text-align: center;"><strong>S0</strong></td>
+<td style="text-align: left;"><strong>100% Capital Paid Off</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Month 36 (Year 3 End)</strong></td>
+<td style="text-align: center;">-S25,000</td>
+<td style="text-align: center;">+S39,240</td>
+<td style="text-align: center;">-S12,000</td>
+<td style="text-align: center;"><strong>+S2,240</strong></td>
+<td style="text-align: left;">Net Positive Cash Flow</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Month 48 (Year 4 End)</strong></td>
+<td style="text-align: center;">-S25,000</td>
+<td style="text-align: center;">+S52,320</td>
+<td style="text-align: center;">-S16,000</td>
+<td style="text-align: center;"><strong>+S11,320</strong></td>
+<td style="text-align: left;">+45.3% Net Capital ROI</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Month 60 (Year 5 End)</strong></td>
+<td style="text-align: center;">-S25,000</td>
+<td style="text-align: center;">+S65,400</td>
+<td style="text-align: center;">-S20,000</td>
+<td style="text-align: center;"><strong>+S20,400</strong></td>
+<td style="text-align: left;"><strong>+81.6% 5-Year Cumulative ROI</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="43-sensitivity-analysis-matrix">4.3 Sensitivity Analysis Matrix</h3>
+<ul>
+<li><strong>Conservative Case (-30% Benefits):</strong> Net S5,156/year ➔ Payback <strong>58.2 Months</strong>, 5-Year Net Profit +S780.</li>
+<li><strong>Base Case (Target):</strong> Net S9,080/year ➔ Payback <strong>33.0 Months</strong>, 5-Year Net Profit <strong>+S20,400</strong>.</li>
+<li><strong>High Electricity Tariff (S0.38/kWh):</strong> Net S9,368/year ➔ Payback <strong>32.0 Months</strong>, 5-Year Net Profit +S$21,840.</li>
+<li><strong>Aggressive Case (+25% Benefits):</strong> Net S12,350/year ➔ Payback <strong>24.3 Months</strong>, 5-Year Net Profit +S36,750.</li>
+</ul>
+<h3 id="44-physical-thermodynamic-saturation-capex-equipment-retrofit-advisory">4.4 Physical Thermodynamic Saturation &amp; CapEx Equipment Retrofit Advisory</h3>
+<p>When software optimization reaches the physical cooling limit of the existing equipment (&gt;0.550 m³/s total peak demand or severe thermal deficit with clean filters):
+* <strong><code>EQUIPMENT_RETROFIT_ADVISORY</code> Trigger:</strong> Formulated automatically with transparent engineering metrics:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Retrofit Option</th>
+<th style="text-align: left;">Equipment Specification</th>
+<th style="text-align: center;">Estimated CapEx</th>
+<th style="text-align: center;">Energy Savings / yr</th>
+<th style="text-align: center;">Payback Period</th>
+<th style="text-align: left;">Ideal Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Option A: Central VAV AHU</strong></td>
+<td style="text-align: left;">0.750 m³/s EC Plug Fan AHU</td>
+<td style="text-align: center;">~S12,500</td>
+<td style="text-align: center;">S6,800 / yr</td>
+<td style="text-align: center;"><strong>1.8 Years</strong></td>
+<td style="text-align: left;">Whole-wing high occupancy scaling</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Option B: Dedicated Split Unit</strong></td>
+<td style="text-align: left;">3.5 kW Inverter Split-Unit for Room 4</td>
+<td style="text-align: center;">~S2,800</td>
+<td style="text-align: center;">S3,100 / yr</td>
+<td style="text-align: center;"><strong>11 Months</strong></td>
+<td style="text-align: left;">Targeted relief for high-density computing loads</td>
+</tr>
+</tbody>
+</table>
+<h3 id="45-5-stage-phased-scalability-roadmap">4.5 5-Stage Phased Scalability Roadmap</h3>
+<ol>
+<li><strong>Stage 1 (Months 1–6) — Simulated Cyber-Physical Pilot:</strong> Validate PID feedback, coordinator debt, and synthetic ML model in a multi-room setup.</li>
+<li><strong>Stage 2 (Months 7–12) — Shadow Real-World Deployment:</strong> Install physical non-intrusive sensors; run predictive models in passive observation mode.</li>
+<li><strong>Stage 3 (Months 13–24) — Human-in-the-Loop Advisory Integration:</strong> Enable live maintenance dispatches and candidate policy queue for facility staff sign-off.</li>
+<li><strong>Stage 4 (Months 25–36) — Constrained Closed-Loop Automation:</strong> Enable autonomous peak-shaving and pre-cooling with verified safety bounds (<strong>Breakeven achieved at Month 33</strong>).</li>
+<li><strong>Stage 5 (Months 37–60) — Campus-Wide Federated Ecosystem:</strong> Scale across all campus building AHUs with federated learning and campus grid load-shedding.</li>
+</ol>
+<hr />
+<h2 id="section-5-system-verification-artifacts-architecture-summary">Section 5: System Verification, Artifacts &amp; Architecture Summary</h2>
+<h3 id="51-predictive-model-implementation-executed-notebook">5.1 Predictive Model Implementation &amp; Executed Notebook</h3>
+<ul>
+<li><strong>Location:</strong> <a href="file:///Users/lacle/Desktop/SUTD/DigitalTwin/GroupHW2/Simulation_Room/notebooks/fan_failure_prediction.ipynb"><code>notebooks/fan_failure_prediction.ipynb</code></a></li>
+<li><strong>Artifacts:</strong> Exported scikit-learn model <a href="file:///Users/lacle/Desktop/SUTD/DigitalTwin/GroupHW2/Simulation_Room/simulator/models/fan_risk_logistic.json"><code>fan_risk_logistic.json</code></a> and validation metrics <a href="file:///Users/lacle/Desktop/SUTD/DigitalTwin/GroupHW2/Simulation_Room/simulator/models/fan_risk_logistic.metrics.json"><code>fan_risk_logistic.metrics.json</code></a>.</li>
+</ul>
+<h3 id="52-integrated-cyber-physical-architecture-specification">5.2 Integrated Cyber-Physical Architecture Specification</h3>
+<ul>
+<li><strong>Location:</strong> <code>report/images/00_integrated_architecture.png</code> and <a href="file:///Users/lacle/Desktop/SUTD/DigitalTwin/GroupHW2/Simulation_Room/docs/architecture.md"><code>docs/architecture.md</code></a>.</li>
+</ul>
+<h3 id="53-executive-briefing-deck-technical-walkthrough-scripts">5.3 Executive Briefing Deck &amp; Technical Walkthrough Scripts</h3>
+<ul>
+<li><strong>Slide Deck:</strong> <code>report/pitch/EcoHVAC_Guardian_Project2_Pitch.pptx</code> &amp; <code>.pdf</code>.</li>
+<li><strong>English Demo Script:</strong> <a href="file:///Users/lacle/Desktop/SUTD/DigitalTwin/GroupHW2/Simulation_Room/report/demo_script.md"><code>report/demo_script.md</code></a> (5:30 timed walkthrough).</li>
+<li><strong>Vietnamese Demo Script:</strong> <a href="file:///Users/lacle/Desktop/SUTD/DigitalTwin/GroupHW2/Simulation_Room/report/demo_script_vi.md"><code>report/demo_script_vi.md</code></a> (5:30 timed walkthrough).</li>
+</ul>
+<h3 id="54-digital-twin-core-capabilities-matrix">5.4 Digital Twin Core Capabilities Matrix</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Architectural Layer</th>
+<th style="text-align: left;">Core Capability Implemented</th>
+<th style="text-align: left;">Technical &amp; Mathematical Verification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Physics &amp; Thermodynamics</strong></td>
+<td style="text-align: left;">4-Zone Smart Wing multi-room heat balance (V = 100–200 m³, C_th = 300–600 kJ/K) with sensible occupant heating (100 W/person) and equipment biases.</td>
+<td style="text-align: left;">Continuous Euler ODE thermal integration with VAV supply plenum cooling delivery (0.480 m³/s, T_supply = 16.0°C).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Predictive Intelligence</strong></td>
+<td style="text-align: left;">L2-regularized standardized Logistic Regression predicting 7-day mechanical fan motor failure risk, and forward thermal trajectory forecaster (+5m, +15m).</td>
+<td style="text-align: left;">N = 2,400 synthetic operating episodes, holdout accuracy <strong>80.42%</strong>, precision <strong>74.80%</strong>, ROC-AUC <strong>0.8449</strong>, Brier score <strong>0.1467</strong>, and 30% OOD envelope protection.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Cyber-Physical Coordination</strong></td>
+<td style="text-align: left;">Centralized <code>occupied-comfort-debt-v2</code> multi-zone resource allocator with anti-windup PID integral error bleed.</td>
+<td style="text-align: left;">Deterministic lexicographic priority queue preventing student room starvation and actuator oscillation during severe AHU derating.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Governance &amp; Human Feedback</strong></td>
+<td style="text-align: left;">Self-learning policy lifecycle with 4-part automated verification test suite, Human-in-the-Loop engineering sign-off form, and zero-PII privacy design.</td>
+<td style="text-align: left;">Candidate policies require 15-tick verification (≤ 1.0°C error, &lt; 40% risk, ≤ 250 W, ≤ 20°C·s debt) and facility engineer approval before SHA-256 promotion.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Autonomous Closed-Loop</strong></td>
+<td style="text-align: left;">Dual-mode control architecture (<code>AUTO 🤖</code> vs <code>HITL 👤</code>) executing verified knowledge base policies with live notification banners and toasts.</td>
+<td style="text-align: left;">Instantaneous (&lt; 50 ms) pattern matching against approved SQLite catalog with strict physical clamp limits (18.0°C – 30.0°C, P ≤ 250 W).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Strategic ROI &amp; Retrofit</strong></td>
+<td style="text-align: left;">5-Year cumulative financial cash flow engine, 4-tier sensitivity matrix, and automated physical saturation retrofit advisor (AHU vs Split Unit).</td>
+<td style="text-align: left;">Initial S25k CAPEX paid off at <strong>Month 33 Breakeven (★)</strong>, delivering <strong>+S20,400 net profit (+81.6% 5-Year ROI)</strong>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>3D Spatial Digital Twin</strong></td>
+<td style="text-align: left;">Full Three.js WebGL spatial facility (<code>room3d.html</code>), dynamic holographic billboards, transparent ducts with flowing neon particles, diffuser jets, and distress beacon.</td>
+<td style="text-align: left;">Synchronized over MQTT/WebSockets (TCP 1883 / 9001) with live occupancy, airflow, temperature color coding, and HUD toggle.</td>
+</tr>
+</tbody>
+</table>
+</body>
+</html>

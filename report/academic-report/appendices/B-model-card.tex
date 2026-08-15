@@ -14,11 +14,11 @@ Target & Synthetic Bernoulli label named \code{failure\_within\_7d}; no seven-da
 Preprocessing & Train-only mean/standard-deviation scaling.\\
 Training & 2,400 iterations, learning rate 0.08, no regularization.\\
 Output & $p=\sigma(b+\sum\beta_jz_j)$ clipped at logit $\pm50$; low $<0.35$, medium $[0.35,0.65)$, high $\ge0.65$.\\
-Stored evidence & At cutoff 0.5: accuracy 0.8042, precision 0.7480, recall 0.5935; TP 92, FP 31, FN 63, TN 294.\\
+Stored evidence & At cutoff 0.5: accuracy 0.8042, balanced accuracy 0.7491, precision 0.7480, recall 0.5935, specificity 0.9046, F1 0.6619, ROC-AUC 0.8449, Brier 0.1467, log loss 0.4471; TP 92, FP 31, FN 63, TN 294.\\
 Explanation & Signed standardized log-odds terms; top three sorted by signed value. Associative, not causal.\\
-Known limitations & Generator circularity; snapshot horizon; one random split; no grouped/temporal/external validation, confidence intervals, calibration, drift/OOD/missing-data policy, cost-based threshold, or subgroup analysis.\\
+Known limitations & Generator circularity; snapshot horizon; one random split; no grouped/temporal/external validation, confidence intervals, field calibration, multivariate drift/OOD policy, cost-based threshold, or subgroup analysis. Finite/missing and univariate domain violations do abstain.\\
 Human oversight & Recommendation only. Risk does not alter coordinator, fan speed, setpoint, airflow limit, or maintenance state.\\
-Required validation & Executed notebook, realistic trajectories/assets, baselines, calibration, PR/ROC, interval estimates, threshold cost, OOD/missingness, prospective shadow trial.\\
+Required validation & Clean notebook rerun; realistic trajectories/assets; PR analysis; field calibration; interval estimates; threshold cost; multivariate drift/OOD; prospective shadow trial.\\
 Governance & Version, feature schema, means/scales, coefficients and thresholds are inspectable; production requires ownership, approval, signed artifact, monitoring and rollback.\\
 \bottomrule
 \end{longtable}

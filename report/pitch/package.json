@@ -1,0 +1,15 @@
+{
+  "name": "ecohvac-guardian-project2-pitch",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Deterministic editable source for the current Project 2 eight-slide pitch",
+  "scripts": {
+    "build": "node generate_project2_pitch.js"
+  },
+  "dependencies": {
+    "pptxgenjs": "4.0.1"
+  },
+  "overrides": {
+    "image-size": "2.0.2"
+  }
+}

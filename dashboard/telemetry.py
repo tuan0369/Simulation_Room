@@ -10,7 +10,7 @@ from collections import deque
 from datetime import datetime
 from typing import Any, Iterable, Mapping, MutableMapping, Sequence
 
-DEFAULT_ROOM_IDS = ("room1", "room2")
+DEFAULT_ROOM_IDS = ("room1", "room2", "room3", "room4")
 AHU_BASE = "twin/ahu"
 ECOSYSTEM_BASE = "twin/ecosystem"
 
@@ -53,6 +53,9 @@ def new_store(
         "command_result_count": 0,
         "scenario": {},
         "risk_history": deque(maxlen=risk_history),
+        "demand_forecast": {},
+        "actions": {},
+        "knowledge": {"entries": [], "active_evaluation": None, "auto_action_enabled": False},
         "lock": threading.Lock(),
     }
 
@@ -87,6 +90,9 @@ def _apply_message_unlocked(store: MutableMapping[str, Any], topic: str, payload
         f"{ECOSYSTEM_BASE}/command/result": "command_result",
         f"{ECOSYSTEM_BASE}/scenario/state": "scenario",
         f"{ECOSYSTEM_BASE}/presentation/state": "presentation",
+        f"{ECOSYSTEM_BASE}/intelligence/demand": "demand_forecast",
+        f"{ECOSYSTEM_BASE}/intelligence/actions": "actions",
+        f"{ECOSYSTEM_BASE}/knowledge/state": "knowledge",
     }.get(topic)
     if ecosystem_key:
         data = decode_payload(payload)
@@ -100,7 +106,18 @@ def _apply_message_unlocked(store: MutableMapping[str, Any], topic: str, payload
 
     parts = topic.split("/")
     rooms = store.get("rooms", {})
-    if len(parts) >= 3 and parts[0] == "twin" and parts[1] in rooms:
+    if len(parts) >= 3 and parts[0] == "twin" and (parts[1] in rooms or parts[1].startswith("room")):
+        if parts[1] not in rooms:
+            rooms[parts[1]] = {
+                "temperature": deque(maxlen=180),
+                "humidity": deque(maxlen=120),
+                "occupancy": deque(maxlen=180),
+                "hvac": {},
+                "detail": {},
+                "allocation": {},
+                "energy": {},
+                "status": "unknown",
+            }
         room = rooms[parts[1]]
         channel = parts[2]
         if channel == "status" and len(parts) == 3:

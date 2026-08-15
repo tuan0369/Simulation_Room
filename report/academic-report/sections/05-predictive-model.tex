@@ -64,7 +64,7 @@ With intercept $b=-1.45350261$, the deployed logit is
 \risk&=\sigma[\clip(\eta;-50,50)].
 \label{eq:risk}
 \end{align}
-The artifact version is \code{fan-risk-logistic-v1}. Runtime bands are
+The artifact version is \code{fan-risk-logistic-v1}. The trainer also persists per-feature domain bounds: physical limits intersected with the training minimum/maximum expanded by 30\% of its range. Runtime scoring first requires all five finite numeric inputs inside those bounds; otherwise it returns no probability and an explicit abstained or out-of-distribution status. A missing/corrupt default artifact loads an unavailable non-predicting fallback. These are safe non-prediction states, not evidence of low risk. Runtime bands for an in-domain score are
 \begin{equation}
 \operatorname{band}(p)=\begin{cases}\text{low},&p<0.35,\\\text{medium},&0.35\le p<0.65,\\\text{high},&p\ge0.65.\end{cases}
 \end{equation}
@@ -93,14 +93,14 @@ Stored metrics are
 \mathrm{Precision}&=TP/(TP+FP)=0.7480,\\
 \mathrm{Recall}&=TP/(TP+FN)=0.5935.
 \end{align}
-The 63 false negatives are operationally material. Algebraically derived from the same stored counts (not separately stored) are
+The 63 false negatives are operationally material. The current metrics artifact stores the following expanded measures (earlier versions stored only the basic counts/rates):
 \begin{align}
 \mathrm{Specificity}&=TN/(TN+FP)=0.9046,\\
 F_1&=2TP/(2TP+FP+FN)=0.6619,\\
 \mathrm{NPV}&=TN/(TN+FN)=0.8235,\\
 \mathrm{Balanced\ accuracy}&=(\mathrm{Recall}+\mathrm{Specificity})/2=0.7491.
 \end{align}
-Holdout positive prevalence is $155/480=0.3229$, so an always-negative classifier would score 0.6771 accuracy; model accuracy is 0.1271 higher. Accuracy alone is insufficient, and PR curves are particularly useful under unequal class prevalence \citep{saito2015pr}. An earlier audit calculation from the deterministic holdout obtained AUROC approximately 0.8449, average precision 0.7315, log loss 0.4471, and Brier score 0.1467. These are clearly \emph{audit-derived}: the project does not generate or store them, and the final notebook should reproduce them with curves and code. Brier score assesses probability error \citep{brier1950}; calibration must still be plotted and tested \citep{guo2017calibration}.
+Holdout positive prevalence is $155/480=0.3229$, so an always-negative classifier scores 0.6771 accuracy; model accuracy is 0.1271 higher. Accuracy alone is insufficient, and PR curves are particularly useful under unequal class prevalence \citep{saito2015pr}. The stored artifact now includes ROC-AUC 0.8449, log loss 0.4471, and Brier score 0.1467; the executed notebook adds the majority baseline, confusion matrix, and calibration bins. PR-AUC/average precision, confidence intervals, cost-based threshold selection, and field calibration remain absent. Brier score assesses probability error \citep{brier1950}; synthetic calibration bins do not establish calibration on real assets \citep{guo2017calibration}.
 
 \section{Validity and deployment gaps}
-One random holdout has no temporal or asset-group separation, repeated seeds, confidence intervals, external data, drift evaluation, missing-value behavior, or out-of-distribution (OOD) gate. Directly injected runtime wear can produce combinations unlike training rows. Thresholds are not selected from maintenance costs. The appropriate evidence upgrade is an executed notebook with EDA, asset/time trajectories, grouped or temporal validation, baselines, calibration, bootstrap intervals, threshold-cost analysis, missing/OOD behavior, and an explicit model card \citep{mitchell2019modelcards}. That notebook is named in the README but is absent at report build time.
+One random holdout has no temporal or asset-group separation, repeated seeds, confidence intervals, external data, or prospective drift evaluation. Missing/non-finite inputs and univariate domain violations now cause explicit abstention; however, in-bound multivariate combinations can still be unlike training rows. Thresholds are not selected from maintenance costs. The executed notebook provides EDA, a majority baseline, expanded metrics, calibration bins, OOD examples, limitations, and exact artifact reproduction. The remaining evidence upgrade is realistic asset/time trajectories, grouped or temporal validation, PR analysis, bootstrap intervals, threshold-cost analysis, multivariate drift/OOD behavior, and a prospectively governed model card \citep{mitchell2019modelcards}.

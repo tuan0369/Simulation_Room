@@ -128,7 +128,7 @@ Recover & Simulator can be restarted and retained state helps clients obtain the
 \end{table}
 
 \section{Current security posture and threat register}
-The local Mosquitto configuration states \code{allow\_anonymous true}, listens on plaintext MQTT port 1883 and WebSockets port 9001, and has no ACL evidence. The simulator checks JSON object shape, known topics, and principal value types/ranges, queues commands for serialized mutation, publishes retained telemetry, and declares an LWT offline state. Validation is incomplete: setpoint and AHU numeric commands do not explicitly reject non-finite values, and a numeric time-scale is converted with \code{int()} before membership testing, so some non-integer inputs can be truncated into an allowed value. These are useful reliability/input controls but do not authenticate an actor or protect confidentiality/integrity. Operational-technology security requires defense in depth, segmentation, identity, monitoring, recovery, and safely engineered control behavior \citep{nistot2023}.
+The default Compose Mosquitto configuration states \code{allow\_anonymous true}, listens on plaintext MQTT port 1883 and WebSockets port 9001, and uses no ACL. A separate \code{mosquitto-hardened.conf}/ACL example requires TLS certificate and password files, but default Compose does not deploy it; presence is not operating evidence. The simulator strictly rejects oversized/invalid/non-object/non-finite payloads and invalid types/ranges, rejects retained commands, queues non-retained commands for serialized mutation, emits application results, and uses a 1,024-entry process-local fingerprint cache to replay identical IDs without mutation and reject conflicts. Optional \code{ECOHVAC\_AUDIT\_PATH} writes sanitized command results to a local hash chain. These are useful reliability/accountability controls but do not authenticate the self-declared actor or protect transport confidentiality/integrity. Operational-technology security requires defense in depth, segmentation, identity, monitoring, recovery, and safely engineered control behavior \citep{nistot2023}.
 
 \begin{landscape}
 \begin{longtable}{L{0.14\linewidth}L{0.17\linewidth}L{0.16\linewidth}L{0.17\linewidth}L{0.22\linewidth}}
@@ -147,7 +147,7 @@ DoS/flooding & high-rate publishes or broker loss & delayed/lost control evidenc
 Topic escalation & wildcard subscribe/publish & confidentiality/control compromise & no ACL & identity-bound allowlists and ACL regression tests\\
 Model substitution & alter JSON coefficients & arbitrary risk/advice & feature schema/array-length checks & SHA/signature, finite/range validation, approved registry, last-known-good rollback\\
 Endpoint exposure & hard-coded localhost/\code{ws://} & failed/unsafe remote deployment & local-only assumption & environment configuration, WSS, origin policy, segmentation\\
-Audit repudiation & actor denies command & weak accountability & dashboard/demo traces only & tamper-evident centralized audit with actor, time, decision, acknowledgement\\
+Audit repudiation & actor denies command & weak accountability & optional local hash-chained sanitized command-result record; self-declared actor; no external anchor & authenticated actor, wider decision/action coverage, externally anchored/signature-protected centralized audit and verification\\
 Supply/deployment drift & mutable image tag/partial Compose & unreviewed change or missing service & Mosquitto v2 tag; only broker packaged & pinned digest/SBOM, signed build, full service health checks\\
 \bottomrule
 \end{longtable}

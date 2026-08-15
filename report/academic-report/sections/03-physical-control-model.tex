@@ -14,7 +14,9 @@ D_{i,k}&=\begin{cases}(e_{i,k}-e_{i,k-1})/\Delta t,&\Delta t>0,\\0,&\Delta t=0,\
 u_{i,k}&=\clip(0.40e_{i,k}+0.05I_{i,k}+0.05D_{i,k};0,1),\\
 r_{i,k}&=0.16h_{i,k}u_{i,k}\quad [\si{\meter\cubed\per\second}].
 \end{align}
-On first use, previous error is initialized to current error, so the derivative is zero. Integral clamping bounds its contribution to $\pm1$, but this is not allocation-aware anti-windup: the controller receives temperature but not the denied-flow residual $r_i-g_i$. Long denial can therefore saturate the request and accumulate comfort debt. PID fundamentals and anti-windup concerns are discussed in \citet{astrom2006advanced}.
+On first use, previous error is initialized to current error, so the derivative is zero. Integral clamping bounds its contribution to $\pm1$. After allocation, \code{apply\_actuator\_feedback} converts granted flow to applied output $u_i^{app}=g_i/0.16$ and bleeds the integral when $u_i>u_i^{app}$:
+\begin{equation}I_i\leftarrow\clip\!\left(I_i-\frac{(u_i-u_i^{app})\Delta t}{10K_i};-20,20\right),\qquad K_i>0.\end{equation}
+This back-calculation-style feedback reduces windup under shared-actuator saturation; it does not itself guarantee fairness or eliminate a sustained full request under persistent heat load. PID fundamentals and anti-windup concerns are discussed in \citet{astrom2006advanced}.
 
 Auto mode switches cooling off at zero occupancy and on when an occupied room is above setpoint; otherwise it keeps the previous binary state. Setpoints are clamped to \SIrange{18}{30}{\celsius}.
 
@@ -75,4 +77,4 @@ E_{k+1}&=E_k+\frac{P^{total}_k\Delta t}{3.6\times10^6}\quad[\si{\kilo\watt\hour}
 The cubic relation reflects the familiar fan-system affinity-law trend, while actual systems depend on their operating curve and controls \citep{doefan2003}. Importantly, clog does \emph{not} unconditionally increase modeled total power. At fixed $s$, the resistance multiplier in \cref{eq:fanpower} increases with $c$; under saturated demand, however, clog reduces available flow and therefore $s^3$, which can dominate. The report therefore claims only increased modeled resistance at fixed flow.
 
 \section{Timing consistency}
-Energy accumulation uses room temperatures before the physical update because cooling is summed before state replacement. Room MQTT cooling is recomputed later from post-update temperature. This produces a small time-index discrepancy. A production model should define $k$ versus $k+1$ payload fields explicitly and publish one canonical cooling quantity.
+The room runtime stores the exact pre-state sensible thermal cooling used by the room update and AHU calculation, and MQTT publishes that stored value as \code{thermal\_cooling\_power\_w}. AHU telemetry separately publishes fan electrical power, COP-derived cooling electrical power, total electrical power, and cumulative electrical energy. Thus the earlier pre/post-step recomputation discrepancy is removed and thermal versus electrical quantities are explicit; they remain uncalibrated simulation estimates rather than facility measurements.

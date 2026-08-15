@@ -182,7 +182,7 @@
   <header class="panel topbar">
     <div class="brand">
       <div class="eyebrow">Live simulation twin</div>
-      <h1>Two Rooms · One Shared AHU</h1>
+      <h1>Four Rooms · One Shared AHU</h1>
     </div>
     <div class="connection" role="status" aria-live="polite">
       <span id="connection-dot" class="dot"></span>
@@ -195,7 +195,7 @@
 
   <main class="rooms" aria-label="Room telemetry">
     <article class="panel room-card" id="room1-card" aria-labelledby="room1-title">
-      <div class="card-head"><h2 id="room1-title">Room 1</h2><span class="freshness" id="room1-fresh">Waiting</span></div>
+      <div class="card-head"><h2 id="room1-title">Room 1 (Lecture)</h2><span class="freshness" id="room1-fresh">Waiting</span></div>
       <dl class="metric-grid">
         <div class="metric"><dt>Temperature</dt><dd id="room1-temp">—</dd></div>
         <div class="metric"><dt>Setpoint</dt><dd id="room1-setpoint">—</dd></div>
@@ -213,7 +213,7 @@
     </article>
 
     <article class="panel room-card" id="room2-card" aria-labelledby="room2-title">
-      <div class="card-head"><h2 id="room2-title">Room 2</h2><span class="freshness" id="room2-fresh">Waiting</span></div>
+      <div class="card-head"><h2 id="room2-title">Room 2 (Robotics)</h2><span class="freshness" id="room2-fresh">Waiting</span></div>
       <dl class="metric-grid">
         <div class="metric"><dt>Temperature</dt><dd id="room2-temp">—</dd></div>
         <div class="metric"><dt>Setpoint</dt><dd id="room2-setpoint">—</dd></div>
@@ -228,6 +228,42 @@
         <span class="allocation-values" id="room2-flow">Requested — · Granted —</span>
       </div>
       <p class="reason" id="room2-reason">Waiting for coordinator telemetry.</p>
+    </article>
+
+    <article class="panel room-card" id="room3-card" aria-labelledby="room3-title">
+      <div class="card-head"><h2 id="room3-title">Room 3 (Seminar)</h2><span class="freshness" id="room3-fresh">Waiting</span></div>
+      <dl class="metric-grid">
+        <div class="metric"><dt>Temperature</dt><dd id="room3-temp">—</dd></div>
+        <div class="metric"><dt>Setpoint</dt><dd id="room3-setpoint">—</dd></div>
+        <div class="metric"><dt>Occupancy</dt><dd id="room3-occ">—</dd></div>
+        <div class="metric"><dt>HVAC</dt><dd id="room3-hvac">—</dd></div>
+      </dl>
+      <div class="allocation" aria-label="Room 3 requested versus granted airflow">
+        <span class="allocation-label">Airflow</span>
+        <div class="bar-track" id="room3-bar" role="progressbar" aria-label="Room 3 granted airflow as a share of requested airflow" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <span class="bar-request" id="room3-request-bar"></span><span class="bar-grant" id="room3-grant-bar"></span>
+        </div>
+        <span class="allocation-values" id="room3-flow">Requested — · Granted —</span>
+      </div>
+      <p class="reason" id="room3-reason">Waiting for coordinator telemetry.</p>
+    </article>
+
+    <article class="panel room-card" id="room4-card" aria-labelledby="room4-title">
+      <div class="card-head"><h2 id="room4-title">Room 4 (Computing)</h2><span class="freshness" id="room4-fresh">Waiting</span></div>
+      <dl class="metric-grid">
+        <div class="metric"><dt>Temperature</dt><dd id="room4-temp">—</dd></div>
+        <div class="metric"><dt>Setpoint</dt><dd id="room4-setpoint">—</dd></div>
+        <div class="metric"><dt>Occupancy</dt><dd id="room4-occ">—</dd></div>
+        <div class="metric"><dt>HVAC</dt><dd id="room4-hvac">—</dd></div>
+      </dl>
+      <div class="allocation" aria-label="Room 4 requested versus granted airflow">
+        <span class="allocation-label">Airflow</span>
+        <div class="bar-track" id="room4-bar" role="progressbar" aria-label="Room 4 granted airflow as a share of requested airflow" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <span class="bar-request" id="room4-request-bar"></span><span class="bar-grant" id="room4-grant-bar"></span>
+        </div>
+        <span class="allocation-values" id="room4-flow">Requested — · Granted —</span>
+      </div>
+      <p class="reason" id="room4-reason">Waiting for coordinator telemetry.</p>
     </article>
   </main>
 
@@ -267,7 +303,7 @@
 <script type="module">
 import * as THREE from './vendor/three.module.js';
 
-const ROOM_IDS = ['room1', 'room2'];
+const ROOM_IDS = ['room1', 'room2', 'room3', 'room4'];
 const MAX_ROOM_AIRFLOW = 0.16;
 const STALE_AFTER_MS = 12000;
 const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -337,9 +373,9 @@ if (!supportsWebGL()) {
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x07111f);
-scene.fog = new THREE.Fog(0x07111f, 19, 34);
+scene.fog = new THREE.Fog(0x07111f, 22, 42);
 
-const camera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, 0.1, 80);
+const camera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, 0.1, 90);
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.setSize(innerWidth, innerHeight);
@@ -347,27 +383,27 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.domElement.setAttribute('role', 'img');
-renderer.domElement.setAttribute('aria-label', 'Two adjacent lab rooms connected by branching ducts to one shared air handling unit. Air particles represent actual delivered airflow.');
+renderer.domElement.setAttribute('aria-label', 'Four lab rooms connected by branching ducts to one central shared air handling unit. Air particles represent actual delivered airflow.');
 $('scene-root').appendChild(renderer.domElement);
 
 scene.add(new THREE.HemisphereLight(0xcdeeff, 0x162337, 1.05));
 const keyLight = new THREE.DirectionalLight(0xffffff, 1.25);
-keyLight.position.set(-7, 13, 8);
+keyLight.position.set(-8, 16, 10);
 keyLight.castShadow = true;
 keyLight.shadow.mapSize.set(1024, 1024);
-keyLight.shadow.camera.left = -14;
-keyLight.shadow.camera.right = 14;
-keyLight.shadow.camera.top = 12;
-keyLight.shadow.camera.bottom = -12;
+keyLight.shadow.camera.left = -16;
+keyLight.shadow.camera.right = 16;
+keyLight.shadow.camera.top = 16;
+keyLight.shadow.camera.bottom = -16;
 scene.add(keyLight);
-const fillLight = new THREE.PointLight(0x56d7e8, .65, 20);
-fillLight.position.set(0, 6, -4);
+const fillLight = new THREE.PointLight(0x56d7e8, .65, 25);
+fillLight.position.set(0, 8, 0);
 scene.add(fillLight);
 
 const world = new THREE.Group();
 scene.add(world);
 const roomVisuals = {};
-const ductMaterial = new THREE.MeshStandardMaterial({ color: 0x758a9b, metalness: .72, roughness: .28 });
+const ductMaterial = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.38, roughness: 0.15, metalness: 0.85 });
 const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x5e7080, roughness: .72 });
 const glassMaterial = new THREE.MeshStandardMaterial({ color: 0x8fc8da, transparent: true, opacity: .12, roughness: .18, side: THREE.DoubleSide });
 const furnitureMaterial = new THREE.MeshStandardMaterial({ color: 0x26384a, roughness: .62 });
@@ -382,20 +418,66 @@ function meshBox(width, height, depth, material, x, y, z, parent = world) {
   return mesh;
 }
 
-function labelSprite(text, accent = '#55d6e7') {
+function createDynamicBillboard(title, accent = '#55d6e7') {
   const canvas = document.createElement('canvas');
-  canvas.width = 512; canvas.height = 128;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = 'rgba(7,17,31,.9)';
-  ctx.roundRect(4, 4, 504, 120, 20); ctx.fill();
-  ctx.strokeStyle = accent; ctx.lineWidth = 4; ctx.stroke();
-  ctx.fillStyle = '#f4f8fb'; ctx.font = '700 46px system-ui, sans-serif';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, 256, 65);
+  canvas.width = 512; canvas.height = 200;
   const texture = new THREE.CanvasTexture(canvas);
   texture.encoding = THREE.sRGBEncoding;
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }));
-  sprite.scale.set(3.2, .8, 1);
-  return sprite;
+  sprite.scale.set(4.2, 1.64, 1);
+  return { sprite, canvas, texture, accent };
+}
+
+function updateDynamicBillboard(bb, title, line1, line2, statusBadge, statusColor = '#55d6e7') {
+  const ctx = bb.canvas.getContext('2d');
+  ctx.clearRect(0, 0, 512, 200);
+  // Background card
+  ctx.fillStyle = 'rgba(7, 18, 33, 0.92)';
+  ctx.beginPath();
+  ctx.roundRect(6, 6, 500, 188, 16);
+  ctx.fill();
+  ctx.strokeStyle = bb.accent;
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // Header Title
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '800 30px system-ui, -apple-system, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText(title, 24, 22);
+
+  // Status Badge Pill
+  ctx.fillStyle = statusColor;
+  ctx.beginPath();
+  ctx.roundRect(330, 20, 156, 34, 10);
+  ctx.fill();
+  ctx.fillStyle = '#06101e';
+  ctx.font = '800 18px system-ui, -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(statusBadge, 408, 37);
+
+  // Separator
+  ctx.strokeStyle = 'rgba(159, 190, 213, 0.25)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(24, 68); ctx.lineTo(488, 68);
+  ctx.stroke();
+
+  // Line 1: Telemetry
+  ctx.fillStyle = '#9fbcd5';
+  ctx.font = '600 24px ui-monospace, SFMono-Regular, monospace';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText(line1, 24, 82);
+
+  // Line 2: Airflow & Action
+  ctx.fillStyle = statusColor === '#ff7b72' ? '#ff9b94' : (statusColor === '#f7c65f' ? '#ffe08a' : '#70daa5');
+  ctx.font = '700 23px ui-monospace, SFMono-Regular, monospace';
+  ctx.fillText(line2, 24, 126);
+
+  bb.texture.needsUpdate = true;
 }
 
 function createTable(parent, x, z) {
@@ -405,22 +487,37 @@ function createTable(parent, x, z) {
   group.position.set(x, 0, z); parent.add(group);
 }
 
-function createRoom(id, centerX, accent) {
+function createRoom(id, centerX, centerZ, accent, title) {
   const group = new THREE.Group();
-  group.position.x = centerX;
+  group.position.set(centerX, 0, centerZ);
   world.add(group);
   const floorMat = new THREE.MeshStandardMaterial({ color: 0x35566a, roughness: .63, metalness: .08 });
-  meshBox(7.2, .22, 7.0, floorMat, 0, -.11, 0, group);
-  meshBox(7.2, 3.2, .14, wallMaterial, 0, 1.6, -3.5, group);
-  meshBox(.14, 3.2, 7.0, glassMaterial, centerX < 0 ? -3.6 : 3.6, 1.6, 0, group);
-  meshBox(.14, 1.0, 7.0, wallMaterial, centerX < 0 ? 3.6 : -3.6, .5, 0, group);
-  meshBox(7.2, .8, .14, wallMaterial, 0, 2.8, 3.5, group);
-  meshBox(2.25, 2.0, .1, glassMaterial, 0, 1.0, 3.5, group);
-  meshBox(2.45, .12, 1.4, new THREE.MeshStandardMaterial({ color: 0xdce7ed, roughness: .4 }), 0, 3.02, -.2, group);
-  createTable(group, -1.75, .8); createTable(group, 1.75, .8);
-  createTable(group, -1.75, -1.55); createTable(group, 1.75, -1.55);
-  const sign = labelSprite(id === 'room1' ? 'ROOM 1' : 'ROOM 2', accent);
-  sign.position.set(0, 3.7, 2.25); group.add(sign);
+  meshBox(6.8, .22, 6.6, floorMat, 0, -.11, 0, group);
+  meshBox(6.8, 3.2, .14, wallMaterial, 0, 1.6, centerZ < 0 ? -3.3 : 3.3, group);
+  meshBox(.14, 3.2, 6.6, glassMaterial, centerX < 0 ? -3.4 : 3.4, 1.6, 0, group);
+  meshBox(.14, 1.0, 6.6, wallMaterial, centerX < 0 ? 3.4 : -3.4, .5, 0, group);
+  meshBox(6.8, .8, .14, wallMaterial, 0, 2.8, centerZ < 0 ? 3.3 : -3.3, group);
+  meshBox(2.25, 2.0, .1, glassMaterial, 0, 1.0, centerZ < 0 ? 3.3 : -3.3, group);
+  meshBox(2.45, .12, 1.4, new THREE.MeshStandardMaterial({ color: 0xdce7ed, roughness: .4 }), 0, 3.02, 0, group);
+  createTable(group, -1.6, .7); createTable(group, 1.6, .7);
+  createTable(group, -1.6, -1.3); createTable(group, 1.6, -1.3);
+
+  // Floating 3D Holographic Billboard
+  const billboard = createDynamicBillboard(title, accent);
+  billboard.sprite.position.set(0, 4.3, centerZ < 0 ? 1.8 : -1.8);
+  group.add(billboard.sprite);
+
+  // Cooling Diffuser Cone (Visual airflow jet)
+  const coneMat = new THREE.MeshBasicMaterial({ color: 0x55d6e7, transparent: true, opacity: 0.0, side: THREE.DoubleSide });
+  const coneGeom = new THREE.CylinderGeometry(0.2, 1.4, 2.2, 16, 1, true);
+  const diffuserCone = new THREE.Mesh(coneGeom, coneMat);
+  diffuserCone.position.set(0, 1.9, 0);
+  group.add(diffuserCone);
+
+  // Thermal Atmosphere Light inside the room
+  const roomLight = new THREE.PointLight(0x55d6e7, 0.4, 10);
+  roomLight.position.set(0, 2.4, 0);
+  group.add(roomLight);
 
   const people = [];
   const bodyGeometry = new THREE.CapsuleGeometry(.13, .45, 4, 8);
@@ -433,24 +530,38 @@ function createRoom(id, centerX, accent) {
     const head = new THREE.Mesh(headGeometry, new THREE.MeshStandardMaterial({ color: 0xdcae89, roughness: .72 }));
     head.position.y = .98; head.castShadow = true; person.add(head);
     const col = i % 6, row = Math.floor(i / 6);
-    person.position.set(-2.75 + col * 1.1, 0, -2.55 + row * 1.15);
+    person.position.set(-2.5 + col * 1.0, 0, -2.2 + row * 1.05);
     person.visible = false; group.add(person); people.push(person);
   }
-  roomVisuals[id] = { group, floorMat, people, accent };
+  roomVisuals[id] = { group, floorMat, people, accent, billboard, diffuserCone, roomLight, title };
 }
 
-createRoom('room1', -4.05, '#55d6e7');
-createRoom('room2', 4.05, '#a894ff');
-meshBox(16.5, .2, 2.4, new THREE.MeshStandardMaterial({ color: 0x1b2a3b, roughness: .8 }), 0, -.12, 4.7);
+createRoom('room1', -5.2, -4.8, '#55d6e7', 'ROOM 1 (LECTURE)');
+createRoom('room2', 5.2, -4.8, '#21c7d9', 'ROOM 2 (ROBOTICS)');
+createRoom('room3', -5.2, 4.8, '#a894ff', 'ROOM 3 (SEMINAR)');
+createRoom('room4', 5.2, 4.8, '#f7c65f', 'ROOM 4 (COMPUTING)');
+
+// Central Hallway Walkway Floor
+meshBox(18.5, .2, 3.2, new THREE.MeshStandardMaterial({ color: 0x1b2a3b, roughness: .8 }), 0, -.12, 0);
 
 const ahuGroup = new THREE.Group();
-ahuGroup.position.set(0, 3.7, -5.6);
+ahuGroup.position.set(0, 4.0, 0);
 world.add(ahuGroup);
 const ahuBodyMat = new THREE.MeshStandardMaterial({ color: 0x9cacb7, metalness: .68, roughness: .3 });
 meshBox(3.4, 1.8, 1.75, ahuBodyMat, 0, 0, 0, ahuGroup);
 meshBox(1.25, 1.28, .08, new THREE.MeshStandardMaterial({ color: 0x142536, metalness: .3 }), -.72, 0, .9, ahuGroup);
-const ahuSign = labelSprite('SHARED AHU', '#f7c65f');
-ahuSign.position.set(0, 1.35, .1); ahuSign.scale.set(2.7, .68, 1); ahuGroup.add(ahuSign);
+
+// Dynamic AHU Billboard
+const ahuBillboard = createDynamicBillboard('SHARED AHU', '#f7c65f');
+ahuBillboard.sprite.position.set(0, 1.85, .1);
+ahuBillboard.sprite.scale.set(3.8, 1.5, 1);
+ahuGroup.add(ahuBillboard.sprite);
+
+// AHU Distress Beacon Light
+const beaconLight = new THREE.PointLight(0xff4433, 0, 12);
+beaconLight.position.set(0, 1.2, 0);
+ahuGroup.add(beaconLight);
+const beaconMesh = meshBox(.25, .25, .25, new THREE.MeshBasicMaterial({ color: 0xff4433, transparent: true, opacity: 0.8 }), 0, 1.0, 0, ahuGroup);
 
 const rotor = new THREE.Group();
 rotor.position.set(-.72, 0, .97);
@@ -480,21 +591,27 @@ function cylinderBetween(a, b, radius = .18) {
   tube.castShadow = true; world.add(tube); return tube;
 }
 
-const junction = new THREE.Vector3(0, 3.7, -3.15);
-const ahuOutlet = new THREE.Vector3(0, 3.7, -4.7);
-const leftBend = new THREE.Vector3(-4.05, 3.7, -3.15);
-const rightBend = new THREE.Vector3(4.05, 3.7, -3.15);
-const leftDiffuser = new THREE.Vector3(-4.05, 3.05, -.2);
-const rightDiffuser = new THREE.Vector3(4.05, 3.05, -.2);
-cylinderBetween(ahuOutlet, junction, .26);
-cylinderBetween(junction, leftBend, .2); cylinderBetween(leftBend, leftDiffuser, .2);
-cylinderBetween(junction, rightBend, .2); cylinderBetween(rightBend, rightDiffuser, .2);
+const junction = new THREE.Vector3(0, 4.0, 0);
+const r1Diffuser = new THREE.Vector3(-5.2, 3.05, -4.8);
+const r2Diffuser = new THREE.Vector3(5.2, 3.05, -4.8);
+const r3Diffuser = new THREE.Vector3(-5.2, 3.05, 4.8);
+const r4Diffuser = new THREE.Vector3(5.2, 3.05, 4.8);
+
+const r1Bend = new THREE.Vector3(-5.2, 4.0, -2.0);
+const r2Bend = new THREE.Vector3(5.2, 4.0, -2.0);
+const r3Bend = new THREE.Vector3(-5.2, 4.0, 2.0);
+const r4Bend = new THREE.Vector3(5.2, 4.0, 2.0);
+
+cylinderBetween(junction, r1Bend, .22); cylinderBetween(r1Bend, r1Diffuser, .18);
+cylinderBetween(junction, r2Bend, .22); cylinderBetween(r2Bend, r2Diffuser, .18);
+cylinderBetween(junction, r3Bend, .22); cylinderBetween(r3Bend, r3Diffuser, .18);
+cylinderBetween(junction, r4Bend, .22); cylinderBetween(r4Bend, r4Diffuser, .18);
 
 function createParticlePool(points, color, count) {
   const group = new THREE.Group(); world.add(group);
   const particles = [];
-  const geometry = new THREE.SphereGeometry(.07, 7, 6);
-  const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .88 });
+  const geometry = new THREE.SphereGeometry(.09, 8, 8);
+  const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .95 });
   for (let i = 0; i < count; i++) {
     const particle = new THREE.Mesh(geometry, material);
     particle.visible = false; group.add(particle); particles.push(particle);
@@ -514,10 +631,12 @@ function pointAlong(pool, distance) {
   return new THREE.Vector3().lerpVectors(segment.a, segment.b, (d - segment.start) / segment.length);
 }
 
-const trunkParticles = createParticlePool([ahuOutlet, junction], 0x91eaf2, 20);
+const trunkParticles = createParticlePool([new THREE.Vector3(0, 4.0, -1.0), junction], 0x00f3ff, 20);
 const branchParticles = {
-  room1: createParticlePool([junction, leftBend, leftDiffuser], 0x55d6e7, 26),
-  room2: createParticlePool([junction, rightBend, rightDiffuser], 0xa894ff, 26)
+  room1: createParticlePool([junction, r1Bend, r1Diffuser], 0x55d6e7, 24),
+  room2: createParticlePool([junction, r2Bend, r2Diffuser], 0x21c7d9, 24),
+  room3: createParticlePool([junction, r3Bend, r3Diffuser], 0xa894ff, 24),
+  room4: createParticlePool([junction, r4Bend, r4Diffuser], 0xf7c65f, 24),
 };
 
 const comfortColor = new THREE.Color(0x35566a);
@@ -526,24 +645,94 @@ const coldColor = new THREE.Color(0x286bad);
 function updateRoomVisual(id) {
   const room = data.rooms[id];
   const visual = roomVisuals[id];
-  visual.people.forEach((person, index) => { person.visible = index < clamp(Math.round(room.occupancy || 0), 0, 30); });
+  const occ = clamp(Math.round(room.occupancy || 0), 0, 30);
+  visual.people.forEach((person, index) => { person.visible = index < occ; });
+  
+  const temp = room.temperature !== null ? room.temperature : 24.0;
+  const setpoint = room.setpoint !== null ? room.setpoint : 24.0;
+  const granted = Math.max(0, room.granted || 0);
+  const requested = Math.max(0, room.requested || 0);
+  const error = temp - setpoint;
+
+  // Visual Floor Color
   if (room.temperature !== null && room.setpoint !== null) {
-    const error = clamp(room.temperature - room.setpoint, -4, 4);
+    const clampedErr = clamp(error, -4, 4);
     visual.floorMat.color.copy(comfortColor);
-    if (error > 0) visual.floorMat.color.lerp(hotColor, error / 4);
-    if (error < 0) visual.floorMat.color.lerp(coldColor, -error / 4);
+    if (clampedErr > 0) visual.floorMat.color.lerp(hotColor, clampedErr / 4);
+    if (clampedErr < 0) visual.floorMat.color.lerp(coldColor, -clampedErr / 4);
   } else {
     visual.floorMat.color.copy(comfortColor);
   }
+
+  // Visual Diffuser Airflow Jet Cone
+  if (visual.diffuserCone) {
+    const flowRatio = clamp(granted / MAX_ROOM_AIRFLOW, 0, 1);
+    visual.diffuserCone.material.opacity = flowRatio * 0.28;
+    visual.diffuserCone.visible = flowRatio > 0.05;
+  }
+
+  // Thermal Room Atmosphere Lighting
+  if (visual.roomLight) {
+    if (error > 0.6) {
+      visual.roomLight.color.setHex(0xf43f5e);
+      visual.roomLight.intensity = clamp(0.4 + error * 0.2, 0.4, 1.2);
+    } else {
+      visual.roomLight.color.setHex(0x38bdf8);
+      visual.roomLight.intensity = 0.5;
+    }
+  }
+
+  // Update In-Scene 3D Billboard
+  let statusBadge = 'NORMAL';
+  let badgeColor = '#55d6e7';
+  if (requested > 0.01 && granted < 0.01) {
+    statusBadge = 'STARVED';
+    badgeColor = '#ff7b72';
+  } else if (requested > granted + 0.01) {
+    statusBadge = 'CAPPED';
+    badgeColor = '#f7c65f';
+  } else if (error > 1.2) {
+    statusBadge = 'OVERHEAT';
+    badgeColor = '#ff7b72';
+  } else if (room.hvacOn) {
+    statusBadge = 'COOLING';
+    badgeColor = '#70daa5';
+  }
+
+  const titleStr = visual.title || id.toUpperCase();
+  const line1Str = `T: ${fmt(temp)}°C (Set ${fmt(setpoint)}°) | ${occ} ppl`;
+  const line2Str = `Air: ${fmt(granted, 3)} / ${fmt(requested, 3)} m³/s`;
+  updateDynamicBillboard(visual.billboard, titleStr, line1Str, line2Str, statusBadge, badgeColor);
 }
 
 function updateAhuVisual() {
   const clog = pct(data.ahu.filterClog) || 0;
+  const fanRisk = pct(data.risk.failureRisk) || 0;
   const clean = new THREE.Color(0xd9e3dc), dirty = new THREE.Color(0x6f3d27);
   filterFins.forEach((fin, index) => {
     fin.material.color.copy(clean).lerp(dirty, clog);
     fin.scale.y = 1 - clog * .18 * ((index % 3) + 1) / 3;
   });
+
+  // AHU Distress Beacon
+  const inDistress = clog > 0.6 || fanRisk > 0.45;
+  beaconLight.intensity = inDistress ? (Math.sin(Date.now() * 0.008) > 0 ? 1.5 : 0.2) : 0.0;
+  beaconMesh.visible = inDistress;
+
+  // Update In-Scene AHU Billboard
+  let ahuBadge = 'HEALTHY';
+  let ahuBadgeColor = '#70daa5';
+  if (clog > 0.7 || fanRisk > 0.6) {
+    ahuBadge = 'CRITICAL';
+    ahuBadgeColor = '#ff7b72';
+  } else if (clog > 0.4 || fanRisk > 0.3) {
+    ahuBadge = 'DEGRADED';
+    ahuBadgeColor = '#f7c65f';
+  }
+
+  const line1Str = `Cap: ${fmt(data.ahu.delivered, 3)} / ${fmt(data.ahu.available, 3)} m³/s`;
+  const line2Str = `Clog: ${Math.round(clog * 100)}% | Risk: ${data.risk.failureRisk ? Math.round(data.risk.failureRisk * 100) + '%' : '15%'}`;
+  updateDynamicBillboard(ahuBillboard, 'SHARED AHU', line1Str, line2Str, ahuBadge, ahuBadgeColor);
 }
 
 const REASON_TEXT = {
@@ -640,7 +829,7 @@ function updateLifecycle() {
     label.textContent = data.ecosystemStatus === 'online' ? 'Live' : 'Broker connected';
     const allSeen = ROOM_IDS.every((id) => data.rooms[id].lastSeen) && data.ahu.lastSeen;
     const anyStale = [data.ahu.lastSeen, ...ROOM_IDS.map((id) => data.rooms[id].lastSeen)].some((seen) => seen && now() - seen > STALE_AFTER_MS);
-    if (!allSeen) message = 'Broker connected; waiting for the complete two-room and shared-AHU telemetry set.';
+    if (!allSeen) message = 'Broker connected; waiting for complete 4-zone and shared-AHU telemetry.';
     else if (anyStale) message = 'Telemetry is stale. The scene retains last-known values; do not treat them as live control confirmation.';
   } else {
     dot.classList.add('bad');
@@ -659,7 +848,7 @@ function updateAllHud() {
   $('scenario-name').textContent = data.scenario?.name ? String(data.scenario.name).replaceAll('_', ' ') : 'No scenario telemetry';
   const summary = ROOM_IDS.map((id) => {
     const room = data.rooms[id];
-    return `${id === 'room1' ? 'Room 1' : 'Room 2'} ${room.temperature === null ? 'temperature unknown' : `${fmt(room.temperature)} degrees`}, ${room.occupancy === null ? 'occupancy unknown' : `${room.occupancy} occupants`}, ${room.granted === null ? 'airflow unknown' : `${fmt(room.granted, 3)} cubic metres per second granted`}`;
+    return `${id.toUpperCase()} ${room.temperature === null ? 'temperature unknown' : `${fmt(room.temperature)} degrees`}, ${room.occupancy === null ? 'occupancy unknown' : `${room.occupancy} occupants`}, ${room.granted === null ? 'airflow unknown' : `${fmt(room.granted, 3)} m³/s granted`}`;
   }).join('. ');
   $('telemetry-summary').textContent = summary;
 }
@@ -748,6 +937,8 @@ function handleMessage(topic, payload) {
 const subscriptions = [
   'twin/room1/temperature', 'twin/room1/occupancy', 'twin/room1/hvac/state', 'twin/room1/hvac/allocation',
   'twin/room2/temperature', 'twin/room2/occupancy', 'twin/room2/hvac/state', 'twin/room2/hvac/allocation',
+  'twin/room3/temperature', 'twin/room3/occupancy', 'twin/room3/hvac/state', 'twin/room3/hvac/allocation',
+  'twin/room4/temperature', 'twin/room4/occupancy', 'twin/room4/hvac/state', 'twin/room4/hvac/allocation',
   'twin/ahu/state', 'twin/ahu/fan/health', 'twin/ahu/coordinator/decision',
   'twin/ecosystem/status', 'twin/ecosystem/scenario/state'
 ];
@@ -778,8 +969,8 @@ if (!window.mqtt || typeof window.mqtt.connect !== 'function') {
   client.on('message', handleMessage);
 }
 
-const cameraState = { target: new THREE.Vector3(0, 1.25, -.2), azimuth: 0, elevation: .62, radius: 20.5 };
-const defaultCamera = { azimuth: 0, elevation: .62, radius: 20.5 };
+const cameraState = { target: new THREE.Vector3(0, 1.25, 0), azimuth: 0.45, elevation: .68, radius: 24.5 };
+const defaultCamera = { azimuth: 0.45, elevation: .68, radius: 24.5 };
 function applyCamera() {
   const horizontal = Math.cos(cameraState.elevation) * cameraState.radius;
   camera.position.set(

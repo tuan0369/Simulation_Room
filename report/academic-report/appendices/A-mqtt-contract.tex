@@ -1,6 +1,6 @@
 \chapter{MQTT Topic and Command Contract}
 \label{app:mqtt}
-All listed telemetry/state topics are published retained by the simulator; documented commands are sent non-retained by clients. Payloads are JSON except plain-text status. Values are rounded for transport. MQTT itself does not authenticate these messages in the current broker.
+Telemetry/state topics are retained unless stated otherwise; commands must be non-retained. Payloads are JSON except plain-text status. Values are rounded for transport. MQTT itself does not authenticate these messages in the default classroom broker.
 
 \begin{longtable}{L{0.34\textwidth}L{0.15\textwidth}L{0.40\textwidth}}
 \toprule
@@ -10,24 +10,29 @@ Topic & Direction & Principal fields/purpose\\
 \code{twin/\{room\}/temperature} & sim $\to$ client & sensor, value (\si{\celsius}), unit, UTC timestamp\\
 \code{.../humidity}, \code{.../occupancy} & sim $\to$ client & percentage-point display/people with timestamp\\
 \code{twin/\{room\}/hvac/state} & sim $\to$ client & on, PID output, setpoint, request, delivery, allocation fraction\\
-\code{twin/\{room\}/hvac/allocation} & sim $\to$ client & request, grant, allocation, priority score, reason codes\\
-\code{twin/\{room\}/energy} & sim $\to$ client & estimated delivered sensible cooling W (post-step recomputation)\\
-\code{twin/\{room\}/cmd/hvac} & client $\to$ sim & \code{\{"command":"on"|"off"\}}\\
-\code{.../cmd/occupancy} & client $\to$ sim & integer \code{value}, clamped 0--30\\
-\code{.../cmd/setpoint} & client $\to$ sim & numeric \code{value}, clamped \SIrange{18}{30}{\celsius}; no explicit finite-value rejection\\
+\code{twin/\{room\}/hvac/allocation} & sim $\to$ client & request, grant, allocation, comfort debt, limited-service time, priority, reasons\\
+\code{twin/\{room\}/energy} & sim $\to$ client & stored sensible thermal cooling W used by the tick\\
+\code{twin/\{room\}/cmd/hvac} & client $\to$ sim & \code{command=on|off}; optional \code{command\_id}, \code{source}\\
+\code{.../cmd/occupancy} & client $\to$ sim & exact integer \code{value}, 0--30\\
+\code{.../cmd/setpoint} & client $\to$ sim & finite numeric \code{value}, \SIrange{18}{30}{\celsius}\\
 \code{.../cmd/mode} & client $\to$ sim & \code{auto} or \code{manual}\\
-\code{.../cmd/timescale} & client $\to$ sim & intended values 1, 2, 5, or 10, applied to both rooms; current numeric-to-integer conversion can accept truncating inputs\\
+\code{.../cmd/timescale} & client $\to$ sim & exact integer choice 1, 2, 5, or 10; applied to both rooms\\
 \code{twin/ahu/state} & sim $\to$ client & maximum/available/delivered flow, supply temperature, clog, speed\\
-\code{twin/ahu/energy} & sim $\to$ client & fan/cooling/total W, cumulative kWh, illustrative tariff/cost\\
-\code{twin/ahu/fan/health} & sim $\to$ client & health, wear, risk/band/version, contributors, telemetry\\
-\code{twin/ahu/coordinator/decision} & sim $\to$ client & policy, capacity, total request, constrained flag, per-room decisions\\
-\code{twin/ahu/cmd/filter\_clog} & client $\to$ sim & numeric value clamped 0--1 (AHU physics later caps effective clog at 0.95)\\
-\code{twin/ahu/cmd/fan\_wear} & client $\to$ sim & numeric value clamped 0--1\\
+\code{twin/ahu/energy} & sim $\to$ client & thermal cooling; fan/cooling/total electrical W; cumulative electrical kWh; illustrative tariff/cost\\
+\code{twin/ahu/fan/health} & sim $\to$ client & health, wear, scored risk or explicit abstained/OOD/unavailable status, contributors, telemetry\\
+\code{twin/ahu/coordinator/decision} & sim $\to$ client & \code{occupied-comfort-debt-v2}, capacity, request, constrained flag, decisions\\
+\code{twin/ahu/cmd/filter\_clog} & client $\to$ sim & finite value 0--1 (physics caps effective clog at 0.95)\\
+\code{twin/ahu/cmd/fan\_wear} & client $\to$ sim & finite value 0--1\\
+\code{twin/ecosystem/cmd/scenario} & client $\to$ sim & \code{baseline} or \code{shared\_capacity\_stress} preset\\
+\code{twin/ecosystem/cmd/simulation} & client $\to$ sim & \code{pause}, \code{resume}, or \code{emergency\_stop}\\
+\code{twin/ecosystem/command/result} & sim $\to$ client, not retained & command correlation, target, accepted/changed/reason, applied values, duplicate/replay/conflict state where applicable\\
+\code{twin/ecosystem/scenario/state} & sim $\to$ client & retained scenario identity/revision/phase and operating mode\\
+\code{twin/ecosystem/presentation/state} & sim $\to$ client & retained coherent snapshot with run/snapshot identity\\
 \code{twin/ecosystem/status} & sim $\to$ client & retained online/offline; offline configured as LWT\\
 \bottomrule
 \end{longtable}
 
-\section*{Known contract defects}
-Command validation should add explicit finite-number checks and require an exact allowed time-scale rather than truncating numeric input. Separately, the dashboard publishes the scenario command topic
-\begin{center}\path{twin/ecosystem/cmd/scenario}\end{center}
-and expects \path{twin/ecosystem/command/result} plus \path{twin/ecosystem/scenario/state}. The simulator subscribes only to room and AHU command wildcards and neither routes nor emits those ecosystem topics. Guided scenario buttons therefore do not work in the audited build.
+\section*{Acknowledgement, replay, and audit behavior}
+The strict decoder rejects oversized, invalid UTF-8/JSON, non-object and non-finite payloads, invalid identifiers, and unsupported values. The publisher rejects retained commands before queueing. A non-retained command is applied on the simulation thread and emits an application result distinct from MQTT transport PUBACK. Up to 1,024 command IDs are cached in memory: the identical topic/payload is replayed without mutation, while reuse with a different request fingerprint is rejected as \code{command\_id\_conflict}. This is bounded process-local idempotency, not durable nonce/expiry protection.
+
+When \code{ECOHVAC\_AUDIT\_PATH} is configured, the publisher appends sanitized request metadata (topic, ID/source, retain flag, payload hash and byte count) plus the command result to the local SQLite SHA-256 chain. Audit startup/write failures are visible, including in the command result for write failure. The default stack does not enable this path; the chain is not externally anchored or signed and does not authenticate the self-declared source.

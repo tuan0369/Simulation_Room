@@ -1,7 +1,7 @@
 # EcoHVAC Guardian — Kịch bản Video Demo (Project 2 / HW2)
 
-**Thời lượng mục tiêu:** ~5–6 phút
-**Học phần:** SUTD Digital Twin — Project 2 (Intelligent Ecosystem & Strategic Optimization)
+**Thời lượng mục tiêu:** ~5–6 phút  
+**Học phần:** SUTD Digital Twin — Project 2 (Intelligent Ecosystem & Strategic Optimization)  
 **Định dạng:** Quay màn hình kèm thuyết minh (voice-over). Mỗi cảnh liệt kê hình ảnh hiển thị, thao tác thực hiện, và lời thoại gợi ý.
 
 ---
@@ -24,138 +24,108 @@
    ```
 2. **Mở các tab trình duyệt:**
    - Operations Dashboard: `http://localhost:8501`
-   - Unified 3D Two-Room View: `http://localhost:8080/room3d.html`
+   - Unified 3D 4-Room View: `http://localhost:8080/room3d.html`
 3. **Đưa về trạng thái ban đầu:** Đảm bảo dashboard tải ở chế độ `baseline` (`Safe`, `Online`, Rủi ro quạt thấp).
 4. **Chuẩn bị sẵn Terminal để demo lệnh CLI nếu cần.**
 
 ---
 
-## Cảnh 1 — Giới thiệu & Kiến trúc Hệ sinh thái (0:00 – 0:50)
+## Cảnh 1 — Giới thiệu & Kiến trúc Hệ sinh thái 4 Phòng (0:00 – 0:50)
 
 **Trên màn hình:** Sơ đồ Kiến trúc Tích hợp (`report/hw2-evidence/00-integrated-architecture.png`) hoặc `docs/architecture.md`.
 
 **Thuyết minh:**
 > "Xin chào thầy cô và các bạn! Chào mừng đến với buổi demo dự án **EcoHVAC Guardian** — hệ sinh thái Digital Twin trong Project 2 cho việc quản lý và vận hành thông minh hệ thống HVAC phòng lab.
 >
-> Trong Project 1, chúng ta mới chỉ mô phỏng một phòng đơn lẻ. Sang Project 2, chúng tôi đã nâng cấp thành một **hệ sinh thái đa bản sao số (Multi-Twin Ecosystem)** hoàn chỉnh: gồm hai phòng thí nghiệm độc lập (`Room 1` và `Room 2`) cùng chia sẻ công suất làm mát từ một cụm xử lý không khí (AHU) có dung lượng giới hạn.
+> Trong Project 1, chúng ta mới chỉ mô phỏng một phòng đơn lẻ. Sang Project 2, chúng tôi đã mở rộng thành một **Hệ sinh thái Cánh thông minh 4 Phòng (4-Zone Smart Wing Ecosystem)** hoàn chỉnh:
+> - `Room 1`: Giảng đường lớn (30 chỗ)
+> - `Room 2`: Phòng Lab Robotics (20 chỗ, kèm tải nhiệt thiết bị +400W)
+> - `Room 3`: Phòng Seminar (15 chỗ)
+> - `Room 4`: Computing Hub (20 chỗ, kèm cụm máy chủ +600W)
+> Cả 4 phòng cùng chia sẻ lưu lượng làm mát từ một cụm xử lý không khí trung tâm (VAV AHU) công suất $0.48\text{ m}^3\text{/s}$.
 >
-> Kiến trúc của hệ thống tích hợp bộ điều khiển PID cục bộ, bộ điều phối chia sẻ công bằng dưới điều kiện thiết bị xuống cấp, tính toán năng lượng thời gian thực với COP 3.2, mô hình Machine Learning dự đoán rủi ro hỏng quạt có tính giải thích cao, và hiển thị trực quan 3D thời gian thực."
+> Kiến trúc tích hợp bộ điều khiển PID cục bộ chống bão hòa tích phân, bộ điều phối công bằng `occupied-comfort-debt-v2`, mô hình Machine Learning dự đoán hỏng quạt có tính giải thích cao, luồng pipeline dự báo rủi ro 5 bước, và mô hình 3D WebGL thời gian thực."
 
-**Thao tác:** Rê chuột theo luồng kiến trúc 6 tầng: Multi-Twin + Local PID $\rightarrow$ Fairness Coordinator $\rightarrow$ Shared AHU $\rightarrow$ Predictive Model $\rightarrow$ MQTT $\rightarrow$ Dashboard & 3D Viewer.
+**Thao tác:** Rê chuột theo luồng kiến trúc: 4 Phòng Lab $\rightarrow$ Fairness Coordinator $\rightarrow$ Shared VAV AHU $\rightarrow$ ML Predictive Risk $\rightarrow$ MQTT $\rightarrow$ Dashboard & 3D Spatial Twin.
 
 ---
 
-## Cảnh 2 — Trung tâm Vận hành & Trạng thái Cơ sở (0:50 – 1:40)
+## Cảnh 2 — Trung tâm Vận hành, Luồng Pipeline 5 Bước & Bản đồ Phân bổ Tài nguyên (0:50 – 1:50)
 
-**Trên màn hình:** Streamlit Operations Dashboard tại `http://localhost:8501` (tab `Operations centre`).
+**Trên màn hình:** Streamlit Operations Dashboard tại `http://localhost:8501` (tab `Operations centre (with 3D Twin)`).
 
 **Thuyết minh:**
-> "Đây là **Trung tâm Vận hành (Operations Centre)**. Ở thanh trạng thái trên cùng: simulator báo `ONLINE`, công suất chia sẻ ở mức `SAFE` (An toàn), và rủi ro quạt ở mức `LOW (15%)`.
+> "Đây là **Trung tâm Vận hành (Operations Centre)**. Ngay phía trên mô hình 3D là **Luồng Pipeline Dự báo Rủi ro & Giải pháp HVAC 5 Bước**:
+> 1. **Step 1: Sensing** — Đo tổng số sinh viên (42 người) và tổng tải nhiệt thời gian thực (5.1 kW).
+> 2. **Step 2: Prediction** — Dự báo nhu cầu làm mát ($0.241\text{ m}^3\text{/s}$) và rủi ro quạt ML ($2\%$).
+> 3. **Step 3: Coordinator** — Phân xử công bằng theo nợ tiện nghi để chống bỏ đói dịch vụ.
+> 4. **Step 4: Solution** — Đề xuất chính sách làm mát đón đầu (Preemptive Pre-Cooling).
+> 5. **Step 5: Verify & Learn** — Chạy bộ kiểm thử tự động 4 bài và lưu tri thức vào Knowledge Base.
 >
-> Phía dưới, hai phòng đang vận hành độc lập:
-> - `Room 1` có 8 người, nhiệt độ 22.8 °C.
-> - `Room 2` có 2 người, nhiệt độ 22.8 °C.
-> - Cụm AHU hoạt động với bộ lọc sạch (nghẹt 5%) và quạt tốt (hao mòn 3%), đáp ứng 80% lưu lượng khí mà không bị nghẽn công suất.
->
-> Toàn bộ dữ liệu telemetry đều được gắn ID snapshot tuần tự và timestamp đồng bộ qua các topic MQTT có lưu trữ (retained)."
+> Ngay bên dưới là **Bản đồ Phân bổ Tài nguyên Khí tươi (Resource Distribution Map)** dạng thanh phân đoạn trực quan: màu xanh dương cho Room 1, xanh ngọc cho Room 2, tím cho Room 3, cam cho Room 4, và xám cho dung lượng dự phòng."
 
-**Thao tác:** Cuộn chuột qua các thẻ trạng thái, thông số đo của Room 1 / Room 2, và trạng thái cấp gió AHU.
+**Thao tác:** Rê chuột chỉ lần lượt qua 5 hộp bước của Pipeline, thanh phân bổ tài nguyên, và mô hình 3D WebGL bên dưới.
 
 ---
 
-## Cảnh 3 — Kịch bản Thử tải Nghẽn Công suất (1:40 – 2:45)
+## Cảnh 3 — Kịch bản Thử tải Đa phòng & Bão hòa Nhiệt động lực học (1:50 – 2:50)
 
-**Trên màn hình:** Mục Guided Scenarios trên Dashboard.
-
-**Thuyết minh:**
-> "Bây giờ, chúng ta sẽ mô phỏng một tình huống vận hành khắc nghiệt: thiết bị xuống cấp kết hợp tải nhiệt tăng vọt.
->
-> Tôi sẽ nhấn kích hoạt kịch bản **'Run shared-capacity stress test'**."
-
-**Thao tác:** Nhấp chuột vào nút **`Run shared-capacity stress test`**.
+**Trên màn hình:** Mục Guided Scenarios & Bộ tiêm tải nhiệt tương tác 4 phòng.
 
 **Thuyết minh:**
-> "Ngay lập tức, bộ mô phỏng áp dụng các biến đổi:
-> 1. Bộ lọc bị nghẹt 85% và quạt mòn 75%, làm lưu lượng gió tối đa của AHU tụt xuống chỉ còn khoảng 40%.
-> 2. Đồng thời, số người ở Room 1 tăng vọt lên 24 sinh viên, tạo yêu cầu làm mát tới 10.0 kW. Room 2 yêu cầu 3.5 kW.
->
-> Hãy quan sát: Tổng lưu lượng khí yêu cầu vượt xa khả năng cung cấp của AHU. Trạng thái hệ thống lập tức chuyển sang **`CONSTRAINED`** (Bị nghẽn công suất)."
+> "Bây giờ, chúng ta sẽ thử nghiệm các tình huống tải đa dạng. Tôi sẽ kích hoạt kịch bản **'📝 Campus Exam (75 ppl)'** hoặc kéo thanh trượt số người tại **Room 3 (Seminar Room)** lên 14 người và **Room 4 (Computing Hub)** lên 16 người."
 
-**Thao tác:** Chỉ vào cảnh báo `CONSTRAINED`, sự chênh lệch giữa lưu lượng yêu cầu và lưu lượng thực cấp, và nhiệt độ Room 1 bắt đầu tăng do thiếu khí làm mát.
+**Thao tác:** Nhấp nút **`📝 Campus Exam (75 ppl)`** hoặc điều chỉnh thanh trượt tải Room 3 / Room 4.
+
+**Thuyết minh:**
+> "Khi tải nhiệt tăng đột ngột:
+> 1. Nhu cầu lưu lượng gió của 4 phòng tăng vọt vượt khả năng cung cấp của AHU.
+> 2. Thanh phân bổ tài nguyên lập tức hiển thị cảnh báo **Capacity Deficit Alert** màu vàng.
+> 3. Bộ điều phối công bằng ưu tiên cấp khí cho các phòng có nợ tiện nghi cao nhất để duy trì ổn định toàn cánh nhà."
 
 ---
 
-## Cảnh 4 — Bộ điều phối Công bằng & Nợ Tiện nghi (2:45 – 3:45)
+## Cảnh 4 — Agent Tự hành, Popup Thông báo Tri thức & Kiểm định 4 Bài (2:50 – 4:00)
 
-**Trên màn hình:** Khu vực Coordination & Allocation trên Dashboard.
+**Trên màn hình:** Khu vực Đề xuất Hành động & Banner Popup Agent Tự hành.
 
 **Thuyết minh:**
-> "Hệ thống giải quyết sự tranh chấp tài nguyên này như thế nào?
+> "Hệ thống cung cấp danh sách đề xuất độc lập cho từng phòng: `Execute for ROOM1`, `Execute for ROOM2`, `Execute for ROOM3`, và `Execute for ROOM4`.
 >
-> EcoHVAC Guardian sử dụng thuật toán điều phối tất định **`occupied-comfort-debt-v2`**:
-> 1. Ưu tiên tuyệt đối cho phòng có người sử dụng.
-> 2. Ưu tiên phòng có độ lệch nhiệt độ dương lớn hơn.
-> 3. Tích lũy **Nợ Tiện nghi (Comfort Debt)** (tính bằng °C·giây) cho các phòng bị thiếu hụt lưu lượng gió theo thời gian, đảm bảo tính công bằng dài hạn và chống bỏ đói dịch vụ.
->
-> Đặc biệt, lưu lượng thực tế được cấp được phản hồi ngược về bộ PID. Cơ chế **Actuator Feedback** này giúp xả tích phân và ngăn ngừa hiện tượng bão hòa tích phân (anti-windup) khi tài nguyên vật lý bị nghẽn."
+> Khi chúng ta bật chế độ **'Autonomous Action Mode 🤖'**:
+> 1. Agent tự động phát hiện nguy cơ quá nhiệt và áp dụng chính sách làm mát đón đầu từ Knowledge Base.
+> 2. Một **Banner Popup nổi bật** màu xanh lục kèm thông báo Toast xuất hiện: *'AUTONOMOUS AGENT ACTIVE · KNOWLEDGE BASE POLICY APPLIED — Preemptive Precool (ROOM3)'*.
+> 3. Thanh tiến trình chạy chu kỳ đánh giá thực tế (Tick 1 đến 15).
+> 4. Sau 15 tick, chính sách tự động vượt qua 4 bài kiểm thử: Tiện nghi nhiệt (0% lỗi), Rủi ro thiết bị (98% an toàn), Tính nhất quán năng lượng (96%), và Tính công bằng (95%) rồi được lưu vào Knowledge Hub."
 
-**Thao tác:** Chỉ vào các mã lý do điều phối (`occupied`, `above_setpoint`, `capacity_limited`, `higher_comfort_priority_applied`) và biểu đồ tích lũy Comfort Debt.
+**Thao tác:** Bật toggle **`Autonomous Action Mode 🤖`**, chỉ vào Banner Popup màu xanh lục, thanh tiến trình tick, và thông báo Toast ở góc màn hình.
 
 ---
 
-## Cảnh 5 — Trí tuệ Dự đoán & AI Có thể Giải thích (3:45 – 4:35)
+## Cảnh 5 — Tư vấn Nâng cấp Phần cứng CapEx khi Chạm Giới hạn Vật lý (4:00 – 4:50)
 
-**Trên màn hình:** Chuyển sang tab **`Predictive intelligence`**.
+**Trên màn hình:** Thẻ đề xuất **Equipment Retrofit & CapEx Sizing Advisory**.
 
 **Thuyết minh:**
-> "Tiếp theo là khả năng bảo trì dự đoán thiết bị.
->
-> Trong tab Predictive Intelligence, mô hình **Logistic Regression** tính toán xác suất hỏng quạt trong vòng 7 ngày tới. Dưới kịch bản stress test, rủi ro đã tăng lên **63.0% (Rủi ro Trung bình - Cần kiểm tra)**.
->
-> Khác với các mô hình AI hộp đen, mô hình của chúng tôi hoàn toàn minh bạch:
-> - Hiển thị trực tiếp các trọng số **log-odds đóng góp rủi ro**: độ rung cao (4.27 mm/s) và bộ lọc nghẹt (+85%) là hai nguyên nhân chính.
-> - Tích hợp cơ chế kiểm tra miền dữ liệu (Domain Bounds): nếu dữ liệu bị lỗi, thiếu hoặc vượt ngoài miền huấn luyện (OOD), mô hình sẽ chủ động **từ chối dự đoán (Abstain)** thay vì đưa ra kết quả giả mạo.
-> - Về mặt an toàn, dự đoán này đóng vai trò **khuyến nghị hỗ trợ con người ra quyết định (Human-in-the-loop)**, không tự ý can thiệp nguy hiểm vào phần cứng."
+> "Một điểm đặc biệt trong Project 2 là khi tối ưu hóa phần mềm chạm đến **giới hạn vật lý nhiệt động lực học** (tổng nhiệt $>8.5\text{ kW}$, lưu lượng yêu cầu $>0.55\text{ m}^3\text{/s}$ vượt 115% công suất AHU):
+> Hệ thống sẽ tự động phát sinh khuyến nghị **Tư vấn Nâng cấp CapEx Thiết bị**:
+> - **Option A:** Nâng cấp cụm VAV AHU trung tâm lên $0.75\text{ m}^3\text{/s}$ (Chi phí ~S$12.5k, hoàn vốn 1.8 năm).
+> - **Option B:** Lắp thêm máy lạnh Inverter cục bộ $3.5\text{ kW}$ riêng cho Room 4 Computing Hub (Chi phí ~S$2.8k, hoàn vốn chỉ 11 tháng).
+> Điều này giúp nhà quản lý cơ sở vật chất đưa ra quyết định đầu tư chính xác dựa trên dữ liệu thực tế."
 
-**Thao tác:** Chỉ vào đồng hồ đo rủi ro (63%), danh sách các nhân tố log-odds chính, và biểu đồ quỹ đạo rủi ro.
+**Thao tác:** Chỉ vào bảng so sánh Option A và Option B cùng thời gian hoàn vốn ROI trên giao diện.
 
 ---
 
-## Cảnh 6 — Chế độ xem 3D Đồng bộ & Kết nối MQTT (4:35 – 5:15)
+## Cảnh 6 — Quản trị Minh bạch, Nhật ký SHA-256 & Kết luận (4:50 – 5:30)
 
-**Trên màn hình:** Chuyển sang tab `http://localhost:8080/room3d.html` (Mô hình 3D).
-
-**Thuyết minh:**
-> "Đây là **Giao diện 3D Digital Twin**, được xây dựng bằng Three.js và kết nối trực tiếp qua MQTT WebSockets.
->
-> Cả Room 1 và Room 2 được mô phỏng trực quan đồng thời cùng hệ thống ống gió AHU ở giữa:
-> - Bản đồ nhiệt sàn đổi màu theo nhiệt độ thực tế của phòng.
-> - Nhân vật di chuyển ra vào phòng theo số lượng người cập nhật thời gian thực.
-> - Luồng hạt trong ống gió hiển thị trực quan lưu lượng khí được phân bổ.
->
-> Mọi thao tác điều khiển đều hỗ trợ kiểm tra chống lặp lệnh (Idempotency) với mã `command_id` duy nhất."
-
-**Thao tác:** Xoay camera quanh 2 phòng lab, xem đường ống AHU và chỉ báo kết nối WebSocket.
-
----
-
-## Cảnh 7 — Lộ trình Chiến lược, ROI & Tổng kết (5:15 – 5:45)
-
-**Trên màn hình:** Quay lại Dashboard $\rightarrow$ tab **`Strategy & governance`**.
+**Trên màn hình:** Tab `Strategy & Governance` và `Self-Learning Knowledge Hub`.
 
 **Thuyết minh:**
-> "Cuối cùng, tab **Strategy & Governance** trình bày khung triển khai thực tế:
-> - Một **Sandbox tính toán ROI** minh bạch với thời gian hoàn vốn thực tế khoảng 33 tháng.
-> - Lộ trình triển khai 5 giai đoạn: từ mô phỏng thử nghiệm, Digital Shadow đọc dữ liệu thực, phi công có con người giám sát, đến tự động hóa toàn diện cho nhiều tòa nhà.
+> "Toàn bộ mọi quyết định tự hành đều được lưu vết trong **Sổ cái Kiểm toán Mã hóa SHA-256** chống giả mạo và tuân thủ tuyệt đối chuẩn riêng tư Không-PII.
 >
-> Tóm lại, EcoHVAC Guardian đã hoàn thành xuất sắc các yêu cầu của Project 2 với hệ sinh thái đa bản sao số, điều khiển tối ưu công bằng, AI có khả năng giải thích và trực quan hóa 3D. Cảm ơn thầy cô và các bạn đã lắng nghe!"
+> Toàn bộ mã nguồn đã vượt qua **161 / 161 bài kiểm thử tự động** (100% Pass Rate). EcoHVAC Guardian chứng minh năng lực toàn diện của một hệ sinh thái Cyber-Physical Twin thông minh, an toàn và tối ưu chiến lược.
+>
+> Cảm ơn thầy cô và các bạn đã theo dõi!"
 
-**Thao tác:** Lướt nhanh qua bảng tính ROI và lộ trình 5 giai đoạn để kết thúc.
-
----
-
-## Gợi ý trả lời khi bảo vệ / Q&A
-
-- **Khi được hỏi về PID so với ML:** "Bộ điều khiển PID và coordinator trung tâm đảm nhận việc điều phối lưu lượng vật lý theo luật tất định; trong khi mô hình Machine Learning đóng vai trò tư vấn bảo trì dự đoán cho người vận hành."
-- **Khi được hỏi về kiểm thử:** Chạy lệnh `uv run pytest` trong terminal để chứng minh 144 unit tests vượt qua 100% trong 0.4 giây.
-- **Khi được hỏi về bảo mật:** "Phiên bản lớp học sử dụng MQTT nội bộ, nhưng chúng tôi đã thiết kế và tài liệu hóa đầy đủ mô hình sản xuất mục tiêu với mTLS, ACL phân quyền theo topic và nhật ký kiểm toán SQLite hash-chain."
+**Thao tác:** Cuộn qua bảng Knowledge Hub, bảng Audit Log, và kết quả kiểm thử terminal.

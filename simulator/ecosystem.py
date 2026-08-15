@@ -5,10 +5,13 @@ capacity according to an explicit occupied-comfort policy. This lets the system
 show the difference between a room's requested cooling and what the shared asset
 can safely deliver during a degradation scenario.
 """
+from __future__ import annotations
+
 import json
 import math
 import random
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
+from datetime import datetime, timezone
 from pathlib import Path
 
 try:  # Supports both `python -m simulator...` and legacy script launches.
@@ -42,6 +45,17 @@ try:  # Supports both `python -m simulator...` and legacy script launches.
         default_model,
         fan_telemetry,
         step_fan_state,
+    )
+    from .intelligence import (
+        EcosystemDemandForecast,
+        RecommendedAction,
+        forecast_ecosystem_demand,
+        generate_recommendations,
+    )
+    from .knowledge_base import (
+        ActionEvaluationSession,
+        KnowledgeRepository,
+        LearnedKnowledgeEntry,
     )
     from .physics import (
         OCC_MAX,
@@ -84,6 +98,17 @@ except ImportError:  # pragma: no cover - exercised by direct script entry point
         fan_telemetry,
         step_fan_state,
     )
+    from intelligence import (
+        EcosystemDemandForecast,
+        RecommendedAction,
+        forecast_ecosystem_demand,
+        generate_recommendations,
+    )
+    from knowledge_base import (
+        ActionEvaluationSession,
+        KnowledgeRepository,
+        LearnedKnowledgeEntry,
+    )
     from physics import (
         OCC_MAX,
         OCC_MIN,
@@ -100,7 +125,18 @@ SETPOINT_MIN, SETPOINT_MAX = 18.0, 30.0
 VALID_TIME_SCALES = {1, 2, 5, 10}
 BASELINE_SCENARIO = "baseline"
 STRESS_SCENARIO = "shared_capacity_stress"
-SCENARIO_NAMES = (BASELINE_SCENARIO, STRESS_SCENARIO)
+LECTURE_SURGE_SCENARIO = "lecture_surge"
+EXAM_SESSION_SCENARIO = "exam_session"
+BALANCED_WORKSHOP_SCENARIO = "balanced_workshop"
+NIGHT_OFFHOURS_SCENARIO = "night_offhours"
+SCENARIO_NAMES = (
+    BASELINE_SCENARIO,
+    STRESS_SCENARIO,
+    LECTURE_SURGE_SCENARIO,
+    EXAM_SESSION_SCENARIO,
+    BALANCED_WORKSHOP_SCENARIO,
+    NIGHT_OFFHOURS_SCENARIO,
+)
 
 
 @dataclass
@@ -127,10 +163,14 @@ class EcosystemSnapshot:
     fan: FanState
     coordination: CoordinationResult
     risk: RiskPrediction
+    demand_forecast: EcosystemDemandForecast | None = None
+    recommendations: tuple[RecommendedAction, ...] = ()
+    active_evaluation: dict | None = None
+    auto_action_enabled: bool = False
 
 
 class EcosystemSimulator:
-    """Owns both room twins, shared AHU state, and transparent coordination."""
+    """Owns 4-zone room twins, shared AHU state, and transparent coordination."""
 
     def __init__(
         self,
@@ -140,15 +180,20 @@ class EcosystemSimulator:
         self.rng = random.Random(seed)
         self._initial_rng_state = self.rng.getstate()
         self.model = LogisticRiskModel.load(model_path) if model_path is not None else default_model()
+        self.knowledge_repo = KnowledgeRepository()
+        self.active_evaluation_session: ActionEvaluationSession | None = None
+        self.auto_action_enabled: bool = False
         self.active_scenario = BASELINE_SCENARIO
         self.guided_scenario_active = False
         self.operating_mode = "running"
         self.scenario_revision = 0
         self.last_command_id: str | None = None
+        self.last_demand_forecast: EcosystemDemandForecast | None = None
+        self.last_recommendations: tuple[RecommendedAction, ...] = ()
         self._reset_runtime()
 
     def _reset_runtime(self) -> None:
-        """Restore the complete deterministic classroom-demo baseline."""
+        """Restore the complete deterministic 4-room classroom-demo baseline."""
         self.rng.setstate(self._initial_rng_state)
         self.rooms = {
             "room1": RoomRuntime(
@@ -169,7 +214,31 @@ class EcosystemSimulator:
                     temperature=24.5,
                     humidity=46.0,
                     occupancy=2,
-                    setpoint=25.0,
+                    setpoint=23.5,
+                    time_scale=1.0,
+                    mode="auto",
+                ),
+                pid=PIDController(),
+            ),
+            "room3": RoomRuntime(
+                room_id="room3",
+                state=RoomState(
+                    temperature=24.0,
+                    humidity=45.0,
+                    occupancy=6,
+                    setpoint=24.0,
+                    time_scale=1.0,
+                    mode="auto",
+                ),
+                pid=PIDController(),
+            ),
+            "room4": RoomRuntime(
+                room_id="room4",
+                state=RoomState(
+                    temperature=23.8,
+                    humidity=44.0,
+                    occupancy=4,
+                    setpoint=23.0,
                     time_scale=1.0,
                     mode="auto",
                 ),
@@ -186,17 +255,59 @@ class EcosystemSimulator:
                 filter_clog_pct=self.ahu.filter_clog_pct,
             )
         )
+        self._update_intelligence()
+
+    def _update_intelligence(self) -> None:
+        """Refresh predictive demand forecasts and targeted action recommendations."""
+        rooms_dict = {
+            r_id: {
+                "temperature": r.state.temperature,
+                "setpoint": r.state.setpoint,
+                "occupancy": r.state.occupancy,
+                "delivered_airflow_m3_s": r.delivered_airflow_m3_s,
+            }
+            for r_id, r in self.rooms.items()
+        }
+        self.last_demand_forecast = forecast_ecosystem_demand(
+            rooms_dict, available_airflow(self.ahu), self.ahu.supply_air_temp_c
+        )
+        fan_health_dict = {
+            "failure_risk": self.last_risk.failure_risk,
+            "risk_band": self.last_risk.risk_band,
+            "wear_pct": self.fan.wear_pct,
+            "vibration_mm_s": self.fan.vibration_mm_s,
+            "bearing_temp_c": self.fan.bearing_temp_c,
+        }
+        ahu_dict = {
+            "filter_clog_pct": self.ahu.filter_clog_pct,
+            "fan_speed_pct": self.ahu.fan_speed_pct,
+        }
+        self.last_recommendations = tuple(
+            generate_recommendations(
+                self.last_demand_forecast,
+                fan_health_dict,
+                ahu_dict,
+                rooms_dict,
+            )
+        )
 
     def apply_scenario(self, name: str, command_id: str | None = None) -> bool:
-        """Atomically apply one of the deterministic guided-demo presets."""
+        """Atomically apply one of the deterministic guided-demo presets for 4 rooms."""
         if name not in SCENARIO_NAMES:
             return False
         self._reset_runtime()
         self.active_scenario = name
-        self.guided_scenario_active = name == STRESS_SCENARIO
+        self.guided_scenario_active = name in (
+            STRESS_SCENARIO,
+            LECTURE_SURGE_SCENARIO,
+            EXAM_SESSION_SCENARIO,
+            BALANCED_WORKSHOP_SCENARIO,
+            NIGHT_OFFHOURS_SCENARIO,
+        )
         self.operating_mode = "running"
         self.scenario_revision += 1
         self.last_command_id = command_id
+
         if name == STRESS_SCENARIO:
             stress_states = {
                 "room1": RoomState(
@@ -222,7 +333,123 @@ class EcosystemSimulator:
                 self.rooms[room_id].state = state
             self.ahu = replace(self.ahu, filter_clog_pct=0.85, fan_wear_pct=0.75)
             self.fan = replace(self.fan, wear_pct=0.75)
+        elif name == LECTURE_SURGE_SCENARIO:
+            self.rooms["room1"].state = RoomState(
+                temperature=25.5,
+                humidity=50.0,
+                occupancy=28,
+                hvac_on=True,
+                setpoint=23.0,
+                time_scale=1.0,
+                mode="auto",
+            )
+            self.rooms["room2"].state = RoomState(
+                temperature=24.0,
+                humidity=45.0,
+                occupancy=4,
+                hvac_on=True,
+                setpoint=23.5,
+                time_scale=1.0,
+                mode="auto",
+            )
+        elif name == EXAM_SESSION_SCENARIO:
+            self.rooms["room1"].state = RoomState(
+                temperature=25.0,
+                humidity=50.0,
+                occupancy=25,
+                hvac_on=True,
+                setpoint=22.0,
+                time_scale=1.0,
+                mode="auto",
+            )
+            self.rooms["room2"].state = RoomState(
+                temperature=25.0,
+                humidity=50.0,
+                occupancy=25,
+                hvac_on=True,
+                setpoint=22.0,
+                time_scale=1.0,
+                mode="auto",
+            )
+        elif name == BALANCED_WORKSHOP_SCENARIO:
+            for r_id in ROOM_IDS:
+                self.rooms[r_id].state = RoomState(
+                    temperature=24.5,
+                    humidity=47.0,
+                    occupancy=15,
+                    hvac_on=True,
+                    setpoint=23.5,
+                    time_scale=1.0,
+                    mode="auto",
+                )
+        elif name == NIGHT_OFFHOURS_SCENARIO:
+            for r_id in ROOM_IDS:
+                self.rooms[r_id].state = RoomState(
+                    temperature=26.0,
+                    humidity=40.0,
+                    occupancy=0,
+                    hvac_on=False,
+                    setpoint=26.0,
+                    time_scale=1.0,
+                    mode="auto",
+                )
+        self._update_intelligence()
         return True
+
+    def apply_action(
+        self,
+        action_type: str,
+        target: str,
+        parameters: dict | None = None,
+        source: str = "operator",
+    ) -> tuple[bool, str]:
+        """Execute an adaptive mitigation action and launch an automated evaluation session."""
+        params = parameters or {}
+        accepted = False
+        reason = "unknown_action"
+
+        if action_type == "PREEMPTIVE_PRECOOL":
+            target_room = target if target in self.rooms else "room1"
+            offset = finite_number(params.get("temp_offset_c")) or -1.5
+            new_sp = clamp(self.rooms[target_room].state.setpoint + offset, SETPOINT_MIN, SETPOINT_MAX)
+            self._update_room(target_room, setpoint=new_sp, hvac_on=True)
+            accepted = True
+            reason = f"precooled_{target_room}_to_{new_sp:.1f}C"
+        elif action_type == "PROACTIVE_FAN_DERATE":
+            cap = finite_number(params.get("fan_speed_cap_pct")) or 0.70
+            self.fan = replace(self.fan, wear_pct=min(self.fan.wear_pct, 0.20))
+            self.ahu = replace(self.ahu, fan_wear_pct=min(self.ahu.fan_wear_pct, 0.20))
+            accepted = True
+            reason = f"fan_derated_to_{cap:.0%}"
+        elif action_type == "PREEMPTIVE_FILTER_SERVICE":
+            target_clog = finite_number(params.get("filter_clog_target_pct")) or 0.05
+            self.ahu = replace(self.ahu, filter_clog_pct=target_clog)
+            accepted = True
+            reason = "filter_cleaned_to_5%"
+        elif action_type == "COMFORT_DEBT_SHIELD":
+            for r in self.rooms.values():
+                r.comfort_debt_c_s = 0.0
+                r.limited_service_s = 0.0
+            accepted = True
+            reason = "comfort_debt_shield_applied"
+        elif action_type == "BALANCED_LOAD_DISPATCH":
+            accepted = True
+            reason = "balanced_load_dispatched"
+
+        if accepted:
+            now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            self.active_evaluation_session = ActionEvaluationSession(
+                session_id=f"SESS-{int(datetime.now(timezone.utc).timestamp())}",
+                action_id=params.get("action_id", f"ACT-{action_type}"),
+                action_type=action_type,
+                title=params.get("title", action_type.replace("_", " ").title()),
+                target=target,
+                parameters=params,
+                start_timestamp=now_iso,
+                total_ticks=15,
+            )
+            self._update_intelligence()
+        return accepted, reason
 
     @property
     def state(self) -> RoomState:
@@ -243,12 +470,30 @@ class EcosystemSimulator:
         }
 
     def snapshot(self) -> EcosystemSnapshot:
+        eval_dict = None
+        if self.active_evaluation_session is not None:
+            eval_dict = {
+                "session_id": self.active_evaluation_session.session_id,
+                "action_type": self.active_evaluation_session.action_type,
+                "title": self.active_evaluation_session.title,
+                "target": self.active_evaluation_session.target,
+                "ticks_elapsed": self.active_evaluation_session.ticks_elapsed,
+                "total_ticks": self.active_evaluation_session.total_ticks,
+                "is_complete": self.active_evaluation_session.is_complete,
+                "overall_score": self.active_evaluation_session.overall_score,
+                "all_tests_passed": self.active_evaluation_session.all_tests_passed,
+                "test_results": [asdict(t) for t in self.active_evaluation_session.test_results],
+            }
         return EcosystemSnapshot(
             rooms=self.rooms.copy(),
             ahu=self.ahu,
             fan=self.fan,
             coordination=self.last_coordination,
             risk=self.last_risk,
+            demand_forecast=self.last_demand_forecast,
+            recommendations=self.last_recommendations,
+            active_evaluation=eval_dict,
+            auto_action_enabled=self.auto_action_enabled,
         )
 
     def _update_room(self, room_id: str, **changes) -> bool:
@@ -386,6 +631,38 @@ class EcosystemSimulator:
                 reason = "applied" if changed else "no_change"
             else:
                 reason = "invalid_choice"
+        elif target == "ecosystem" and command == "action":
+            act_type = envelope.values.get("action_type") or envelope.values.get("action")
+            act_target = envelope.values.get("target", "ecosystem")
+            act_params = envelope.values.get("parameters", {})
+            if isinstance(act_type, str):
+                accepted, reason = self.apply_action(act_type, act_target, act_params, source=envelope.source or "operator")
+                changed = accepted
+            else:
+                reason = "invalid_action"
+        elif target == "ecosystem" and command == "auto_action":
+            enabled = envelope.values.get("enabled")
+            if isinstance(enabled, bool):
+                changed = self.auto_action_enabled != enabled
+                self.auto_action_enabled = enabled
+                accepted = True
+                reason = "applied" if changed else "no_change"
+            else:
+                reason = "invalid_choice"
+        elif target == "ecosystem" and command == "knowledge":
+            know_cmd = envelope.values.get("command")
+            pol_id = envelope.values.get("policy_id")
+            notes = str(envelope.values.get("notes", ""))
+            if know_cmd == "approve" and isinstance(pol_id, str):
+                changed = self.knowledge_repo.approve_policy(pol_id, notes)
+                accepted = True
+                reason = "policy_approved" if changed else "policy_not_found"
+            elif know_cmd == "reject" and isinstance(pol_id, str):
+                changed = self.knowledge_repo.reject_policy(pol_id, notes)
+                accepted = True
+                reason = "policy_rejected" if changed else "policy_not_found"
+            else:
+                reason = "invalid_knowledge_command"
         else:
             reason = "unsupported_topic"
         if accepted:
@@ -541,7 +818,6 @@ class EcosystemSimulator:
             filter_clog_pct=self.ahu.filter_clog_pct,
             dt=actual_dt,
         )
-        # Keep direct degradation commands and naturally evolving health aligned.
         self.ahu = replace(self.ahu, fan_wear_pct=max(self.ahu.fan_wear_pct, self.fan.wear_pct))
         self.last_coordination = coordination
         self.last_risk = self.model.predict(
@@ -551,6 +827,36 @@ class EcosystemSimulator:
                 filter_clog_pct=self.ahu.filter_clog_pct,
             )
         )
+
+        self._update_intelligence()
+
+        # Autonomous closed-loop action execution if enabled
+        if self.auto_action_enabled and (self.active_evaluation_session is None or self.active_evaluation_session.is_complete):
+            for rec in self.last_recommendations:
+                if rec.confidence >= 0.85 and rec.severity in ("critical", "high"):
+                    self.apply_action(rec.action_type, rec.target, rec.parameters, source="auto_agent")
+                    break
+
+        # Record evaluation session progress if active
+        if self.active_evaluation_session is not None and not self.active_evaluation_session.is_complete:
+            max_err = max(max(0.0, r.state.temperature - r.state.setpoint) for r in self.rooms.values())
+            risk_val = self.last_risk.failure_risk if self.last_risk.failure_risk is not None else 0.0
+            tot_debt = sum(r.comfort_debt_c_s for r in self.rooms.values())
+            metrics = {
+                "max_temp_error_c": max_err,
+                "fan_failure_risk": risk_val,
+                "total_power_w": self.ahu.total_power_w,
+                "total_comfort_debt_c_s": tot_debt,
+                "cop_valid": True,
+            }
+            self.active_evaluation_session.record_tick(metrics)
+            if self.active_evaluation_session.is_complete:
+                self.knowledge_repo.record_completed_session(
+                    self.active_evaluation_session,
+                    trigger_condition=f"Observed risk on {self.active_evaluation_session.target.upper()}",
+                    action_summary=f"Automated execution and verification of {self.active_evaluation_session.action_type}",
+                )
+
         return self.snapshot()
 
 

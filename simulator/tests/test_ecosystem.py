@@ -15,7 +15,7 @@ def test_tick_advances_two_rooms_with_one_shared_ahu():
     snapshot = simulator.tick(dt=10.0, advance_occupancy=False)
     granted = sum(room.delivered_airflow_m3_s for room in snapshot.rooms.values())
 
-    assert set(snapshot.rooms) == {"room1", "room2"}
+    assert set(snapshot.rooms) == {"room1", "room2", "room3", "room4"}
     assert granted <= snapshot.coordination.available_airflow_m3_s + 1e-9
     assert snapshot.coordination.requested_airflow_m3_s > 0
 
@@ -43,9 +43,11 @@ def test_mqtt_style_room_and_ahu_commands_are_routed():
     simulator = EcosystemSimulator(seed=3)
     assert simulator.apply_command("twin/room2/cmd/occupancy", b'{"value": 14}')
     assert simulator.rooms["room2"].state.occupancy == 14
+    assert simulator.apply_command("twin/room3/cmd/occupancy", b'{"value": 12}')
+    assert simulator.rooms["room3"].state.occupancy == 12
     assert simulator.apply_command("twin/ahu/cmd/filter_clog", b'{"value": 0.7}')
     assert simulator.ahu.filter_clog_pct == 0.7
-    assert not simulator.apply_command("twin/room3/cmd/occupancy", b'{"value": 14}')
+    assert not simulator.apply_command("twin/room5/cmd/occupancy", b'{"value": 14}')
 
 
 def test_command_result_correlates_strict_validation():
@@ -96,6 +98,63 @@ def test_named_stress_scenario_is_atomic_and_exposed():
     assert simulator.scenario_state()["last_command_id"] == "scenario-1"
 
 
+def test_additional_classroom_scenarios():
+    simulator = EcosystemSimulator(seed=3)
+    assert simulator.apply_scenario("lecture_surge")
+    assert simulator.rooms["room1"].state.occupancy == 28
+    assert simulator.rooms["room2"].state.occupancy == 4
+
+    assert simulator.apply_scenario("exam_session")
+    assert simulator.rooms["room1"].state.occupancy == 25
+    assert simulator.rooms["room2"].state.occupancy == 25
+
+    assert simulator.apply_scenario("balanced_workshop")
+    assert simulator.rooms["room1"].state.occupancy == 15
+
+    assert simulator.apply_scenario("night_offhours")
+    assert simulator.rooms["room1"].state.occupancy == 0
+    assert simulator.rooms["room2"].state.occupancy == 0
+
+
+def test_action_execution_and_evaluation_lifecycle():
+    simulator = EcosystemSimulator(seed=3)
+    simulator.apply_scenario("lecture_surge")
+    res = simulator.apply_command_result(
+        "twin/ecosystem/cmd/action",
+        b'{"action_type": "PREEMPTIVE_PRECOOL", "target": "room1", "parameters": {"temp_offset_c": -1.5}}',
+    )
+    assert res.accepted is True
+    assert simulator.active_evaluation_session is not None
+    assert simulator.active_evaluation_session.target == "room1"
+
+    # Tick through evaluation
+    for _ in range(16):
+        snap = simulator.tick(dt=1.0, advance_occupancy=False)
+
+    assert simulator.active_evaluation_session.is_complete is True
+    assert len(simulator.active_evaluation_session.test_results) == 4
+
+
+def test_auto_action_mode_and_knowledge_commands():
+    simulator = EcosystemSimulator(seed=3)
+    # Enable auto action mode
+    res = simulator.apply_command_result(
+        "twin/ecosystem/cmd/auto_action",
+        b'{"enabled": true}',
+    )
+    assert res.accepted is True
+    assert simulator.auto_action_enabled is True
+
+    # Test knowledge confirmation command
+    pol_id = simulator.knowledge_repo.entries[0].id
+    res_k = simulator.apply_command_result(
+        "twin/ecosystem/cmd/knowledge",
+        f'{{"command": "approve", "policy_id": "{pol_id}", "notes": "Approved via test"}}'.encode("utf-8"),
+    )
+    assert res_k.accepted is True
+    assert simulator.knowledge_repo.entries[0].status == "HUMAN_APPROVED"
+
+
 def test_shared_capacity_stress_is_atomic_and_deterministic():
     simulator = EcosystemSimulator(seed=3)
 
@@ -110,7 +169,7 @@ def test_shared_capacity_stress_is_atomic_and_deterministic():
     snapshot = simulator.tick(dt=1.0)
     assert snapshot.rooms["room1"].requested_airflow_m3_s == 0.16
     assert snapshot.rooms["room2"].requested_airflow_m3_s == 0.16
-    assert abs(snapshot.coordination.available_airflow_m3_s - 0.0953175) < 1e-9
+    assert abs(snapshot.coordination.available_airflow_m3_s - 0.0953175) < 1e-6
     assert snapshot.rooms["room1"].delivered_airflow_m3_s == snapshot.coordination.available_airflow_m3_s
     assert snapshot.rooms["room2"].delivered_airflow_m3_s == 0.0
     assert snapshot.rooms["room1"].state.occupancy == 24

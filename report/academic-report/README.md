@@ -29,7 +29,7 @@ make verify-package
 
 `make package` recreates `EcoHVAC_Guardian_LaTeX_Source.zip` from the canonical source set and regenerates `SHA256SUMS` for the PDF, ZIP, and archived sources. `make verify-package` verifies every hash and tests the archive. Generated LaTeX intermediates are excluded from the archive and should not be committed.
 
-The report uses only portable LaTeX packages and `listings`; it does not require shell escape or Python/Pygments. Figures in `figures/` are the five current Project 2 evidence captures. Legacy Project 1 media and `01-operate-dashboard.png` are intentionally excluded. The report does not replace the currently missing executed model notebook/accepted AutoML output or the unfinished Project 2 executive-pitch PPTX/PDF.
+The report uses only portable LaTeX packages and `listings`; it does not require shell escape or Python/Pygments. Figures in `figures/` are the five current Project 2 evidence captures. Legacy Project 1 media and `01-operate-dashboard.png` are intentionally excluded. The executed model notebook is present and inspected; the report does not replace its clean submission-environment rerun/provenance check or the unfinished Project 2 executive-pitch PPTX/PDF.
 
 ## Evidence boundary
 

@@ -367,3 +367,35 @@ def test_process_once_is_a_finite_iteration_seam():
     assert snapshot.rooms.keys() == simulator.ecosystem.rooms.keys()
     assert simulator.snapshot_id == 1
     assert any(topic == PRESENTATION_STATE_TOPIC for topic, _, _ in client.published)
+
+
+def test_intelligence_and_knowledge_streams_are_published():
+    simulator = Simulator(seed=3)
+    client = FakeClient()
+    simulator.client = client
+
+    simulator.process_once(tick=0)
+
+    topics = [topic for topic, _, _ in client.published]
+    assert "twin/ecosystem/intelligence/demand" in topics
+    assert "twin/ecosystem/intelligence/actions" in topics
+    assert "twin/ecosystem/knowledge/state" in topics
+
+
+def test_action_and_knowledge_commands_routed_via_publisher():
+    simulator = Simulator(seed=3)
+    client = FakeClient()
+    simulator.client = client
+
+    class Message:
+        topic = "twin/ecosystem/cmd/action"
+        payload = b'{"action_type": "PREEMPTIVE_PRECOOL", "target": "room1", "parameters": {"temp_offset_c": -1.5}, "command_id": "act-1"}'
+        retain = False
+
+    simulator.on_message(client, None, Message())
+    simulator._drain_commands()
+
+    results = _command_results(client)
+    assert any(r.get("command_id") == "act-1" and r.get("accepted") is True for r in results)
+    assert simulator.ecosystem.active_evaluation_session is not None
+

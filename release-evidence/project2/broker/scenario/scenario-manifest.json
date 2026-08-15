@@ -1,0 +1,52 @@
+{
+  "result": "PASS",
+  "broker": "existing classroom Compose Mosquitto container (not started or stopped by this run)",
+  "simulator": "current working-tree simulator publisher (started and stopped by this run)",
+  "commands": [
+    {
+      "command_id": "release-stress-001",
+      "accepted": true,
+      "changed": true,
+      "reason": "applied"
+    },
+    {
+      "command_id": "release-pause-001",
+      "accepted": true,
+      "changed": true,
+      "reason": "applied"
+    },
+    {
+      "command_id": "release-baseline-001",
+      "accepted": true,
+      "changed": true,
+      "reason": "applied"
+    }
+  ],
+  "stress": {
+    "constrained": true,
+    "requested_airflow_m3_s": 0.32,
+    "available_airflow_m3_s": 0.0953,
+    "room1_grant_m3_s": 0.0953,
+    "room2_grant_m3_s": 0.0
+  },
+  "pause": {
+    "snapshots_compared": 2,
+    "instantaneous_zero": true,
+    "energy_kwh_first": 0.0006,
+    "energy_kwh_second": 0.0006,
+    "cumulative_energy_unchanged": true
+  },
+  "baseline": {
+    "scenario": "baseline",
+    "operating_state_recovered": true
+  },
+  "retained_recovery": {
+    "result": "PASS",
+    "method": "fresh subscriber received retained scenario and presentation state; see retained-recovery.txt"
+  },
+  "cleanup": {
+    "simulator_stopped": true,
+    "subscriber_stopped": true,
+    "broker_left_running_because_it_predated_this run": true
+  }
+}

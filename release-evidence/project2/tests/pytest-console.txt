@@ -1,0 +1,22 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.10.9, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/lacle/Desktop/SUTD/DigitalTwin/GroupHW2/Simulation_Room
+configfile: pyproject.toml
+plugins: anyio-4.14.2
+collected 161 items
+
+dashboard/tests/test_presentation.py ...........................         [ 16%]
+dashboard/tests/test_telemetry.py .............                          [ 24%]
+simulator/tests/test_ahu.py .....                                        [ 27%]
+simulator/tests/test_audit.py .......                                    [ 32%]
+simulator/tests/test_coordinator.py ........                             [ 37%]
+simulator/tests/test_ecosystem.py ..................                     [ 48%]
+simulator/tests/test_fan_health.py ......................                [ 62%]
+simulator/tests/test_intelligence.py .......                             [ 66%]
+simulator/tests/test_knowledge_base.py ..                                [ 67%]
+simulator/tests/test_physics.py ...............                          [ 77%]
+simulator/tests/test_pid_controller.py ..........                        [ 83%]
+simulator/tests/test_publisher.py ...........................            [100%]
+
+- generated xml file: /Users/lacle/Desktop/SUTD/DigitalTwin/GroupHW2/Simulation_Room/release-evidence/project2/tests/pytest-junit.xml -
+============================= 161 passed in 2.59s ==============================

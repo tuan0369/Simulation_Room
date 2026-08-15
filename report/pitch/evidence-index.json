@@ -1,0 +1,123 @@
+{
+  "schema_version": "2.0",
+  "deliverable": "EcoHVAC Guardian executive pitch focused on ROI, cybersecurity, and ethical safety",
+  "scope": "Eight-slide governed evidence-hardening pitch",
+  "claim_boundary": "Simulated classroom pilot. No facility measurements, real ROI, production security, safety certification, production approval, physical autonomy, named approvals, or real seven-day failure prediction.",
+  "claim_types": {
+    "CURRENT / IMPLEMENTED": "Supported by current source, tests, or archived software evidence.",
+    "ILLUSTRATIVE / ASSUMPTION": "Editable scenario arithmetic, not an observed result or forecast.",
+    "TARGET / REQUIRED": "A proposed control or evidence artifact that is not currently deployed.",
+    "GATE / NO-GO RULE": "Failure prevents advancement; no authority or approval is implied."
+  },
+  "source_state": {
+    "repository": "../.. (resolved from report/pitch)",
+    "working_tree": "Deck uses current runtime and archived software evidence while excluding unsupported report claims.",
+    "canonical_report_edited": false,
+    "runtime_or_notebook_edited": false
+  },
+  "generation": {
+    "editable_source": "generate_project2_pitch.js",
+    "pptx": "EcoHVAC_Guardian_Project2_Pitch.pptx",
+    "pdf": "EcoHVAC_Guardian_Project2_Pitch.pdf",
+    "generator": "Node.js + PptxGenJS 4.0.1",
+    "pdf_export": "Microsoft PowerPoint",
+    "font": "Arial",
+    "slide_count": 8,
+    "aspect_ratio": "16:9",
+    "determinism": "Source layout, text, colors, and order are deterministic; OOXML timestamps may vary."
+  },
+  "slides": [
+    {
+      "slide": 1,
+      "claim": "The next decision should test value while treating cybersecurity and ethical safety as independent veto gates.",
+      "claim_types": ["CURRENT / IMPLEMENTED", "ILLUSTRATIVE / ASSUMPTION", "TARGET / REQUIRED"],
+      "sources": ["dashboard/presentation.py", "report/academic-report/sections/07-governance-security.tex", "report/academic-report/sections/08-roi-roadmap.tex"],
+      "limitation": "S$9,080/year is illustrative arithmetic; no pilot funding or deployment approval is asserted."
+    },
+    {
+      "slide": 2,
+      "claim": "The illustrative base case produces S$9,080 annual net benefit and 33.04-month simple payback, with avoided incidents supplying about 92% of gross modeled benefit.",
+      "claim_types": ["ILLUSTRATIVE / ASSUMPTION"],
+      "sources": ["dashboard/presentation.py", "dashboard/app.py", "report/academic-report/sections/08-roi-roadmap.tex"],
+      "illustrative_inputs": {
+        "annual_kwh": 45000,
+        "tariff_sgd_per_kwh": 0.30,
+        "energy_reduction": 0.08,
+        "avoided_incidents_sgd_per_year": 12000,
+        "support_sgd_per_year": 4000,
+        "implementation_sgd": 25000
+      },
+      "illustrative_outputs": {
+        "energy_saving_sgd_per_year": 1080,
+        "gross_modeled_benefit_sgd_per_year": 13080,
+        "annual_net_benefit_sgd_per_year": 9080,
+        "first_year_roi_pct": -63.68,
+        "payback_months": 33.04,
+        "avoided_incident_share_pct": 91.74
+      },
+      "limitation": "No facility baseline, applicable tariff, incident record, quote, or measured reduction is attached."
+    },
+    {
+      "slide": 3,
+      "claim": "Illustrative sensitivity ranges from no payback to 8.10 months, motivating a pilot that replaces assumptions with evidence.",
+      "claim_types": ["ILLUSTRATIVE / ASSUMPTION", "TARGET / REQUIRED"],
+      "sources": ["report/academic-report/sections/08-roi-roadmap.tex"],
+      "illustrative_scenarios": {
+        "low": {"annual_net_benefit_sgd": -1600, "payback": "none"},
+        "base": {"annual_net_benefit_sgd": 9080, "payback_months": 33.04},
+        "high": {"annual_net_benefit_sgd": 29625, "payback_months": 8.10}
+      },
+      "required_evidence": ["normalized energy baseline", "applicable tariff", "implementation and support quotes", "incident frequency and consequence", "comfort and workload outcomes"],
+      "limitation": "Scenarios are not forecasts, and unverified avoided-incident value is the dominant uncertainty."
+    },
+    {
+      "slide": 4,
+      "claim": "The current classroom broker is anonymous and plaintext; implemented safeguards improve reliability and accountability but do not establish production security.",
+      "claim_types": ["CURRENT / IMPLEMENTED"],
+      "sources": ["mosquitto/config/mosquitto.conf", "simulator/contracts.py", "simulator/publisher.py", "simulator/audit.py", "simulator/ecosystem.py"],
+      "current_exposure": ["allow_anonymous true", "MQTT 1883", "WebSockets 9001", "no deployed production identity or ACL evidence", "no independently verified recovery"],
+      "implemented_safeguards": ["strict command contracts", "application acknowledgements", "bounded process-local command deduplication", "optional local command hash chain", "simulation pause and stop"],
+      "limitation": "The journal is optional, command-scoped, locally recomputable, and not externally anchored or non-repudiating."
+    },
+    {
+      "slide": 5,
+      "claim": "Real connection requires evidence for identity, protected transport, authorization and freshness, protected audit, and recovery.",
+      "claim_types": ["TARGET / REQUIRED", "GATE / NO-GO RULE"],
+      "sources": ["mosquitto/config/mosquitto-hardened.conf", "mosquitto/README.md", "report/academic-report/sections/07-governance-security.tex"],
+      "required_controls": ["per-device identity or mTLS", "TLS/WSS", "least-privilege ACL", "authenticated authorization and command freshness", "protected and externally anchored audit", "independent fallback and rehearsed recovery"],
+      "limitation": "Target files are examples and do not prove deployed certificates, credentials, ACL identities, recovery, ownership, approval, or security testing."
+    },
+    {
+      "slide": 6,
+      "claim": "Economic benefit must be reported together with comfort, fairness, workload, privacy, security, and missed-risk burdens.",
+      "claim_types": ["CURRENT / IMPLEMENTED", "TARGET / REQUIRED"],
+      "sources": ["simulator/coordinator.py", "simulator/models/fan_risk_logistic.metrics.json", "report/academic-report/sections/07-governance-security.tex"],
+      "synthetic_evidence": {"holdout_rows": 480, "false_negatives_at_0_5_cutoff": 63},
+      "required_burden_measures": ["comfort degree-hours", "denied-flow duration", "maximum starvation", "room-to-room disparity", "false-alert workload", "false negatives", "privacy inference", "security exceptions"],
+      "limitation": "The 63 false negatives are synthetic holdout evidence, not field failures or a facility risk rate."
+    },
+    {
+      "slide": 7,
+      "claim": "Human review remains the default and every increase in authority requires a separate evidence gate.",
+      "claim_types": ["CURRENT / IMPLEMENTED", "TARGET / REQUIRED", "GATE / NO-GO RULE"],
+      "sources": ["simulator/ecosystem.py", "simulator/knowledge_base.py", "report/academic-report/sections/07-governance-security.tex"],
+      "current_boundary": "Explicit opt-in auto mode mutates simulated state only; no physical equipment or work-order integration exists.",
+      "proposed_stages": ["simulation with manual review", "read-only shadow", "human-reviewed alerts", "bounded automation after signed gates"],
+      "limitation": "The four 15-tick heuristic checks are software evaluation aids, not safety certification, physical fail-safe evidence, or facility approval."
+    },
+    {
+      "slide": 8,
+      "claim": "The decision ask is a governed evidence-hardening and read-only pilot, ending in advance, redesign, or stop—not production deployment.",
+      "claim_types": ["TARGET / REQUIRED", "GATE / NO-GO RULE"],
+      "sources": ["release-evidence/project2/tests/pytest-junit.xml", "release-evidence/project2/tests/pytest-console.txt", "dashboard/presentation.py", "mosquitto/config/mosquitto.conf", "report/academic-report/sections/07-governance-security.tex", "report/academic-report/sections/08-roi-roadmap.tex"],
+      "verified_software_result": {"tests": 161, "failures": 0, "errors": 0, "skipped": 0, "time_seconds": 2.59},
+      "workstreams": ["ROI evidence", "cybersecurity evidence", "ethical-safety and authority evidence"],
+      "limitation": "Passing software tests do not establish field validation, safety certification, production security, deployment approval, or physical autonomy. No amount, schedule, owner, signatory, or approval is asserted."
+    }
+  ],
+  "visual_asset_policy": {
+    "used": [],
+    "approach": "Native PowerPoint shapes only; no legacy screenshot or unsupported financial graphic is embedded.",
+    "excluded": ["legacy two-room screenshots", "unsupported financial screenshots", "unsupported retrofit economics", "figures showing conflicting 0.48 m3/s capacity", "fabricated-sounding approval records"]
+  }
+}
