@@ -1,0 +1,62 @@
+\chapter{Experimental Evidence and Results}
+\label{ch:results}
+
+\section{Evidence protocol}
+The figures were captured from the current Project~2 source during a local run on 14 August 2026. They are state evidence, not a substitute for a machine-readable experiment log. The stress state was created using validated individual room/AHU MQTT commands because the dashboard's guided scenario button publishes \code{twin/ecosystem/cmd/scenario}, to which the simulator does not subscribe. The dashboard also waits for scenario/result topics the simulator never publishes. Therefore, no claim is made that the button caused the captured state.
+
+For a repeatable submission experiment, occupancy randomness should be seeded or disabled, $\Delta t$, initial state, command sequence, duration, artifact/model hashes, and raw MQTT decisions should be recorded. The expected invariants are $0\le g_i\le r_i$, $\sum g_i\le F^{avail}$, and deterministic priorities from the same snapshot.
+
+\section{Scenario definitions}
+\begin{table}[H]
+\centering
+\caption{Recommended reproducible scenario protocol. E1--E3 use implemented command paths; current captures directly evidence E2/E3 state but not repeated trials.}
+\begin{tabularx}{\textwidth}{L{0.08\textwidth}Y Y Y}
+\toprule
+ID & Initial/command condition & Hypothesis and measures & Acceptance condition\\
+\midrule
+E1 & Clean/default AHU; aggregate request no greater than available flow & All requests granted; record request, grant, temperature, power & $g_i=r_i$ and unconstrained flag\\
+E2 & Both rooms hot/occupied with aggregate request above capacity & Priority creates unequal grants while conserving capacity & deterministic ranking; grant sum within capacity\\
+E3 & Same demand, inject $c=0.85,w=0.75$ & Capacity falls; denied flow, comfort, fan telemetry, and risk change & $F^{avail}=0.0953175$ m$^3$/s and complete telemetry\\
+E4 & Equal demand/occupancy/error for both rooms & Stable room-ID tie is exposed & repeatable Room~1-first result; fairness limitation recorded\\
+E5 & Broker/model loss or malformed input & System rejects invalid commands and enters explicit degraded state & partially tested for command validation; degraded model state not implemented\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Observed shared-capacity state}
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{01-operate-stress-test.png}
+\caption{Current two-room constrained state. Room~1 requested \SI{0.160}{\meter\cubed\per\second} and received approximately \SI{0.095}{\meter\cubed\per\second}; Room~2 requested \SI{0.160}{\meter\cubed\per\second} and received zero in the capture. The screenshot demonstrates state and interaction, not repeated-run statistics.}
+\label{fig:stress}
+\end{figure}
+At $c=0.85,w=0.75$, \cref{eq:available} predicts \SI{0.0953175}{\meter\cubed\per\second}, consistent with the displayed approximately \SI{0.095}{\meter\cubed\per\second}. Aggregate demand is \SI{0.32}{\meter\cubed\per\second}; satisfaction is 29.79\%. Greedy assignment explains the zero second-room grant. The state demonstrates causal coupling and capacity conservation, but a single screenshot cannot establish thermal recovery, comfort duration, or temporal fairness.
+
+\section{Observed predictive workspace}
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{02-predictive-intelligence.png}
+\caption{Runtime predictive-intelligence workspace showing 53.7\% medium simulated risk, input telemetry, model version, signed contributors, thresholds, freshness, and a human inspection recommendation.}
+\label{fig:predictive}
+\end{figure}
+This provides existence and integration evidence: the loaded model consumes live fan telemetry after each tick. It does not validate the number as a real probability, nor does the recommendation become a work order or control input.
+
+\section{Strategy and simultaneous visualization}
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{03-strategy-governance.png}
+\caption{Strategy/governance workspace: editable illustrative ROI, current versus target security, and staged deployment material. Values are assumptions, not observed savings.}
+\label{fig:strategy}
+\end{figure}
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{04-two-room-3d.png}
+\caption{Simultaneous room-specific Three.js views consuming retained topics. Visualization is useful evidence of distinct room state but is not itself evidence of intelligent allocation.}
+\label{fig:3d}
+\end{figure}
+The 3D client supports only \code{room1} and \code{room2}, hard-codes \code{ws://localhost:9001}, and lacks an explicit disconnected indicator. It is local demonstration evidence, not proof of remote or secure deployment.
+
+\section{Automated verification}
+The recorded project run reports 75 tests passing, covering AHU physics, coordination, ecosystem command routing, fan-health inference, synthetic reproducibility, legacy room physics/PID, MQTT payloads, and presentation helpers. The README's 54-test statement is stale. The run lacks an archived JUnit/coverage file tied to a commit; this report consequently treats 75 as recorded test evidence, not a signed release certificate.
+
+Gaps include browser-level Project~2 tests, guided-scenario end-to-end tests, real-broker integration, broker-loss recovery, calibration/OOD/model-corruption tests, production authentication/TLS/ACL tests, and proof that risk changes an autonomous action. The latter absence is expected because model action is intentionally advisory.

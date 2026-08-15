@@ -6,3 +6,16 @@ venv/
 mosquitto/data/
 mosquitto/log/
 .claude/worktrees/
+
+# LaTeX build intermediates (retain final PDF and source package)
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.log
+*.lot
+*.out
+*.synctex.gz
+*.toc

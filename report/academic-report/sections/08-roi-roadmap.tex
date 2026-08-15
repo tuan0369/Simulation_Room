@@ -1,0 +1,170 @@
+\chapter{Illustrative Business Case and Strategic Roadmap}
+\label{ch:roi}
+
+\section{ROI formulation}
+Let annual HVAC energy be $E_a$ (kWh/year), tariff $\tau$ (S\$/kWh), assumed reduction $r_E$, avoided-incident value $V_I$ (S\$/year), annual support cost $C_S$, and initial implementation cost $C_0$. The dashboard implements
+\begin{align}
+C_{base}&=\max(0,E_a)\max(0,\tau),\\
+S_E&=C_{base}\clip(r_E;0,1),\\
+B_{annual}&=S_E+\max(0,V_I),\\
+B_{net}&=B_{annual}-\max(0,C_S),\\
+\mathrm{ROI}_{1y}&=100(B_{net}-C_0)/C_0,\quad C_0>0,\\
+M_{payback}&=12C_0/B_{net},\quad B_{net}>0.
+\end{align}
+This is first-year simple ROI, not an annualized return. If net benefit is non-positive, payback is economically undefined; the current function returns zero, which should be rendered as ``no payback'' rather than zero months. The implementation does not separately model labor and downtime; both must be included, if justified, within aggregate avoided-incident value.
+
+\section{Current illustrative base case}
+The UI defaults are $E_a=45{,}000$ kWh/year, $\tau=$ S\$0.30/kWh, $r_E=8\%$, $V_I=$ S\$12,000/year, $C_S=$ S\$4,000/year, and $C_0=$ S\$25,000. They yield $C_{base}=$ S\$13,500, $S_E=$ S\$1,080, $B_{net}=$ S\$9,080, first-year ROI $-63.68\%$, and payback 33.04 months. A negative first-year ROI is not a computation error; it states that one year of modeled benefit does not recover capex.
+
+No facility baseline, tariff document, incident frequency, downtime valuation, quote, or measured reduction is attached. Every value is therefore an editable scenario, not evidence of savings.
+
+\section{Illustrative sensitivity}
+\begin{table}[H]
+\centering
+\caption{Illustrative low/base/high arithmetic. Inputs are scenarios only and are not forecasts or measured outcomes. ``None'' means annual net benefit is non-positive.}
+\begin{tabular}{lrrr}
+\toprule
+Input/output & Low & Base & High\\
+\midrule
+Annual energy (kWh) & 40,000 & 45,000 & 50,000\\
+Tariff (S\$/kWh) & 0.25 & 0.30 & 0.35\\
+Reduction & 4\% & 8\% & 15\%\\
+Avoided incidents (S\$/yr) & 4,000 & 12,000 & 30,000\\
+Support (S\$/yr) & 6,000 & 4,000 & 3,000\\
+Initial cost (S\$) & 35,000 & 25,000 & 20,000\\
+\midrule
+Energy saving (S\$/yr) & 400 & 1,080 & 2,625\\
+Net benefit (S\$/yr) & $-1,600$ & 9,080 & 29,625\\
+First-year ROI & $-104.57\%$ & $-63.68\%$ & 48.13\%\\
+Payback (months) & None & 33.04 & 8.10\\
+\bottomrule
+\end{tabular}
+\end{table}
+The broad spread shows that avoided incidents dominate the business case. A pilot must replace assumptions with metered baseline energy normalized for weather/occupancy, maintenance records, incident probability/severity, quotes, and support effort. A multi-year decision should add discount rate, cash-flow timing, replacement costs, residual value, and NPV; none is fabricated here.
+
+\section{Benefits-realization KPIs}
+A real pilot should pre-register: baseline and post-intervention HVAC kWh; degree-hours outside comfort target; alert precision/recall and lead time; unplanned fan incidents and downtime; operator response time; avoided maintenance cost; telemetry completeness/freshness; and security/fairness exceptions. Energy claims require an agreed measurement and verification method rather than comparing raw simulation totals.
+
+\section{How to read the deployment roadmap}
+\label{sec:roadmap-reading}
+The roadmap is a sequence of evidence gates, not a claim that deployment has occurred. Only Stage~0 is \current. Stages~1--5 are \planned. All stated durations are planning estimates that begin only after prerequisites are met; they are neither verified elapsed times nor commitments. Advancement is sequential: a later stage depends on acceptance of every earlier gate. A missing security, data-quality, model, safety, or comfort artifact is a \emph{stop condition}, not an item to defer after launch.
+
+The optional five-room activity appears only in Stage~1 as a proposed software scalability and allocation-fairness experiment. It requires generalized configuration and tests and does not imply that five rooms, five physical zones, or an $N$-room interface exist now. Production scale in Stage~5 means multiple governed AHUs/sites after earlier evidence is accepted; it is not a continuation of the current two-room screenshot.
+
+\section{Roadmap execution, change management, and gate authority}
+A roadmap becomes executable only when role categories are replaced by named people, planning estimates by approved windows, and business assumptions by sourced evidence. Before a planned stage starts, its sponsor must approve a stage charter containing scope, exclusions, dependencies, named responsible/accountable/consulted/informed roles, calendar dates, an approved cost ceiling or quote range, benefits hypothesis, evidence owners, stop rules, and rollback resources. This report deliberately does not invent names, dates, or costs that the team or facility has not supplied.
+
+\begin{table}[H]
+\centering
+\caption{Mandatory execution evidence and authority for each roadmap transition.}
+\label{tab:gate-authority}
+\begin{tabularx}{\textwidth}{L{0.13\textwidth}Y Y Y}
+\toprule
+Transition & Cost and value evidence & People/change evidence & Go/no-go authority\\
+\midrule
+0 $\rightarrow$ 1 & Effort estimate for submission hardening; no savings claim & Named deliverable owners, current-system pitch rehearsal, defect ownership & Project/team lead accepts complete reproducibility and submission dossier\\
+1 $\rightarrow$ 2 & Approved sensor/integration/security quote range and measurement plan & Facilities, IT/OT, data steward, and occupant representative consulted; support/training plan drafted & Facilities sponsor, data steward, and cybersecurity owner jointly approve read-only access\\
+2 $\rightarrow$ 3 & Pilot budget, operator/maintenance effort, alert-workload ceiling, and evaluation cost & Maintenance workflow mapping, operator training/competency check, feedback and appeal route & Maintenance authority and independent model-risk reviewer approve advisory pilot\\
+3 $\rightarrow$ 4 & Commissioning, safety, security, support, and rollback cost; approved multi-year NPV case & Simulation/tabletop drills, competency sign-off, affected-occupant communication, staffed fallback & Facilities authority approves only after independent controls-safety and cybersecurity approvals\\
+4 $\rightarrow$ 5 & Per-site total-cost and realized-benefit evidence with tolerance/stop threshold & Site consultation, local training, service ownership, vendor responsibilities, incident exercises & Enterprise sponsor plus each site authority; one site cannot approve another\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Every gate dossier must record decision date, decision (approve, pilot, redesign, restrict, or reject), approvers, evidence versions/hashes, open exceptions, accepted residual risk, expiry/review date, and rollback owner. Absence of a required signature is a failed gate. A material change to data, model, allocation policy, automation authority, facility, threat environment, or use purpose invalidates the affected approval.
+
+Change management is not limited to a software release. Before Stage~2, stakeholders must understand purpose, collected/inferred data, prohibited uses, and complaint routes. Before Stage~3, maintainers must demonstrate how to interpret, defer, challenge, and record an alert without treating probability as certainty. Before Stage~4, operators must demonstrate manual override, safe degraded operation, incident escalation, and recovery in drills. Training completion, competency assessment, consultation feedback, unresolved concerns, and communications are gate evidence. Post-launch reviews compare actual comfort, workload, incidents, costs, and benefits with pre-registered limits and may trigger redesign or rollback.
+
+\clearpage
+\begin{landscape}
+\begin{figure}[p]
+\centering
+\caption{One-page gated deployment timeline. Stage~0 is verified current scope; every later stage is a proposed estimate and cannot begin until the preceding decision gate passes.}
+\label{fig:roadmap-timeline}
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\linewidth}{>{\centering\arraybackslash}X c >{\centering\arraybackslash}X c >{\centering\arraybackslash}X c >{\centering\arraybackslash}X c >{\centering\arraybackslash}X c >{\centering\arraybackslash}X}
+\rowcolor{pale}
+\textbf{Stage 0} & & \textbf{Stage 1} & & \textbf{Stage 2} & & \textbf{Stage 3} & & \textbf{Stage 4} & & \textbf{Stage 5}\\
+\current & $\rightarrow$ & \planned & $\rightarrow$ & \planned & $\rightarrow$ & \planned & $\rightarrow$ & \planned & $\rightarrow$ & \planned\\
+Two-room simulation & & Evidence hardening and optional five-room test & & Read-only digital shadow & & Human-in-the-loop maintenance & & Constrained automation & & Multi-AHU/site scale\\
+Verified source state; no duration estimate & & 2--4 weeks estimated & & 8--12 weeks estimated & & 8--12 weeks estimated & & 3--6 months estimated & & Phased; estimate set after Stage 4\\
+\textbf{Evidence:} active equations, 75 tests, synthetic model, local demo & & \textbf{Gate 1:} deliverables, reproducible tests, security plan, fairness results & & \textbf{Gate 2:} calibrated sensors, governed data, baseline, read-only security & & \textbf{Gate 3:} prospective model utility, calibration, operator acceptance & & \textbf{Gate 4:} safety envelope, fallback, override, penetration and comfort evidence & & \textbf{Gate 5:} site-local resilience, load/fairness evidence, approved business case\\
+\multicolumn{11}{c}{\footnotesize No gate pass means no advancement. Roll back to the last accepted stage whenever its safety, security, data, model, comfort, or value conditions cease to hold.}
+\end{tabularx}
+\end{figure}
+\end{landscape}
+\clearpage
+
+\begin{landscape}
+\section{Stage-by-stage plan and decision gates}
+\footnotesize
+\begin{longtable}{L{0.12\linewidth}L{0.19\linewidth}L{0.62\linewidth}}
+\caption{Detailed gated plan. Durations and future thresholds are proposed planning assumptions requiring owner approval; only Stage~0 facts are as-built evidence.}\label{tab:roadmap}\\
+\toprule
+Stage/status & Planning field & Definition, evidence, and decision rule\\
+\midrule
+\endfirsthead
+\toprule Stage/status & Planning field & Definition, evidence, and decision rule\\
+\midrule\endhead
+
+0. Two-room simulated pilot
+\newline\current & Objective and scope & Demonstrate causal contention between exactly \code{room1} and \code{room2}, deterministic shared-AHU allocation, active supply-air physics, runtime advisory fan risk, and operator-visible evidence. No real facility or five-room implementation is in scope.\\
+& Duration and dependency & As-built source state audited 14--15 August 2026; no elapsed delivery duration is asserted. This is the dependency for every future stage.\\
+& Activities/deliverables and accountable role & Current source, JSON model artifact/metrics, two-room MQTT views, report, figures, and tests. Accountable role category: teaching/demo owner; named person remains a team assignment. Submission closure still requires the notebook, current executive pitch, metadata, and repaired/removed guided scenarios.\\
+& KPIs and gate evidence & Verified current facts: 75 tests pass; allocator satisfies $0\le g_i\le r_i$ and $\sum g_i\le F^{avail}$ in tested cases; stored holdout counts are 92 TP, 31 FP, 63 FN, 294 TN at cutoff 0.5. Gate~0 is \textbf{not yet submission-complete}: require the missing named deliverables, one scripted repeatable run, raw telemetry/test output, and zero unresolved critical demo defects.\\
+& Stop/rollback, ROI, and HW2 & If the model, broker, or UI is unavailable, use documented individual commands or stop the demo; do not imply live confirmation. ROI remains editable illustrative arithmetic only. Supports R1--R8 partially/as stated; R9 notebook and R10 final pitch remain unmet.\\
+\midrule
+
+1. Evidence hardening and scalability experiment
+\newline\planned & Objective and scope & Make the simulated evidence reproducible and submission-complete. Optionally generalize configuration for a \emph{proposed five-room software experiment} that tests fairness, latency, and message load; five rooms remain future work until code, tests, and evidence exist.\\
+& Estimated duration and dependency & 2--4 weeks estimated after Gate~0 artifacts are complete. Depends on the accepted two-room baseline and a frozen scenario/model version. Calendar estimate is unverified.\\
+& Activities/deliverables and accountable role & Repair/remove broken guided scenarios; add executed notebook/accepted AutoML output, pinned environment, commit/build record, JUnit/coverage, scenario manifests, telemetry logs, browser/broker integration tests, missing/OOD/model-corruption tests, and fairness metrics. Produce the final current-system Project~2 executive pitch as both PPTX and exported PDF. The team must name a pitch owner, audience (instructor plus executive/facilities decision makers), and due date no later than the Gate~1 submission-readiness review. Optional five-room work requires configuration-driven room creation rather than copied UI cards. Accountable role categories: simulation lead, ML owner, test/evidence owner, cybersecurity reviewer, and named pitch owner.\\
+& Pitch acceptance evidence & The PPTX/PDF must open correctly, use only current Project~2 screenshots, fit the assigned presentation time, and cover: problem/business need; two-room architecture and centralized coordination; live contention evidence; predictive model and honest synthetic/false-negative/temporal limitations; ROI assumptions and sensitivity; current-versus-target security; ethics, privacy, bias and human oversight; gated roadmap; and a specific pilot ask. Evidence is the final PPTX/PDF, rehearsal against the time limit, content checklist, and team/instructor-readiness sign-off. The Markdown outline, Project~1 PPTX, and legacy videos do not pass this gate.\\
+& KPIs/thresholds, prerequisites, and gate evidence & Proposed Gate~1 thresholds: 100\% pass of the frozen automated suite; reproducible scenario outputs from the same seed/manifest; no unresolved critical/high demo-security finding; all R9/R10 files open and execute; every model metric regenerated from code; allocator capacity invariants pass for 2 and, only if implemented, 5 rooms; report maximum starvation duration and allocation disparity rather than claiming fairness. Required evidence: logs, hashes, notebook outputs, final pitch PPTX/PDF and checklist, defect register, and reviewer sign-off. No final pitch or notebook means no submission-readiness pass.\\
+& Stop/rollback, ROI, and HW2 & Stop expansion if generalized code changes two-room behavior, fairness/starvation is unmeasured, or guided controls remain unverifiable; revert to the frozen two-room baseline. ROI maturity: replace UI arithmetic with a documented measurement plan and source list, not new savings claims. Closes R9/R10 and strengthens R1--R8 evidence; optional five-room work tests R3/R4/R7 but is not required to claim the current system.\\
+\midrule
+
+2. Read-only facility digital shadow
+\newline\planned & Objective and scope & Connect governed real telemetry without issuing building commands, establish whether simulated variables map to actual assets, and measure data quality and baseline comfort/energy. Scope is one approved AHU and its mapped zones; control remains read-only.\\
+& Estimated duration and dependency & 8--12 weeks estimated after Gate~1. Depends on approved data ownership, asset/topic mapping, security architecture, sensor access, and the frozen shadow software. Calendar estimate is unverified.\\
+& Activities/deliverables and accountable role & Calibrate/map sensors; document lineage, retention, access and consent/purpose; establish authenticated encrypted ingestion and segmentation; record weather/occupancy-normalized energy and comfort baselines; execute missing/stale/OOD tests; create incident and disconnect procedures. Accountable role categories: facilities owner, data steward, cybersecurity owner, and measurement-and-verification lead.\\
+& KPIs/thresholds, prerequisites, and gate evidence & Proposed Gate~2 thresholds: $\ge95\%$ telemetry completeness over the agreed window; timestamp/asset mapping verified; calibration error limits specified and met per sensor class; zero unauthorized command route from shadow to plant; all critical/high security findings closed; baseline duration and normalization method approved; missing/stale data visibly degraded rather than treated as live. Evidence: calibration records, access/ACL tests, data-quality report, threat-model test results, baseline dataset, and facilities/data/cyber sign-off.\\
+& Stop/rollback, ROI, and HW2 & Disconnect ingestion on privacy breach, command-path discovery, persistent quality below threshold, unsafe load on facility systems, or unresolved critical/high vulnerability; revert to offline simulation. ROI maturity: replace annual-energy/tariff assumptions with governed baseline and tariff evidence while incident avoidance remains unclaimed. Advances R5/R6/R8 and provides external evidence needed to revisit R2/R3.\\
+\midrule
+
+3. Human-in-the-loop maintenance pilot
+\newline\planned & Objective and scope & Evaluate advisory alerts prospectively while qualified staff retain all maintenance authority. The model may recommend review; it may not create an autonomous work order or alter airflow, setpoint, or fan operation.\\
+& Estimated duration and dependency & 8--12 weeks estimated after Gate~2, or longer if too few relevant events occur. Depends on accepted data quality, a governed target definition, model card, frozen threshold policy, operator protocol, and ethics/privacy approval. Calendar estimate is unverified.\\
+& Activities/deliverables and accountable role & Train/recalibrate with asset/time-separated data; compare baselines; assess calibration, PR/ROC, confidence intervals, lead time, subgroup/OOD performance and alert workload; run prospective shadow alerts; record operator acceptance, deferral, reason, and outcome; test rollback. Accountable role categories: model owner, facilities maintenance owner, data steward, and model-risk reviewer.\\
+& KPIs/thresholds, prerequisites, and gate evidence & Before the pilot, owners must set numerical minimum recall/precision or cost-based thresholds, calibration tolerance, maximum false-alert workload, minimum sample/event counts, subgroup disparity limits, and OOD/staleness behavior; this report does not invent those site-specific values. Gate~3 requires all pre-registered thresholds to pass with uncertainty intervals, no unresolved critical subgroup/safety issue, demonstrated operator utility, complete audit records, and independent model/operations approval. Evidence includes a prospective evaluation report and signed model card.\\
+& Stop/rollback, ROI, and HW2 & Suppress alerts and revert to conventional monitoring if calibration/recall falls outside approved limits, drift/OOD alarms persist, operator workload exceeds its threshold, unsafe advice occurs, or auditability fails. ROI maturity: estimate alert-handling labor and observed maintenance outcomes, but claim avoided incidents only with an approved counterfactual method. Strengthens R2/R7/R8; R1 control remains deterministic and separate.\\
+\midrule
+
+4. Constrained physical automation
+\newline\planned & Objective and scope & Permit only bounded, reversible actions inside an independently engineered safety envelope. This is not approval for unrestricted autonomous optimization or model-directed maintenance.\\
+& Estimated duration and dependency & 3--6 months estimated after Gate~3. Depends on accepted prospective model evidence, controls hazard analysis, minimum-ventilation requirements, authenticated command architecture, manual override, fail-safe local control, change approval, and rollback rehearsal. Calendar estimate is unverified.\\
+& Activities/deliverables and accountable role & Implement bounded command allowlists, acknowledgements, freshness/sequence/replay controls, mTLS/credentials/ACLs, local fallback/watchdogs, hard limits, comfort debt/fairness safeguards, immutable audit, staged commissioning, penetration testing, and operator training. Accountable role categories: controls/safety owner, facilities authority, cybersecurity owner, and independent commissioning reviewer.\\
+& KPIs/thresholds, prerequisites, and gate evidence & Proposed Gate~4 minimums: zero unresolved critical/high safety or security finding; 100\% tested manual-override and rollback success in commissioned cases; stale/broker/OOD tests always enter the approved fallback; no minimum-ventilation violation; comfort and starvation limits remain within owner-approved thresholds; every command is authenticated, acknowledged, and auditable. Evidence: hazard analysis, commissioning results, penetration report, fallback drills, comfort/ventilation report, and formal facilities/safety/cyber go/no-go.\\
+& Stop/rollback, ROI, and HW2 & Hard-disable automation on limit violation, lost acknowledgement, stale/OOD input, broker/security incident, comfort threshold breach, unexplained model drift, or failed audit; return to local conventional control and last-known-good software. ROI maturity: measure incremental energy, labor, downtime, commissioning/support cost and uncertainty; require an approved multi-year NPV/business case before wider rollout. Advances R1/R5/R6/R7/R8 under real constraints.\\
+\midrule
+
+5. Multi-AHU/site production scale
+\newline\planned & Objective and scope & Scale only the accepted bounded design across separately approvable AHUs/sites with local resilience and federated governance. This is production-target planning, not evidence of current scale and not the optional five-room simulation experiment.\\
+& Estimated duration and dependency & Phased estimate to be set only after Gate~4 evidence and site discovery; no defensible calendar is asserted now. Each site depends on its own mapping, baseline, hazards, security review, and local go/no-go.\\
+& Activities/deliverables and accountable role & Package pinned/signed services and SBOM; validate tenant/site isolation, capacity/load, failover, disaster recovery, observability, model registry/rollback, local policy ownership, cross-site fairness reporting, support and incident response. Accountable role categories: platform owner, site facilities authority, enterprise cybersecurity, model governance, finance, and service owner.\\
+& KPIs/thresholds, prerequisites, and gate evidence & Gate~5 thresholds must be contracted per site: approved uptime/recovery objectives, telemetry completeness, comfort/ventilation limits, incident and vulnerability limits, model and subgroup performance, allocation fairness, support response, and realized-value thresholds. Advancement is site-by-site only after load/failover/security tests, local shadow/HITL evidence, trained operators, signed service ownership, and approved business case. Passing one site never waives another site's gate.\\
+& Stop/rollback, ROI, and HW2 & Isolate or revert an affected site on safety/security/data/model/comfort breach; prevent cascade by retaining local operation. Pause further rollout if realized benefits do not meet approved stage thresholds or total cost exceeds the approved tolerance. ROI maturity: compare verified cash flows with the approved NPV case and revise/stop rather than preserving sunk-cost assumptions. Completes the target intent of R5--R8 only when evidenced; it does not retroactively strengthen the current HW2 claim.\\
+\bottomrule
+\end{longtable}
+\end{landscape}
+
+\section{Cross-stage dependency and gate rule}
+The dependency chain is
+\begin{equation}
+\begin{gathered}
+\text{two-room evidence}\rightarrow\text{hardened reproducibility}\rightarrow\text{governed shadow data}\\
+{}\rightarrow\text{prospective human review}\rightarrow\text{bounded automation}\rightarrow\text{site-by-site scale}
+\end{gathered}
+\end{equation}
+Each arrow is conditional. A gate dossier must contain the required technical artifacts, KPI results, open-defect disposition, ethics and benefit--burden review, stakeholder consultation and competency evidence, approved cost range, named approving authorities, and rollback test. Decision records use the dispositions \emph{approve}, \emph{pilot}, \emph{redesign}, \emph{restrict}, or \emph{reject}; approval without named signatures and evidence versions is invalid. No composite score may compensate for a missing mandatory domain: for example, favorable ROI cannot offset failed minimum ventilation; high accuracy cannot offset poor calibration or unacceptable false negatives; and encrypted transport cannot offset absent command authorization. If evidence expires because the software, model, facility, threat environment, use purpose, or operating policy changes materially, the affected gate must be repeated.

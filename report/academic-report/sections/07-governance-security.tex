@@ -1,0 +1,169 @@
+\chapter{Governance, Ethics, Privacy, and Cybersecurity}
+\label{ch:governance}
+
+\section{Governance status and formal ethical disposition}
+This chapter applies the course ethics and cybersecurity frameworks to the complete chain
+\begin{equation}
+\text{data}\rightarrow\text{model/policy}\rightarrow\text{prediction or allocation}\rightarrow\text{human decision}\rightarrow\text{simulated action}.
+\end{equation}
+The present disposition is \textbf{PILOT with RESTRICTIONS}: approve the system only as a synthetic classroom pilot and, after the evidence-hardening gate, as a read-only digital shadow. Restrict predictive risk to human decision support. Reject physical autonomy, automatic work-order creation, individual monitoring, and disciplinary or performance uses until the relevant safety, privacy, security, model, fairness, and accountability gates in \cref{tab:roadmap} pass. This is a governance decision, not a claim that planned controls already exist.
+
+\begin{table}[H]
+\centering
+\caption{Six-question Digital Twin ethics canvas and current disposition.}
+\label{tab:ethics-canvas}
+\begin{tabularx}{\textwidth}{L{0.13\textwidth}Y Y}
+\toprule
+Question & Current answer & Required control or decision\\
+\midrule
+Purpose & Explain shared-HVAC contention, comfort, energy, equipment condition, and synthetic maintenance risk. & Limit use to teaching, simulation, evidence development, and a governed read-only pilot.\\
+Data & Simulated aggregate occupancy, room state, AHU/fan state, commands, decisions, and model artifacts. No names, video, faces, or biometrics. & Maintain a field-level inventory, lineage, minimum retention, access rules, and explicit prohibition of secondary surveillance use before real data.\\
+People & Occupants may gain comfort; facilities and maintenance staff may gain visibility. Lower-priority rooms may bear denied airflow; operators may bear false-alert workload; the institution bears cost/security risk. & Measure benefit and burden by room and operating regime; consult affected occupants and operators; define complaint, correction, and escalation routes.\\
+Power & The coordinator allocates simulated flow automatically. Operators control room requests. The model only recommends review. No authenticated global pause or durable appeal workflow exists. & Preserve human authority for maintenance and high-impact control; implement authenticated pause, override, acknowledgement, rationale, and audit before physical use.\\
+Failure & Risks include unfair starvation, stale or spoofed data, false negatives, automation bias, privacy inference, broker compromise, and failed fallback. & Define stop rules, safe degraded mode, incident ownership, evidence preservation, verified recovery, and re-approval after material change.\\
+Decision & Current evidence supports a restricted simulated pilot, not autonomous deployment. & Advance sequentially: evidence hardening $\rightarrow$ read-only shadow $\rightarrow$ human-reviewed recommendations $\rightarrow$ bounded automation only after signed gates.\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Ethical principles, stakeholders, and benefit--burden analysis}
+The governance decision is evaluated through beneficence, non-maleficence, autonomy, and justice. Beneficence is the potential improvement in comfort visibility, energy understanding, and maintenance lead time. Non-maleficence requires preventing unsafe commands, privacy leakage, false confidence, recurrent room starvation, and over-reliance on synthetic predictions. Autonomy requires intelligible explanations, meaningful human authority, correction and appeal routes, and the ability to stop the system. Justice requires measuring who receives airflow, comfort, attention, and cost savings and who carries monitoring, discomfort, false-alert, or false-negative burdens.
+
+\begin{table}[H]
+\centering
+\caption{Stakeholder voice, expected benefit, potential burden, and governance response.}
+\label{tab:stakeholders}
+\begin{tabularx}{\textwidth}{L{0.16\textwidth}Y Y Y}
+\toprule
+Stakeholder & Potential benefit & Potential burden or right at risk & Required voice/control\\
+\midrule
+Room occupants/students & Improved comfort and transparent room state & Recurrent low allocation; inference of room-use patterns; lack of notice & Plain-language notice, feedback/complaint route, comfort-disparity review, no identity linkage\\
+Facilities operators & Better situational awareness and explainable allocation & Alert fatigue, automation bias, responsibility without authority & Training, alternatives, approval/override authority, rationale capture, escalation procedure\\
+Maintenance staff & Earlier inspection support & False alerts, missed failures, workload displacement & Prospective validation, workload threshold, ability to defer/challenge, outcome feedback\\
+Data/model owners & Reproducible evidence and model improvement & Accountability for drift, weak target semantics, or biased data & Model card, lineage, version approval, monitoring, rollback and re-approval duties\\
+IT/OT security & Defined integration boundary & Expanded attack surface and incident workload & Identity, segmentation, audit, stop authority, response/recovery rehearsal\\
+Institution / building owner & Potential energy/resilience value & Capital cost, liability, privacy and reputation risk & Risk acceptance, benefits review, independent gate approval, transparent communication\\
+Vendors / integrators & Clear interfaces and responsibilities & Supply-chain and privileged-access risk & Time-bounded least privilege, contractual duties, revocation, audit and incident cooperation\\
+\bottomrule
+\end{tabularx}
+\end{table}
+No favorable aggregate KPI may conceal a severe burden on one room or stakeholder group. Comfort and denied-flow evidence must therefore be reported alongside energy and maintenance value.
+
+\section{Purpose limitation, autonomy, and transparency}
+Permitted current uses are simulation, teaching, explanation of shared-resource coordination, and synthetic predictive-model evaluation. Prohibited uses are individual identification, attendance or productivity scoring, disciplinary action, commercial profiling, automatic maintenance shutdown, and control of real equipment. Linking aggregate occupancy to identities, schedules, access records, or cameras is a material purpose change requiring a new privacy and ethics review.
+
+Transparency exists at two decision layers. The coordinator exposes request, grant, priority components, and reason codes. The risk model exposes version, input telemetry, thresholds, and signed standardized log-odds terms. Both are inspectable and deterministic given state. Transparency does not establish correctness or causality; it enables review. Audience-specific communication is required:
+\begin{itemize}
+\item occupants receive a plain-language statement of purpose, collected/inferred data, retention, prohibited uses, and complaint/correction route;
+\item operators receive recommendation, confidence/status, contributing factors, alternatives, freshness, and override/escalation controls;
+\item auditors receive data lineage, versions, validation, approvals, incidents, and decision/action traces;
+\item management receives benefits, burdens, residual risks, accountable owners, and explicit go/no-go evidence.
+\end{itemize}
+
+Maintenance recommendations are simulation-only. A human decides whether to inspect equipment, and no work order, setpoint, fan-speed, or airflow change is generated from risk. This is an appropriate risk boundary until real data, safety analysis, security, calibration, OOD handling, and override procedures exist. A production governance process should use a model card and life-cycle controls consistent with risk-management principles such as NIST AI RMF \citep{mitchell2019modelcards,nistai2023}.
+
+\section{Data governance, privacy, consent, and retention}
+\begin{table}[H]
+\centering
+\caption{Prototype data inventory and required production governance.}
+\begin{tabularx}{\textwidth}{L{0.20\textwidth}Y Y Y}
+\toprule
+Data & Purpose/current form & Sensitivity & Production requirement\\
+\midrule
+Aggregate occupancy & control priority; integer 0--30 & can reveal room-use patterns despite no identity & purpose limitation, minimum retention, role access, aggregation review\\
+Room environment & comfort/control simulation & operational building data & retention and integrity policy\\
+AHU/fan telemetry & energy, condition, risk & asset/maintenance information & asset owner, quality checks, lineage\\
+Commands and decisions & operation and explanation & security/safety relevant & authenticated identity, tamper-evident audit, retention\\
+Model artifacts & inference and reproducibility & integrity-sensitive IP/configuration & hashes/signatures, approval, rollback\\
+\bottomrule
+\end{tabularx}
+\end{table}
+The prototype uses no real data subjects: occupancy and all other operational data are simulated, so individual consent is not applicable at Stage~0. This does not pre-authorize real sensing. Before Stage~2, the data steward must document the lawful/institutional basis, occupant notice and consultation, whether consent or an alternative basis applies, correction/complaint handling, each field's retention duration, deletion method, sharing recipients, and a prohibition on incompatible secondary use. A new data source, linked identifier, downstream use, or retention extension triggers re-approval.
+
+Aggregate counts reduce data collection but are not automatically anonymous in all contexts; re-identification and inference risk depends on auxiliary information. Production anonymisation and access design should follow local guidance such as Singapore PDPC's anonymisation guide \citep{pdpc2022anon}. Data minimisation should prefer the lowest detail and frequency that supports the approved purpose, bounded histories instead of indefinite retention, and edge aggregation where practical.
+
+\section{Bias, allocation fairness, and mitigation}
+Model bias and coordinator fairness are distinct. Predictive subgroup evaluation should compare false-negative, false-positive, calibration, and alert rates by asset, room, season, load, occupancy regime, and equipment age, provided each group has sufficient governed data. The current synthetic rows have no asset or subgroup identity, so no such results can be claimed.
+
+The coordinator can create disparate comfort outcomes through occupancy-first ranking and stable room-ID ties. Proposed operational metrics are denied-flow duration, comfort degree-hours, maximum consecutive starvation, and room-to-room disparity. Before constrained physical automation, governance should define (i) minimum sample sizes; (ii) alert thresholds for model disparity and comfort debt; (iii) an accountable reviewer; (iv) investigation/recalibration/retraining or policy-remediation steps; (v) approval and rollback; and (vi) manual fallback. These are target controls, not implemented evidence.
+
+\section{Accountability and decision rights}
+\begin{table}[H]
+\centering
+\caption{Minimum decision-rights matrix. Named people must replace role categories in each gate dossier.}
+\label{tab:decision-rights}
+\begin{tabularx}{\textwidth}{L{0.25\textwidth}Y L{0.25\textwidth}}
+\toprule
+Decision & Authority and consultation & Required record\\
+\midrule
+Run/stop classroom simulation & Demo operator; project lead accountable & timestamp, reason, current version\\
+Accept model for advisory pilot & Model owner responsible; maintenance/facilities and independent reviewer consulted; project sponsor accountable & signed model card, validation, threshold/OOD policy\\
+Change allocation or safety policy & Controls owner responsible; facilities/safety and affected operators consulted & versioned policy, hazard/fairness evidence, rollback result\\
+Approve real telemetry & Data steward and facilities owner; privacy/security consulted & data inventory, purpose/basis, retention/access approval\\
+Enable physical automation & Facilities authority accountable; controls safety and cybersecurity must approve independently & commissioned safety envelope, penetration/fallback evidence, residual-risk acceptance\\
+Declare incident/pause system & On-duty operator or cybersecurity owner may pause immediately & incident ID, containment, evidence, notifications\\
+Resume after incident & Facilities and cybersecurity jointly approve; model owner added if model/data affected & clean-state verification, observe-only result, approval\\
+\bottomrule
+\end{tabularx}
+\end{table}
+Accountability follows a RACI-like rule: the responsible role operates the control, one accountable authority owns the outcome, affected domain experts are consulted, and impacted people are informed in usable language. Missing names or signatures mean the gate has not passed.
+
+\section{Cybersecurity lifecycle: Govern--Identify--Protect--Detect--Respond--Recover}
+\begin{table}[H]
+\centering
+\caption{Security lifecycle mapped to current evidence and required gate evidence.}
+\label{tab:gipdrr}
+\begin{tabularx}{\textwidth}{L{0.12\textwidth}Y Y}
+\toprule
+Function & Current evidence & Required before real deployment\\
+\midrule
+Govern & Restrictions and future owner categories are documented. & Named risk owner, appetite, decision rights, vendor/AI/data rules, emergency authority, stop rule, communication owner, signed residual-risk decision.\\
+Identify & Architecture, MQTT contract, data inventory, model artifact, and threat paths are documented. & Owned asset/dependency/vendor inventory, trust boundaries, data classification, exposure/SBOM/secrets inventory, criticality and residual-risk register.\\
+Protect & Topic/type/range checks, command queue, finite capacity, retained state, and LWT provide limited reliability safeguards. & Authenticated identities, TLS/WSS, least-privilege ACLs, segmentation, replay/expiry/rate controls, bounded queues, signed artifacts, minimum-ventilation and local safety constraints.\\
+Detect & Timestamps, online/offline status, freshness labels, and console traces provide demonstration visibility. & Correlated identity/data/model/command/physical logs, integrity and anomaly alerts, model/OOD monitoring, security escalation, tamper-evident retention.\\
+Respond & Operators can stop host processes or use narrow room controls; response duties are documented only. & Independent pause/kill path, incident severity and contact matrix, component isolation, token revocation, evidence preservation, safe manual/degraded mode, communications.\\
+Recover & Simulator can be restarted and retained state helps clients obtain the latest message; this is not recovery assurance. & Clean backups/golden configuration, credential rotation, last-known-good model/policy, phased restore, observe-only validation, independent approval, rehearsal and post-incident update.\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Current security posture and threat register}
+The local Mosquitto configuration states \code{allow\_anonymous true}, listens on plaintext MQTT port 1883 and WebSockets port 9001, and has no ACL evidence. The simulator checks JSON object shape, known topics, and principal value types/ranges, queues commands for serialized mutation, publishes retained telemetry, and declares an LWT offline state. Validation is incomplete: setpoint and AHU numeric commands do not explicitly reject non-finite values, and a numeric time-scale is converted with \code{int()} before membership testing, so some non-integer inputs can be truncated into an allowed value. These are useful reliability/input controls but do not authenticate an actor or protect confidentiality/integrity. Operational-technology security requires defense in depth, segmentation, identity, monitoring, recovery, and safely engineered control behavior \citep{nistot2023}.
+
+\begin{landscape}
+\begin{longtable}{L{0.14\linewidth}L{0.17\linewidth}L{0.16\linewidth}L{0.17\linewidth}L{0.22\linewidth}}
+\caption{Threat model: implemented boundary versus production target.}\label{tab:threats}\\
+\toprule
+Threat/asset & Example attack path & Impact & Current control/evidence & Required target control and verification\\
+\midrule
+\endfirsthead
+\toprule Threat/asset & Example attack path & Impact & Current control/evidence & Required target control and verification\\
+\midrule\endhead
+Impersonation & anonymous publish to command topic & unsafe occupancy/setpoint/degradation state & schema/type/range validation only & mTLS or per-device credentials; least-privilege ACL; unauthorized publish test\\
+Eavesdrop/tamper & plaintext MQTT and WebSockets (\code{ws://}) & privacy, false telemetry/commands & none in transport & TLS/WSS, certificate validation/rotation, cipher and MITM test\\
+Replay & resend valid command & repeated unsafe state transition & no nonce/sequence & timestamp/nonce/sequence, expiry, idempotency, replay test\\
+Retained-message abuse & stale malicious state & misleading clients & commands intended non-retained; telemetry timestamp & broker ACL/policy, freshness enforcement, retained-state reset test\\
+DoS/flooding & high-rate publishes or broker loss & delayed/lost control evidence & command queue and LWT; no bounded rate policy & rate limits, bounded queues, watchdog, safe local fallback, recovery exercise\\
+Topic escalation & wildcard subscribe/publish & confidentiality/control compromise & no ACL & identity-bound allowlists and ACL regression tests\\
+Model substitution & alter JSON coefficients & arbitrary risk/advice & feature schema/array-length checks & SHA/signature, finite/range validation, approved registry, last-known-good rollback\\
+Endpoint exposure & hard-coded localhost/\code{ws://} & failed/unsafe remote deployment & local-only assumption & environment configuration, WSS, origin policy, segmentation\\
+Audit repudiation & actor denies command & weak accountability & dashboard/demo traces only & tamper-evident centralized audit with actor, time, decision, acknowledgement\\
+Supply/deployment drift & mutable image tag/partial Compose & unreviewed change or missing service & Mosquitto v2 tag; only broker packaged & pinned digest/SBOM, signed build, full service health checks\\
+\bottomrule
+\end{longtable}
+\end{landscape}
+Each target control must enter a control register with lifecycle function, owner, priority, verification artifact, due/review date, status, and accepted residual risk. The table above is a threat analysis, not evidence that target controls are operating.
+
+\section{Stop rules, incident response, and verified recovery}
+Production go/no-go requires explicit minimum ventilation and equipment limits, stale-data rules, local fallback independent of the broker, manual pause/override, acknowledged commands, and tested rollback. The current prototype has no authenticated global pause or verified recovery workflow. MQTT retained messages and LWT provide state/liveness visibility; they do not provide safe fallback, incident containment, or clean restoration \citep{mqtt5}.
+
+The minimum incident sequence is:
+\begin{enumerate}
+\item \textbf{Triage safety:} determine physical, comfort, privacy, data, model, and service impact.
+\item \textbf{Contain:} disable automation or affected commands, isolate accounts/tools/network paths, revoke access, and preserve traces.
+\item \textbf{Fallback:} continue only in the approved manual/read-only/last-known-safe mode.
+\item \textbf{Investigate and communicate:} record knowns, unknowns, actor/data/model/command lineage, affected stakeholders, and notification duties.
+\item \textbf{Restore progressively:} rebuild from verified configuration, rotate credentials, validate data/model/policy, and run observe-only before authority is returned.
+\item \textbf{Learn and re-approve:} update controls, model card, threat register, training, vendor duties, and the affected roadmap gate.
+\end{enumerate}
+Material changes to data, model, policy, operational context, automation authority, or downstream use invalidate the previous approval and require re-review. A 48-hour manual-operation exercise, recovery-time/recovery-point objectives, and independent restoration evidence are Stage~4/5 requirements, not current achievements.

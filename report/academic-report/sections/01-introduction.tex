@@ -1,0 +1,22 @@
+\chapter{Introduction}
+\label{ch:introduction}
+
+\section{Problem and motivation}
+A conventional room dashboard can show a temperature and operate one controller without representing cross-zone consequences. The Project~2 problem is different: independently controlled zones share infrastructure, so one room's request can reduce the service available to another; equipment condition changes shared capacity; energy and maintenance implications emerge from the combined state. A digital-twin ecosystem should therefore expose the referents, synchronized state, data paths, allocation authority, and physical feedback rather than present several independent cards. This interpretation follows the literature's emphasis on connected virtual representations and bidirectional or synchronized information flows, while recognizing that the term ``digital twin'' is used inconsistently \citep{grieves2017digital,jones2020systematic}.
+
+The implemented use case is a two-room smart-laboratory simulation served by one AHU. Two rooms are the minimum non-trivial topology for demonstrating contention. The maximum room request is \SI{0.16}{\meter\cubed\per\second}, whereas the nameplate AHU flow is \SI{0.24}{\meter\cubed\per\second} and the initial degraded-availability formula yields only \SI{0.2311551}{\meter\cubed\per\second}. Thus simultaneous maximum demand, \SI{0.32}{\meter\cubed\per\second}, cannot be met.
+
+\section{Research and engineering questions}
+The report addresses four linked questions:
+\begin{enumerate}
+  \item Can two independently controlled room twins exhibit measurable causal interaction through a finite shared asset?
+  \item Can a centralized coordinator allocate scarce airflow deterministically, within physical constraints, and provide operator-readable reasons?
+  \item Can a trained, versioned, inspectable model be evaluated and used during each simulation tick without overstating synthetic predictive validity?
+  \item Can technical behavior be connected transparently to cybersecurity, ethics, ROI, and a gated deployment roadmap?
+\end{enumerate}
+
+\section{Contributions}
+The as-built system contributes: (i) two room state/control twins with local PID demand; (ii) a shared-AHU state model that couples comfort, energy, filter loading, and fan condition; (iii) the pure deterministic \code{occupied-comfort-v1} allocator; (iv) a seeded NumPy logistic-regression workflow and runtime log-odds contributions; (v) retained MQTT evidence and Streamlit/Three.js views; and (vi) an explicit distinction between implemented controls and production targets.
+
+\section{Scope and exclusions}
+The report describes source state audited on 14--15 August 2026. The topology is exactly \code{room1} and \code{room2}; it is not presented as configurable $N$-room code. The active ecosystem uses supply-air cooling. The older direct-AC function retained in \code{physics.py} is documented only as a legacy compatibility path and is not substituted into the ecosystem derivation. The model is binary logistic regression, not an LLM or learned control agent. Its recommendation remains human-facing. A report does not substitute for the HW2-named training notebook/AutoML output or executive pitch; their status is traced explicitly.

@@ -1,0 +1,37 @@
+\chapter{Discussion, Threats to Validity, and Conclusion}
+\label{ch:conclusion}
+
+\section{What the evidence establishes}
+The source and captured state establish a real multi-room interaction: local PIDs form separate demands, one finite AHU capacity is calculated from shared condition, a deterministic service allocates less than total demand, and granted flow changes next room state. The architecture is centrally coordinated with local control. The system is autonomous at the deterministic control-simulation level because this loop repeats without a human choosing each grant. A versioned trained logistic model is loaded and scored at runtime, and its probability, band, version, inputs, and contributions are exposed. This is stronger than a threshold-only alert and stronger than independent room visualizations.
+
+The model is, however, predictive decision support. Since scoring occurs after allocation and its output has no command path to the coordinator, it cannot be credited with an autonomous protective action. The strongest accurate claim is:
+\begin{quote}
+A working, explainable, centrally coordinated two-room digital-twin simulation with autonomous deterministic control coordination, runtime predictive-maintenance decision support, and a governed roadmap toward constrained production autonomy.
+\end{quote}
+
+\section{Internal validity}
+Equations are traced to active code, and pure coordinator/model components support deterministic tests. Yet a screenshot does not record all initial conditions, run duration, random occupancy path, or repeated outcomes. Guided scenario controls are broken, so they cannot serve as intervention evidence. Pre- versus post-step cooling publication can disagree. PID is not allocation-aware. Model audit-derived metrics should be regenerated in a notebook rather than copied as prose. Future experiments require scenario manifests and raw telemetry.
+
+\section{Construct validity}
+The thermal/humidity/degradation models use convenient constants without calibration. ``Failure within seven days'' is a snapshot Bernoulli label, not a temporal event. ``Health'' is a formula rather than a measured construct. Runtime bands are presentation thresholds, not cost-optimized decisions. ROI inputs are assumptions. These constructs are useful for explaining a mechanism but cannot support field-performance claims.
+
+\section{External validity}
+Two simulated rooms and one synthetic fan cannot generalize to different buildings, seasons, ventilation regulations, AHU configurations, equipment makes, or maintenance practices. Anonymous local MQTT and localhost clients do not generalize to production networking. Asset/time data, a read-only digital-shadow stage, subgroup validation, and site-specific controls are required.
+
+\section{Reliability and reproducibility}
+The data/model generation seed, equations, parameters, JSON artifact, and test command are inspectable. The source package includes a bibliography, copied current figures, build configuration, and hash manifest. Remaining weaknesses are the absent notebook, no pinned full dependency lock cited in this report, mutable Mosquitto image tag, host-only services, unrecorded commit/hash in earlier screenshots, and author/course placeholders.
+
+\section{Ethical and deployment disposition}
+Applying the evidence and governance analysis yields three explicit decisions:
+\begin{itemize}
+\item \textbf{PILOT:} permit the current synthetic two-room simulation for teaching and evidence development; permit a read-only facility shadow only after Stage~1 and Gate~2 prerequisites pass.
+\item \textbf{RESTRICT:} keep fan-risk output advisory to qualified humans, with no automatic work order, equipment command, or employment/disciplinary use. Keep occupancy aggregate and prohibit identity linkage or secondary surveillance.
+\item \textbf{REJECT:} do not enable physical autonomy, unrestricted optimization, model-directed maintenance, or multi-site production until the mandatory safety, security, data, model, fairness, human-oversight, change-management, and recovery gates pass with named approval.
+\end{itemize}
+Documentation of a target control is not evidence that the control has been implemented, tested, or assigned. Missing signatures, evidence, or stop/rollback capability mean no advancement.
+
+\section{Submission-critical disposition}
+The formal report improves rigor but does not replace named deliverables. Before submission the team should: complete metadata; create and execute the training notebook or accepted AutoML output; create the final current-system Project~2 executive pitch in PPTX and exported PDF from the existing outline and the checklist in \cref{tab:roadmap}; repair or remove guided scenario buttons; capture one scripted end-to-end run; update stale README counts/architecture wording; and ensure current report/evidence are in the submitted archive. The LaTeX report does not substitute for the named notebook or pitch. Legacy Project~1 PPTX, screenshots, scripts, and videos must not be represented as current Project~2 proof.
+
+\section{Conclusion}
+The two-room scope makes more engineering sense than an unsupported five-room expansion: it already proves resource contention and cross-twin causality while leaving time to close higher-value HW2 gaps. The transparent coordinator satisfies capacity invariants and publishes reasons, though it needs fairness/comfort-debt safeguards for scale. The logistic model is a real trained runtime artifact with measurable synthetic holdout performance, but its circular generator, weak temporal semantics, false-negative rate, and missing calibration/OOD treatment constrain its claim. Security and ROI are honestly separated into present prototype state and governed target evidence. The resulting system is a credible classroom ecosystem demonstrator and a defensible basis for a shadow pilot, not a production-ready autonomous facility controller.

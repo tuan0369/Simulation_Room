@@ -1,0 +1,33 @@
+\chapter{Centralized Coordination}
+\label{ch:coordination}
+
+\section{Priority and allocation}
+For enabled room $i$, positive comfort error and request are
+\begin{equation}e_i^+=\max(0,T_i-T_i^{sp}),\qquad r_i=\max(0,r_i^{raw}).\end{equation}
+The priority tuple is
+\begin{equation}
+\pi_i=(\indicator[n_i>0],e_i^+,n_i,\mathrm{roomID}_i).
+\end{equation}
+Sorting is descending on the first three fields and ascending lexical room ID. Let $(1),\ldots,(N)$ be that order. Starting with $R_0=F^{avail}$,
+\begin{equation}
+g_{(j)}=\min(r_{(j)},R_{j-1}),\qquad R_j=R_{j-1}-g_{(j)}.
+\label{eq:greedy}
+\end{equation}
+Disabled rooms request zero. Capacity is flagged constrained when $\sum_i r_i>F^{avail}+10^{-9}$.
+
+\section{Safety invariants and replayability}
+Because each update is a minimum with a non-negative remainder, the pure function guarantees
+\begin{equation}0\le g_i\le r_i,\qquad \sum_i g_i\le F^{avail}.\end{equation}
+The same demand list and capacity always produce the same decisions, scores, and reason codes. This makes allocation unit-testable and replayable. Sorting dominates complexity at $O(N\log N)$; allocation is $O(N)$.
+
+\section{Interpretation and limits}
+The rule can be interpreted as lexicographically maximizing the sequence $(g_{(1)},\ldots,g_{(N)})$ subject to the flow constraints, but it is not a scalar multi-objective optimization. It has no explicit energy, risk, minimum-ventilation, switching-cost, comfort-debt, or temporal fairness term. An occupied room with a marginally larger error may consume all remaining flow. Equal conditions resolve permanently by room ID, allowing recurrent starvation. Reason code \code{higher\_comfort\_priority\_applied} improves transparency but does not prove distributive fairness.
+
+Appropriate future metrics include room allocation ratio $g_i/r_i$, denied-flow integral $\sum_k(r_i-g_i)\Delta t$, consecutive zero-grant duration, degree-hours outside the comfort band, and the maximum disparity between rooms. A mitigation could combine minimum ventilation, rotating ties, and accumulated comfort debt, but it is not implemented here.
+
+\section{Why two rooms are sufficient}
+Two rooms already create the non-trivial inequality $r_1+r_2>F^{avail}$ and expose every core mechanism: cross-twin causality, capacity conservation, priority, a full grant, a partial/zero grant, comfort consequences, and shared fan/energy state. Five copies without a new hypothesis would add UI surface, not intelligence.
+
+For future equal maximum requests,
+\begin{equation}R_{max}(N)=0.16N,\qquad \phi_N=F^{avail}/(0.16N).\end{equation}
+At initial availability, $\phi_2=0.7224$ and $\phi_5=0.2889$. At $c=0.85,w=0.75$, $F^{avail}=\SI{0.0953175}{\meter\cubed\per\second}$, giving $\phi_2=0.2979$ and $\phi_5=0.1191$. These are aggregate ratios; under greedy allocation some lower-ranked rooms receive zero. A five-room extension is therefore justified only as a fairness, latency, message-load, and scalability experiment accompanied by generalized configuration and tests.

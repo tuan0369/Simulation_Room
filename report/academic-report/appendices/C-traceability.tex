@@ -1,0 +1,37 @@
+\chapter{Requirements and Evidence Traceability}
+\label{app:trace}
+\begin{longtable}{L{0.07\textwidth}L{0.25\textwidth}L{0.34\textwidth}L{0.23\textwidth}}
+\toprule
+ID & Implementation & Evidence & Residual action\\
+\midrule
+\endhead
+R1 & Ecosystem tick, PID, and active supply-air updates & \cref{ch:physics,ch:coordination,fig:stress} & scenario manifest and longitudinal metrics\\
+R2 & generator, trainer, model JSON, \code{fan\_health.py}, tick inference & \cref{ch:model,fig:predictive,app:modelcard} & required notebook and stronger temporal/field validity\\
+R3 & two room runtimes sharing AHU and allocator & \cref{fig:architecture,fig:stress} & repeat contention experiment\\
+R4 & architecture docs and \code{occupied-comfort-v1} & \cref{ch:architecture,ch:coordination} & fix six-versus-seven-layer wording in source docs\\
+R5 & command validation/queue and retained state/LWT; anonymous plaintext broker & \cref{ch:governance,tab:gipdrr,tab:threats} & implement/test identity, TLS/WSS, ACL, segmentation, replay/rate, audit and recovery controls\\
+R6 & Dashboard ROI function (presentation module) & \cref{ch:roi,fig:strategy,tab:gate-authority} & source facility inputs; stage cost ranges; sensitivity/NPV and measurement plan\\
+R7 & model terms, thresholds and reason codes; ethics canvas, stakeholder and decision-right analysis & \cref{ch:model,ch:governance,tab:ethics-canvas,tab:stakeholders,tab:decision-rights} & implement subgroup/fairness, abstention/OOD, appeal and durable review controls\\
+R8 & six-stage Stage~0--5 gated roadmap & \cref{tab:roadmap,tab:gate-authority} & replace role categories/estimates with names, dates, approved cost bands, consultation and signed gate records\\
+R9 & scripts, CSV, artifact, metrics & notebook path claimed but absent & create/execute notebook or provide accepted AutoML output\\
+R10 & Executive-pitch Markdown outline only; no final Project~2 deck/export & report figures provide current source evidence only & name pitch owner/audience/deadline; create and rehearse current Project~2 PPTX/PDF to the Stage~1 checklist; exclude legacy Project~1 PPTX/video\\
+\bottomrule
+\end{longtable}
+
+\section{Session 14--16 framework traceability}
+\begin{table}[H]
+\centering
+\caption{Course-framework concepts made explicit in the report and their implementation boundary.}
+\begin{tabularx}{\textwidth}{L{0.20\textwidth}Y Y}
+\toprule
+Framework element & Report evidence & Current implementation boundary\\
+\midrule
+Data--model--prediction--decision--action chain & \cref{ch:governance} & Data, allocation and model inference run in simulation; predictive output has no action path\\
+Six-question ethics canvas and four principles & \cref{tab:ethics-canvas,tab:stakeholders} & Governance analysis only; complaint/appeal and disparity safeguards remain planned\\
+Formal deployment disposition & \cref{ch:governance,ch:conclusion} & Restricted synthetic pilot; physical autonomy explicitly rejected pending gates\\
+Decision rights and human authority & \cref{tab:decision-rights} & Local room commands exist; authenticated pause, durable human review and signed approval do not\\
+Govern--Identify--Protect--Detect--Respond--Recover & \cref{tab:gipdrr,tab:threats} & Prototype reliability controls only; production security/response/recovery controls are targets\\
+Evidence-gated strategic roadmap & \cref{tab:roadmap,tab:gate-authority} & Stage~0 current; all later stages planned and dependent on named, signed evidence\\
+\bottomrule
+\end{tabularx}
+\end{table}

@@ -1,0 +1,35 @@
+\chapter{Parameter and Assumption Register}
+\label{app:parameters}
+\begin{longtable}{L{0.25\textwidth}L{0.16\textwidth}L{0.20\textwidth}L{0.28\textwidth}}
+\toprule
+Parameter & Value & Unit/range & Provenance/status\\
+\midrule
+\endhead
+Room heat capacity $C_r$ & 25,000 & J/\si{\celsius} & code teaching assumption\\
+Occupant sensible heat $q_p$ & 100 & W/person & code teaching assumption\\
+Outdoor temperature $T_o$ & 32 & \si{\celsius} & code fixed boundary\\
+Wall conductance $K_w$ & 0.05 & W/\si{\celsius} & code teaching assumption; uncalibrated\\
+Supply temperature $T_s$ & 16 & \si{\celsius} & AHU default\\
+Air density $\rho_a$ & 1.2 & kg/m$^3$ & code nominal assumption\\
+Air specific heat $c_{p,a}$ & 1005 & J/(kg\,\si{\celsius}) & code nominal assumption\\
+Room airflow cap & 0.16 & m$^3$/s & ecosystem constant\\
+AHU nameplate flow & 0.24 & m$^3$/s & AHU default\\
+Initial clog/wear & 0.05 / 0.03 & fractions & AHU defaults\\
+PID $K_p,K_i,K_d$ & 0.40, 0.05, 0.05 & implementation units & code defaults; no tuning study\\
+Integral bound & $\pm20$ & error-seconds & clamping only\\
+Temperature bounds & 15--40 & \si{\celsius} & simulation clipping\\
+Humidity bounds & 15--80 & percentage points & simulation clipping; proxy model\\
+Occupancy bounds & 0--30 & people & simulation command/random walk\\
+COP & 3.2 & ratio & code assumption\\
+Fan reference power & 180 & W & code assumption\\
+Risk thresholds & 0.35 / 0.65 & probability & artifact operational bands\\
+Classification threshold & 0.5 & probability & metric function\\
+Generator rows/seed & 2,400 / 20260805 & count / integer & deterministic workflow\\
+Learning rate/iterations & 0.08 / 2,400 & scalar / count & training defaults\\
+Tariff & 0.30 & S\$/kWh & illustrative UI assumption\\
+Annual baseline & 45,000 & kWh/year & illustrative UI assumption\\
+Energy reduction & 8 & percent & illustrative UI assumption\\
+Avoided incident value & 12,000 & S\$/year & illustrative UI assumption\\
+Initial/support cost & 25,000 / 4,000 & S\$ / S\$/year & illustrative UI assumptions\\
+\bottomrule
+\end{longtable}
