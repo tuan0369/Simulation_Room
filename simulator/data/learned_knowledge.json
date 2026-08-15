@@ -1,5 +1,707 @@
 [
   {
+    "id": "KB-ACT-1786808636",
+    "action_type": "PREEMPTIVE_PRECOOL",
+    "title": "Learned Policy: Preemptive Precool",
+    "target": "room1",
+    "trigger_condition": "Observed risk on ROOM1",
+    "action_summary": "Automated execution and verification of PREEMPTIVE_PRECOOL",
+    "parameters": {
+      "room_id": "room1",
+      "temp_offset_c": -1.5,
+      "setpoint": 18.0
+    },
+    "test_results": [
+      {
+        "test_name": "Thermal Comfort Preservation Test",
+        "category": "comfort",
+        "passed": true,
+        "score": 0.0,
+        "message": "Final zone temperature deviation: +10.27 \u00b0C (Initial: +10.21 \u00b0C).",
+        "measured_value": "Error 10.27 \u00b0C"
+      },
+      {
+        "test_name": "Equipment Degradation Risk Test",
+        "category": "risk",
+        "passed": true,
+        "score": 97.0,
+        "message": "Simulated fan failure risk: 3.0% (Initial: 3.0%, Delta: -0.0%).",
+        "measured_value": "Risk 3.0%"
+      },
+      {
+        "test_name": "Energy & Electrical Coherence Test",
+        "category": "energy",
+        "passed": true,
+        "score": 96.0,
+        "message": "Mean electrical load: 1408 W. Thermal COP 3.2 maintained.",
+        "measured_value": "1.41 kW"
+      },
+      {
+        "test_name": "Coordination Fairness & Stability Test",
+        "category": "stability",
+        "passed": true,
+        "score": 0.0,
+        "message": "Cumulative comfort debt: 14398.0 \u00b0C\u00b7s (Change: +0.0 \u00b0C\u00b7s).",
+        "measured_value": "Debt 14398.0 \u00b0C\u00b7s"
+      }
+    ],
+    "overall_score": 48.2,
+    "all_tests_passed": true,
+    "status": "CANDIDATE_PENDING_CONFIRMATION",
+    "reviewer_notes": "",
+    "timestamp_created": "2026-08-15T15:43:56Z",
+    "timestamp_reviewed": null,
+    "sha256_hash": "16165152b846c9ed"
+  },
+  {
+    "id": "KB-ACT-1786808619",
+    "action_type": "PREEMPTIVE_PRECOOL",
+    "title": "Learned Policy: Preemptive Precool",
+    "target": "room1",
+    "trigger_condition": "Observed risk on ROOM1",
+    "action_summary": "Automated execution and verification of PREEMPTIVE_PRECOOL",
+    "parameters": {
+      "room_id": "room1",
+      "temp_offset_c": -1.5,
+      "setpoint": 18.0
+    },
+    "test_results": [
+      {
+        "test_name": "Thermal Comfort Preservation Test",
+        "category": "comfort",
+        "passed": true,
+        "score": 0.0,
+        "message": "Final zone temperature deviation: +10.24 \u00b0C (Initial: +10.25 \u00b0C).",
+        "measured_value": "Error 10.24 \u00b0C"
+      },
+      {
+        "test_name": "Equipment Degradation Risk Test",
+        "category": "risk",
+        "passed": true,
+        "score": 97.0,
+        "message": "Simulated fan failure risk: 3.0% (Initial: 3.0%, Delta: -0.0%).",
+        "measured_value": "Risk 3.0%"
+      },
+      {
+        "test_name": "Energy & Electrical Coherence Test",
+        "category": "energy",
+        "passed": true,
+        "score": 96.0,
+        "message": "Mean electrical load: 1428 W. Thermal COP 3.2 maintained.",
+        "measured_value": "1.43 kW"
+      },
+      {
+        "test_name": "Coordination Fairness & Stability Test",
+        "category": "stability",
+        "passed": true,
+        "score": 0.0,
+        "message": "Cumulative comfort debt: 14398.0 \u00b0C\u00b7s (Change: +2.0 \u00b0C\u00b7s).",
+        "measured_value": "Debt 14398.0 \u00b0C\u00b7s"
+      }
+    ],
+    "overall_score": 48.2,
+    "all_tests_passed": true,
+    "status": "CANDIDATE_PENDING_CONFIRMATION",
+    "reviewer_notes": "",
+    "timestamp_created": "2026-08-15T15:43:39Z",
+    "timestamp_reviewed": null,
+    "sha256_hash": "bb7611429d245bbe"
+  },
+  {
+    "id": "KB-ACT-1786808602",
+    "action_type": "PREEMPTIVE_PRECOOL",
+    "title": "Learned Policy: Preemptive Precool",
+    "target": "room1",
+    "trigger_condition": "Observed risk on ROOM1",
+    "action_summary": "Automated execution and verification of PREEMPTIVE_PRECOOL",
+    "parameters": {
+      "room_id": "room1",
+      "temp_offset_c": -1.5,
+      "setpoint": 18.0
+    },
+    "test_results": [
+      {
+        "test_name": "Thermal Comfort Preservation Test",
+        "category": "comfort",
+        "passed": true,
+        "score": 0.0,
+        "message": "Final zone temperature deviation: +10.20 \u00b0C (Initial: +10.25 \u00b0C).",
+        "measured_value": "Error 10.20 \u00b0C"
+      },
+      {
+        "test_name": "Equipment Degradation Risk Test",
+        "category": "risk",
+        "passed": true,
+        "score": 97.0,
+        "message": "Simulated fan failure risk: 3.0% (Initial: 3.0%, Delta: -0.0%).",
+        "measured_value": "Risk 3.0%"
+      },
+      {
+        "test_name": "Energy & Electrical Coherence Test",
+        "category": "energy",
+        "passed": true,
+        "score": 96.0,
+        "message": "Mean electrical load: 1423 W. Thermal COP 3.2 maintained.",
+        "measured_value": "1.42 kW"
+      },
+      {
+        "test_name": "Coordination Fairness & Stability Test",
+        "category": "stability",
+        "passed": true,
+        "score": 0.0,
+        "message": "Cumulative comfort debt: 14398.0 \u00b0C\u00b7s (Change: +0.0 \u00b0C\u00b7s).",
+        "measured_value": "Debt 14398.0 \u00b0C\u00b7s"
+      }
+    ],
+    "overall_score": 48.2,
+    "all_tests_passed": true,
+    "status": "CANDIDATE_PENDING_CONFIRMATION",
+    "reviewer_notes": "",
+    "timestamp_created": "2026-08-15T15:43:22Z",
+    "timestamp_reviewed": null,
+    "sha256_hash": "aec588d893d05d35"
+  },
+  {
+    "id": "KB-ACT-1786808585",
+    "action_type": "PREEMPTIVE_PRECOOL",
+    "title": "Learned Policy: Preemptive Precool",
+    "target": "room1",
+    "trigger_condition": "Observed risk on ROOM1",
+    "action_summary": "Automated execution and verification of PREEMPTIVE_PRECOOL",
+    "parameters": {
+      "room_id": "room1",
+      "temp_offset_c": -1.5,
+      "setpoint": 18.0
+    },
+    "test_results": [
+      {
+        "test_name": "Thermal Comfort Preservation Test",
+        "category": "comfort",
+        "passed": true,
+        "score": 0.0,
+        "message": "Final zone temperature deviation: +10.21 \u00b0C (Initial: +10.21 \u00b0C).",
+        "measured_value": "Error 10.21 \u00b0C"
+      },
+      {
+        "test_name": "Equipment Degradation Risk Test",
+        "category": "risk",
+        "passed": true,
+        "score": 97.0,
+        "message": "Simulated fan failure risk: 3.0% (Initial: 3.0%, Delta: -0.0%).",
+        "measured_value": "Risk 3.0%"
+      },
+      {
+        "test_name": "Energy & Electrical Coherence Test",
+        "category": "energy",
+        "passed": true,
+        "score": 96.0,
+        "message": "Mean electrical load: 1406 W. Thermal COP 3.2 maintained.",
+        "measured_value": "1.41 kW"
+      },
+      {
+        "test_name": "Coordination Fairness & Stability Test",
+        "category": "stability",
+        "passed": true,
+        "score": 0.0,
+        "message": "Cumulative comfort debt: 14396.0 \u00b0C\u00b7s (Change: -2.0 \u00b0C\u00b7s).",
+        "measured_value": "Debt 14396.0 \u00b0C\u00b7s"
+      }
+    ],
+    "overall_score": 48.2,
+    "all_tests_passed": true,
+    "status": "CANDIDATE_PENDING_CONFIRMATION",
+    "reviewer_notes": "",
+    "timestamp_created": "2026-08-15T15:43:05Z",
+    "timestamp_reviewed": null,
+    "sha256_hash": "b28a0fe46d72e295"
+  },
+  {
+    "id": "KB-ACT-1786808568",
+    "action_type": "PREEMPTIVE_PRECOOL",
+    "title": "Learned Policy: Preemptive Precool",
+    "target": "room1",
+    "trigger_condition": "Observed risk on ROOM1",
+    "action_summary": "Automated execution and verification of PREEMPTIVE_PRECOOL",
+    "parameters": {
+      "room_id": "room1",
+      "temp_offset_c": -1.5,
+      "setpoint": 18.0
+    },
+    "test_results": [
+      {
+        "test_name": "Thermal Comfort Preservation Test",
+        "category": "comfort",
+        "passed": true,
+        "score": 0.0,
+        "message": "Final zone temperature deviation: +10.25 \u00b0C (Initial: +10.26 \u00b0C).",
+        "measured_value": "Error 10.25 \u00b0C"
+      },
+      {
+        "test_name": "Equipment Degradation Risk Test",
+        "category": "risk",
+        "passed": true,
+        "score": 97.0,
+        "message": "Simulated fan failure risk: 3.0% (Initial: 3.0%, Delta: -0.0%).",
+        "measured_value": "Risk 3.0%"
+      },
+      {
+        "test_name": "Energy & Electrical Coherence Test",
+        "category": "energy",
+        "passed": true,
+        "score": 96.0,
+        "message": "Mean electrical load: 1428 W. Thermal COP 3.2 maintained.",
+        "measured_value": "1.43 kW"
+      },
+      {
+        "test_name": "Coordination Fairness & Stability Test",
+        "category": "stability",
+        "passed": true,
+        "score": 0.0,
+        "message": "Cumulative comfort debt: 14398.0 \u00b0C\u00b7s (Change: +2.0 \u00b0C\u00b7s).",
+        "measured_value": "Debt 14398.0 \u00b0C\u00b7s"
+      }
+    ],
+    "overall_score": 48.2,
+    "all_tests_passed": true,
+    "status": "CANDIDATE_PENDING_CONFIRMATION",
+    "reviewer_notes": "",
+    "timestamp_created": "2026-08-15T15:42:48Z",
+    "timestamp_reviewed": null,
+    "sha256_hash": "de1fce471a4404b1"
+  },
+  {
+    "id": "KB-ACT-1786808551",
+    "action_type": "PREEMPTIVE_PRECOOL",
+    "title": "Learned Policy: Preemptive Precool",
+    "target": "room1",
+    "trigger_condition": "Observed risk on ROOM1",
+    "action_summary": "Automated execution and verification of PREEMPTIVE_PRECOOL",
+    "parameters": {
+      "room_id": "room1",
+      "temp_offset_c": -1.5,
+      "setpoint": 18.0
+    },
+    "test_results": [
+      {
+        "test_name": "Thermal Comfort Preservation Test",
+        "category": "comfort",
+        "passed": true,
+        "score": 0.0,
+        "message": "Final zone temperature deviation: +10.21 \u00b0C (Initial: +10.23 \u00b0C).",
+        "measured_value": "Error 10.21 \u00b0C"
+      },
+      {
+        "test_name": "Equipment Degradation Risk Test",
+        "category": "risk",
+        "passed": true,
+        "score": 97.0,
+        "message": "Simulated fan failure risk: 3.0% (Initial: 3.0%, Delta: -0.0%).",
+        "measured_value": "Risk 3.0%"
+      },
+      {
+        "test_name": "Energy & Electrical Coherence Test",
+        "category": "energy",
+        "passed": true,
+        "score": 96.0,
+        "message": "Mean electrical load: 1428 W. Thermal COP 3.2 maintained.",
+        "measured_value": "1.43 kW"
+      },
+      {
+        "test_name": "Coordination Fairness & Stability Test",
+        "category": "stability",
+        "passed": true,
+        "score": 0.0,
+        "message": "Cumulative comfort debt: 14398.0 \u00b0C\u00b7s (Change: +0.0 \u00b0C\u00b7s).",
+        "measured_value": "Debt 14398.0 \u00b0C\u00b7s"
+      }
+    ],
+    "overall_score": 48.2,
+    "all_tests_passed": true,
+    "status": "CANDIDATE_PENDING_CONFIRMATION",
+    "reviewer_notes": "",
+    "timestamp_created": "2026-08-15T15:42:31Z",
+    "timestamp_reviewed": null,
+    "sha256_hash": "3826b02475a13966"
+  },
+  {
+    "id": "KB-ACT-1786808535",
+    "action_type": "PREEMPTIVE_PRECOOL",
+    "title": "Learned Policy: Preemptive Precool",
+    "target": "room1",
+    "trigger_condition": "Observed risk on ROOM1",
+    "action_summary": "Automated execution and verification of PREEMPTIVE_PRECOOL",
+    "parameters": {
+      "room_id": "room1",
+      "temp_offset_c": -1.5,
+      "setpoint": 18.0
+    },
+    "test_results": [
+      {
+        "test_name": "Thermal Comfort Preservation Test",
+        "category": "comfort",
+        "passed": true,
+        "score": 0.0,
+        "message": "Final zone temperature deviation: +10.22 \u00b0C (Initial: +10.25 \u00b0C).",
+        "measured_value": "Error 10.22 \u00b0C"
+      },
+      {
+        "test_name": "Equipment Degradation Risk Test",
+        "category": "risk",
+        "passed": true,
+        "score": 97.0,
+        "message": "Simulated fan failure risk: 3.0% (Initial: 3.0%, Delta: -0.0%).",
+        "measured_value": "Risk 3.0%"
+      },
+      {
+        "test_name": "Energy & Electrical Coherence Test",
+        "category": "energy",
+        "passed": true,
+        "score": 96.0,
+        "message": "Mean electrical load: 1415 W. Thermal COP 3.2 maintained.",
+        "measured_value": "1.42 kW"
+      },
+      {
+        "test_name": "Coordination Fairness & Stability Test",
+        "category": "stability",
+        "passed": true,
+        "score": 0.0,
+        "message": "Cumulative comfort debt: 14398.0 \u00b0C\u00b7s (Change: +0.0 \u00b0C\u00b7s).",
+        "measured_value": "Debt 14398.0 \u00b0C\u00b7s"
+      }
+    ],
+    "overall_score": 48.2,
+    "all_tests_passed": true,
+    "status": "CANDIDATE_PENDING_CONFIRMATION",
+    "reviewer_notes": "",
+    "timestamp_created": "2026-08-15T15:42:15Z",
+    "timestamp_reviewed": null,
+    "sha256_hash": "e015820d95d4c188"
+  },
+  {
+    "id": "KB-ACT-1786808517",
+    "action_type": "PREEMPTIVE_PRECOOL",
+    "title": "Learned Policy: Preemptive Precool",
+    "target": "room1",
+    "trigger_condition": "Observed risk on ROOM1",
+    "action_summary": "Automated execution and verification of PREEMPTIVE_PRECOOL",
+    "parameters": {
+      "room_id": "room1",
+      "temp_offset_c": -1.5,
+      "setpoint": 18.0
+    },
+    "test_results": [
+      {
+        "test_name": "Thermal Comfort Preservation Test",
+        "category": "comfort",
+        "passed": true,
+        "score": 0.0,
+        "message": "Final zone temperature deviation: +10.21 \u00b0C (Initial: +10.23 \u00b0C).",
+        "measured_value": "Error 10.21 \u00b0C"
+      },
+      {
+        "test_name": "Equipment Degradation Risk Test",
+        "category": "risk",
+        "passed": true,
+        "score": 97.0,
+        "message": "Simulated fan failure risk: 3.0% (Initial: 3.0%, Delta: -0.0%).",
+        "measured_value": "Risk 3.0%"
+      },
+      {
+        "test_name": "Energy & Electrical Coherence Test",
+        "category": "energy",
+        "passed": true,
+        "score": 96.0,
+        "message": "Mean electrical load: 1418 W. Thermal COP 3.2 maintained.",
+        "measured_value": "1.42 kW"
+      },
+      {
+        "test_name": "Coordination Fairness & Stability Test",
+        "category": "stability",
+        "passed": true,
+        "score": 0.0,
+        "message": "Cumulative comfort debt: 14398.0 \u00b0C\u00b7s (Change: +0.0 \u00b0C\u00b7s).",
+        "measured_value": "Debt 14398.0 \u00b0C\u00b7s"
+      }
+    ],
+    "overall_score": 48.2,
+    "all_tests_passed": true,
+    "status": "CANDIDATE_PENDING_CONFIRMATION",
+    "reviewer_notes": "",
+    "timestamp_created": "2026-08-15T15:41:57Z",
+    "timestamp_reviewed": null,
+    "sha256_hash": "3c69983b890ebea5"
+  },
+  {
+    "id": "KB-ACT-1786808500",
+    "action_type": "PREEMPTIVE_PRECOOL",
+    "title": "Learned Policy: Preemptive Precool",
+    "target": "room1",
+    "trigger_condition": "Observed risk on ROOM1",
+    "action_summary": "Automated execution and verification of PREEMPTIVE_PRECOOL",
+    "parameters": {
+      "room_id": "room1",
+      "temp_offset_c": -1.5,
+      "setpoint": 18.0
+    },
+    "test_results": [
+      {
+        "test_name": "Thermal Comfort Preservation Test",
+        "category": "comfort",
+        "passed": true,
+        "score": 0.0,
+        "message": "Final zone temperature deviation: +10.24 \u00b0C (Initial: +10.23 \u00b0C).",
+        "measured_value": "Error 10.24 \u00b0C"
+      },
+      {
+        "test_name": "Equipment Degradation Risk Test",
+        "category": "risk",
+        "passed": true,
+        "score": 97.0,
+        "message": "Simulated fan failure risk: 3.0% (Initial: 3.0%, Delta: -0.0%).",
+        "measured_value": "Risk 3.0%"
+      },
+      {
+        "test_name": "Energy & Electrical Coherence Test",
+        "category": "energy",
+        "passed": true,
+        "score": 96.0,
+        "message": "Mean electrical load: 1427 W. Thermal COP 3.2 maintained.",
+        "measured_value": "1.43 kW"
+      },
+      {
+        "test_name": "Coordination Fairness & Stability Test",
+        "category": "stability",
+        "passed": true,
+        "score": 0.0,
+        "message": "Cumulative comfort debt: 14396.0 \u00b0C\u00b7s (Change: -2.0 \u00b0C\u00b7s).",
+        "measured_value": "Debt 14396.0 \u00b0C\u00b7s"
+      }
+    ],
+    "overall_score": 48.2,
+    "all_tests_passed": true,
+    "status": "CANDIDATE_PENDING_CONFIRMATION",
+    "reviewer_notes": "",
+    "timestamp_created": "2026-08-15T15:41:40Z",
+    "timestamp_reviewed": null,
+    "sha256_hash": "d9b55eee5ee128df"
+  },
+  {
+    "id": "KB-ACT-1786808483",
+    "action_type": "PREEMPTIVE_PRECOOL",
+    "title": "Learned Policy: Preemptive Precool",
+    "target": "room1",
+    "trigger_condition": "Observed risk on ROOM1",
+    "action_summary": "Automated execution and verification of PREEMPTIVE_PRECOOL",
+    "parameters": {
+      "room_id": "room1",
+      "temp_offset_c": -1.5,
+      "setpoint": 18.0
+    },
+    "test_results": [
+      {
+        "test_name": "Thermal Comfort Preservation Test",
+        "category": "comfort",
+        "passed": true,
+        "score": 0.0,
+        "message": "Final zone temperature deviation: +10.21 \u00b0C (Initial: +10.22 \u00b0C).",
+        "measured_value": "Error 10.21 \u00b0C"
+      },
+      {
+        "test_name": "Equipment Degradation Risk Test",
+        "category": "risk",
+        "passed": true,
+        "score": 97.0,
+        "message": "Simulated fan failure risk: 3.0% (Initial: 3.0%, Delta: -0.0%).",
+        "measured_value": "Risk 3.0%"
+      },
+      {
+        "test_name": "Energy & Electrical Coherence Test",
+        "category": "energy",
+        "passed": true,
+        "score": 96.0,
+        "message": "Mean electrical load: 1403 W. Thermal COP 3.2 maintained.",
+        "measured_value": "1.40 kW"
+      },
+      {
+        "test_name": "Coordination Fairness & Stability Test",
+        "category": "stability",
+        "passed": true,
+        "score": 0.0,
+        "message": "Cumulative comfort debt: 14396.0 \u00b0C\u00b7s (Change: -2.0 \u00b0C\u00b7s).",
+        "measured_value": "Debt 14396.0 \u00b0C\u00b7s"
+      }
+    ],
+    "overall_score": 48.2,
+    "all_tests_passed": true,
+    "status": "CANDIDATE_PENDING_CONFIRMATION",
+    "reviewer_notes": "",
+    "timestamp_created": "2026-08-15T15:41:23Z",
+    "timestamp_reviewed": null,
+    "sha256_hash": "34f6ffa48b3d1235"
+  },
+  {
+    "id": "KB-ACT-1786808466",
+    "action_type": "PREEMPTIVE_PRECOOL",
+    "title": "Learned Policy: Preemptive Precool",
+    "target": "room1",
+    "trigger_condition": "Observed risk on ROOM1",
+    "action_summary": "Automated execution and verification of PREEMPTIVE_PRECOOL",
+    "parameters": {
+      "room_id": "room1",
+      "temp_offset_c": -1.5,
+      "setpoint": 18.0
+    },
+    "test_results": [
+      {
+        "test_name": "Thermal Comfort Preservation Test",
+        "category": "comfort",
+        "passed": true,
+        "score": 0.0,
+        "message": "Final zone temperature deviation: +10.25 \u00b0C (Initial: +10.20 \u00b0C).",
+        "measured_value": "Error 10.25 \u00b0C"
+      },
+      {
+        "test_name": "Equipment Degradation Risk Test",
+        "category": "risk",
+        "passed": true,
+        "score": 97.0,
+        "message": "Simulated fan failure risk: 3.0% (Initial: 3.0%, Delta: -0.0%).",
+        "measured_value": "Risk 3.0%"
+      },
+      {
+        "test_name": "Energy & Electrical Coherence Test",
+        "category": "energy",
+        "passed": true,
+        "score": 96.0,
+        "message": "Mean electrical load: 1423 W. Thermal COP 3.2 maintained.",
+        "measured_value": "1.42 kW"
+      },
+      {
+        "test_name": "Coordination Fairness & Stability Test",
+        "category": "stability",
+        "passed": true,
+        "score": 0.0,
+        "message": "Cumulative comfort debt: 14398.0 \u00b0C\u00b7s (Change: +0.0 \u00b0C\u00b7s).",
+        "measured_value": "Debt 14398.0 \u00b0C\u00b7s"
+      }
+    ],
+    "overall_score": 48.2,
+    "all_tests_passed": true,
+    "status": "CANDIDATE_PENDING_CONFIRMATION",
+    "reviewer_notes": "",
+    "timestamp_created": "2026-08-15T15:41:06Z",
+    "timestamp_reviewed": null,
+    "sha256_hash": "2d759bf6c19b0c71"
+  },
+  {
+    "id": "KB-ACT-1786808448",
+    "action_type": "PREEMPTIVE_PRECOOL",
+    "title": "Learned Policy: Preemptive Precool",
+    "target": "room1",
+    "trigger_condition": "Observed risk on ROOM1",
+    "action_summary": "Automated execution and verification of PREEMPTIVE_PRECOOL",
+    "parameters": {
+      "room_id": "room1",
+      "temp_offset_c": -1.5,
+      "setpoint": 18.0
+    },
+    "test_results": [
+      {
+        "test_name": "Thermal Comfort Preservation Test",
+        "category": "comfort",
+        "passed": true,
+        "score": 0.0,
+        "message": "Final zone temperature deviation: +10.23 \u00b0C (Initial: +10.22 \u00b0C).",
+        "measured_value": "Error 10.23 \u00b0C"
+      },
+      {
+        "test_name": "Equipment Degradation Risk Test",
+        "category": "risk",
+        "passed": true,
+        "score": 97.0,
+        "message": "Simulated fan failure risk: 3.0% (Initial: 3.0%, Delta: -0.0%).",
+        "measured_value": "Risk 3.0%"
+      },
+      {
+        "test_name": "Energy & Electrical Coherence Test",
+        "category": "energy",
+        "passed": true,
+        "score": 96.0,
+        "message": "Mean electrical load: 1415 W. Thermal COP 3.2 maintained.",
+        "measured_value": "1.41 kW"
+      },
+      {
+        "test_name": "Coordination Fairness & Stability Test",
+        "category": "stability",
+        "passed": true,
+        "score": 0.0,
+        "message": "Cumulative comfort debt: 14398.0 \u00b0C\u00b7s (Change: +0.0 \u00b0C\u00b7s).",
+        "measured_value": "Debt 14398.0 \u00b0C\u00b7s"
+      }
+    ],
+    "overall_score": 48.2,
+    "all_tests_passed": true,
+    "status": "CANDIDATE_PENDING_CONFIRMATION",
+    "reviewer_notes": "",
+    "timestamp_created": "2026-08-15T15:40:48Z",
+    "timestamp_reviewed": null,
+    "sha256_hash": "67668daa46114007"
+  },
+  {
+    "id": "KB-ACT-1786808431",
+    "action_type": "PREEMPTIVE_PRECOOL",
+    "title": "Learned Policy: Preemptive Precool",
+    "target": "room1",
+    "trigger_condition": "Observed risk on ROOM1",
+    "action_summary": "Automated execution and verification of PREEMPTIVE_PRECOOL",
+    "parameters": {
+      "room_id": "room1",
+      "temp_offset_c": -1.5,
+      "setpoint": 18.0
+    },
+    "test_results": [
+      {
+        "test_name": "Thermal Comfort Preservation Test",
+        "category": "comfort",
+        "passed": true,
+        "score": 0.0,
+        "message": "Final zone temperature deviation: +10.25 \u00b0C (Initial: +10.24 \u00b0C).",
+        "measured_value": "Error 10.25 \u00b0C"
+      },
+      {
+        "test_name": "Equipment Degradation Risk Test",
+        "category": "risk",
+        "passed": true,
+        "score": 97.0,
+        "message": "Simulated fan failure risk: 3.0% (Initial: 3.0%, Delta: -0.0%).",
+        "measured_value": "Risk 3.0%"
+      },
+      {
+        "test_name": "Energy & Electrical Coherence Test",
+        "category": "energy",
+        "passed": true,
+        "score": 96.0,
+        "message": "Mean electrical load: 1437 W. Thermal COP 3.2 maintained.",
+        "measured_value": "1.44 kW"
+      },
+      {
+        "test_name": "Coordination Fairness & Stability Test",
+        "category": "stability",
+        "passed": true,
+        "score": 0.0,
+        "message": "Cumulative comfort debt: 14398.0 \u00b0C\u00b7s (Change: +0.0 \u00b0C\u00b7s).",
+        "measured_value": "Debt 14398.0 \u00b0C\u00b7s"
+      }
+    ],
+    "overall_score": 48.2,
+    "all_tests_passed": true,
+    "status": "CANDIDATE_PENDING_CONFIRMATION",
+    "reviewer_notes": "",
+    "timestamp_created": "2026-08-15T15:40:31Z",
+    "timestamp_reviewed": null,
+    "sha256_hash": "7b4842c0c8b678e9"
+  },
+  {
     "id": "KB-ACT-1786808413",
     "action_type": "PREEMPTIVE_PRECOOL",
     "title": "Learned Policy: Preemptive Precool",
