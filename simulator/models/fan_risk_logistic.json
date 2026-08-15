@@ -8,6 +8,29 @@
     0.39002046
   ],
   "description": "Synthetic-data fan failure risk model. It estimates simulated failure risk, not real-world equipment failure probability.",
+  "feature_domain": {
+    "bearing_temp_c": {
+      "max": 86.0889886,
+      "min": 20.9081534
+    },
+    "fan_speed_pct": {
+      "max": 1.0,
+      "min": 0.0
+    },
+    "filter_clog_pct": {
+      "max": 1.0,
+      "min": 0.0
+    },
+    "run_hours": {
+      "max": 11696.6848005,
+      "min": 0.0
+    },
+    "vibration_mm_s": {
+      "max": 5.6536086,
+      "min": 0.0
+    }
+  },
+  "feature_domain_method": "physical_limits_and_training_min_max_with_30pct_range_padding",
   "feature_names": [
     "filter_clog_pct",
     "fan_speed_pct",

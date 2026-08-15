@@ -1,423 +1,890 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Smart Lab 3D Digital Twin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Shared AHU Operations Twin</title>
 <style>
-  body { margin: 0; overflow: hidden; background: #111; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-  #hud {
-    position: fixed; top: 12px; left: 12px; color: #fff;
-    background: rgba(15, 23, 42, 0.85); padding: 12px 16px;
-    border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.5); font-size: 13px;
-    line-height: 1.7; pointer-events: none; z-index: 10;
+  :root {
+    color-scheme: dark;
+    --surface: rgba(9, 18, 32, 0.91);
+    --surface-strong: #0b1626;
+    --line: rgba(159, 190, 213, 0.24);
+    --text: #f4f8fb;
+    --muted: #a9bccb;
+    --cyan: #55d6e7;
+    --blue: #62a8ff;
+    --amber: #f7c65f;
+    --red: #ff7b72;
+    --green: #6fdaa5;
   }
-  .hud-title { font-weight: bold; font-size: 14px; color: #38bdf8; margin-bottom: 4px; }
-  .hud-stat { display: flex; justify-content: space-between; gap: 16px; }
-  .hud-val { font-family: monospace; font-weight: 600; }
+  * { box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+  body {
+    background: #07111f;
+    color: var(--text);
+    font: 13px/1.35 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  #scene-root, #scene-root canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #scene-root canvas { touch-action: none; cursor: grab; }
+  #scene-root canvas.dragging { cursor: grabbing; }
+  .hud {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    display: grid;
+    grid-template-columns: minmax(13.5rem, 16.5rem) minmax(13.5rem, 16.5rem);
+    grid-template-rows: auto 1fr auto;
+    gap: .65rem;
+    padding: max(.75rem, env(safe-area-inset-top)) max(.75rem, env(safe-area-inset-right)) max(.75rem, env(safe-area-inset-bottom)) max(.75rem, env(safe-area-inset-left));
+    pointer-events: none;
+  }
+  .panel {
+    background: rgba(9, 18, 32, 0.72);
+    border: 1px solid rgba(159, 190, 213, 0.2);
+    border-radius: .75rem;
+    box-shadow: 0 .4rem 1.5rem rgba(0, 0, 0, .25);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    overflow: hidden;
+    transition: opacity 0.22s ease, transform 0.22s ease;
+  }
+  .hud.hud-minimized .rooms,
+  .hud.hud-minimized .side,
+  .hud.hud-minimized .footer,
+  .hud.hud-minimized .notice {
+    display: none !important;
+  }
+  .topbar {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    min-height: 3.2rem;
+    padding: .62rem .75rem;
+  }
+  .brand { min-width: 0; margin-right: auto; }
+  .eyebrow { color: var(--cyan); text-transform: uppercase; letter-spacing: .12em; font-size: .67rem; font-weight: 800; }
+  h1 { margin: .08rem 0 0; font-size: clamp(.96rem, 2vw, 1.2rem); line-height: 1.15; }
+  .connection { display: flex; align-items: center; gap: .45rem; white-space: nowrap; color: var(--muted); }
+  .dot { width: .62rem; height: .62rem; border-radius: 50%; background: var(--amber); box-shadow: 0 0 .65rem currentColor; color: var(--amber); }
+  .dot.live { background: var(--green); color: var(--green); }
+  .dot.bad { background: var(--red); color: var(--red); }
+  button {
+    pointer-events: auto;
+    appearance: none;
+    border: 1px solid rgba(160, 201, 227, .38);
+    border-radius: .5rem;
+    padding: .48rem .68rem;
+    background: #13263b;
+    color: var(--text);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  button:hover { background: #1a3550; }
+  button:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
+  .rooms { grid-column: 1; align-self: start; display: grid; gap: .65rem; }
+  .room-card { padding: .8rem; }
+  .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; margin-bottom: .55rem; }
+  h2, h3 { margin: 0; font-size: .92rem; }
+  .freshness { color: var(--muted); font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; }
+  .freshness.stale, .freshness.offline { color: var(--amber); }
+  .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .42rem; margin-bottom: .65rem; }
+  .metric { min-width: 0; padding: .45rem; border: 1px solid rgba(158, 188, 210, .13); border-radius: .48rem; background: rgba(19, 38, 59, .5); }
+  .metric dt { color: var(--muted); font-size: .65rem; white-space: nowrap; }
+  .metric dd { margin: .1rem 0 0; font: 700 .82rem ui-monospace, SFMono-Regular, Menlo, monospace; white-space: nowrap; }
+  .allocation { display: grid; grid-template-columns: 4.3rem 1fr; align-items: center; gap: .34rem .55rem; }
+  .allocation-label { color: var(--muted); font-size: .68rem; }
+  .bar-track { position: relative; height: .58rem; border-radius: 4px; background: #253a4d; overflow: hidden; }
+  .bar-request { position: absolute; inset: 0 auto 0 0; width: 0%; background: repeating-linear-gradient(135deg, #577187 0 4px, #425c71 4px 8px); border-radius: 4px; }
+  .bar-grant { position: absolute; inset: 2px auto 2px 0; width: 0%; background: var(--cyan); border-radius: 3px; }
+  .allocation-values { grid-column: 2; color: var(--muted); font: .7rem ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .reason { margin: .55rem 0 0; color: #d6e4ee; font-size: .73rem; }
+  .side { grid-column: 2; justify-self: end; align-self: start; width: 100%; display: grid; gap: .65rem; }
+  .ahu-card, .risk-card { padding: .8rem; }
+  .kv { display: grid; grid-template-columns: 1fr auto; gap: .35rem .75rem; margin: .55rem 0 0; }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; font: 700 .77rem ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .clog-track { height: .48rem; margin-top: .52rem; border-radius: 4px; background: #253a4d; overflow: hidden; }
+  .clog-fill { height: 100%; width: 0%; border-radius: 4px; background: var(--green); transition: width .25s ease; }
+  .risk-card { border-color: rgba(247, 198, 95, .35); }
+  .advisory { margin: .45rem 0 0; padding: .48rem .55rem; border-left: 3px solid var(--amber); background: rgba(247, 198, 95, .08); color: #f9e7bc; font-size: .73rem; }
+  .drivers { margin: .5rem 0 0; color: var(--muted); font-size: .7rem; }
+  .footer {
+    grid-column: 1 / -1;
+    align-self: end;
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .5rem .7rem;
+    color: var(--muted);
+    font-size: .7rem;
+  }
+  .footer strong { color: var(--text); }
+  .scenario { margin-right: auto; }
+  .legend { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .7rem; }
+  .key { display: inline-flex; align-items: center; gap: .28rem; white-space: nowrap; }
+  .swatch { width: .75rem; height: .42rem; border-radius: 2px; background: var(--cyan); }
+  .swatch.request { background: repeating-linear-gradient(135deg, #70899c 0 3px, #40596d 3px 6px); }
+  .notice {
+    position: fixed;
+    z-index: 8;
+    left: 50%;
+    bottom: 4.1rem;
+    transform: translateX(-50%);
+    max-width: min(44rem, calc(100% - 1.5rem));
+    padding: .55rem .8rem;
+    border: 1px solid rgba(247, 198, 95, .45);
+    border-radius: .55rem;
+    background: rgba(47, 35, 12, .94);
+    color: #ffe9b0;
+    text-align: center;
+    box-shadow: 0 .5rem 1.5rem rgba(0,0,0,.35);
+    pointer-events: none;
+  }
+  .notice[hidden], .fallback[hidden] { display: none !important; }
+  .fallback {
+    position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 2rem;
+    background: #07111f; color: var(--text); text-align: center;
+  }
+  .fallback div { max-width: 34rem; padding: 1.4rem; border: 1px solid var(--line); border-radius: .8rem; background: var(--surface-strong); }
+  .fallback h1 { margin-bottom: .6rem; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+  @media (max-width: 760px) {
+    .hud { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; }
+    .topbar { grid-column: 1; }
+    .rooms { grid-column: 1; width: min(100%, 22rem); max-height: calc(100vh - 9.2rem); overflow-y: auto; pointer-events: auto; scrollbar-width: thin; }
+    .side { grid-column: 1; width: min(100%, 22rem); position: absolute; right: .75rem; top: 4.65rem; }
+    .side .ahu-card { display: none; }
+    .risk-card { padding: .65rem; }
+    .risk-card .kv, .risk-card .drivers { display: none; }
+    .footer { grid-column: 1; }
+    .legend { display: none; }
+    .metric-grid { grid-template-columns: repeat(2, 1fr); }
+    .connection span:last-child { display: none; }
+  }
+  @media (max-width: 520px) {
+    .side { top: auto; bottom: 3.9rem; width: calc(100% - 1.5rem); }
+    .risk-card .advisory { margin-top: .35rem; }
+    .rooms { max-height: calc(100vh - 13rem); }
+    .scenario { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .footer { padding-right: .5rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+  }
 </style>
 </head>
 <body>
-<div id="hud">
-  <div class="hud-title">🏢 Smart Lab Ecosystem — <span id="room-label">Room 1</span></div>
-  <div class="hud-stat"><span>Room Temp:</span> <span class="hud-val" id="val-temp">--°C</span></div>
-  <div class="hud-stat"><span>Occupants:</span> <span class="hud-val" id="val-occ">0</span></div>
-  <div class="hud-stat"><span>AC State:</span> <span class="hud-val" id="val-hvac">OFF</span></div>
-  <div class="hud-stat"><span>AC Power:</span> <span class="hud-val" id="val-power">0%</span></div>
-  <div class="hud-stat"><span>Setpoint:</span> <span class="hud-val" id="val-sp">--°C</span></div>
-  <div class="hud-stat"><span>Airflow Grant:</span> <span class="hud-val" id="val-allocation">--</span></div>
+<div id="scene-root" aria-label="Interactive three-dimensional operations view of two rooms supplied by one shared air handling unit. Drag to orbit and use the mouse wheel to zoom."></div>
+<div class="hud" aria-label="Operations telemetry">
+  <header class="panel topbar">
+    <div class="brand">
+      <div class="eyebrow">Live simulation twin</div>
+      <h1>Two Rooms · One Shared AHU</h1>
+    </div>
+    <div class="connection" role="status" aria-live="polite">
+      <span id="connection-dot" class="dot"></span>
+      <span id="connection-state">Connecting</span>
+      <span id="broker-label"></span>
+    </div>
+    <button id="toggle-hud" type="button" aria-label="Toggle telemetry HUD overlay">Hide HUD (H)</button>
+    <button id="reset-camera" type="button" aria-label="Reset the 3D camera to the overview">Reset camera</button>
+  </header>
+
+  <main class="rooms" aria-label="Room telemetry">
+    <article class="panel room-card" id="room1-card" aria-labelledby="room1-title">
+      <div class="card-head"><h2 id="room1-title">Room 1</h2><span class="freshness" id="room1-fresh">Waiting</span></div>
+      <dl class="metric-grid">
+        <div class="metric"><dt>Temperature</dt><dd id="room1-temp">—</dd></div>
+        <div class="metric"><dt>Setpoint</dt><dd id="room1-setpoint">—</dd></div>
+        <div class="metric"><dt>Occupancy</dt><dd id="room1-occ">—</dd></div>
+        <div class="metric"><dt>HVAC</dt><dd id="room1-hvac">—</dd></div>
+      </dl>
+      <div class="allocation" aria-label="Room 1 requested versus granted airflow">
+        <span class="allocation-label">Airflow</span>
+        <div class="bar-track" id="room1-bar" role="progressbar" aria-label="Room 1 granted airflow as a share of requested airflow" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <span class="bar-request" id="room1-request-bar"></span><span class="bar-grant" id="room1-grant-bar"></span>
+        </div>
+        <span class="allocation-values" id="room1-flow">Requested — · Granted —</span>
+      </div>
+      <p class="reason" id="room1-reason">Waiting for coordinator telemetry.</p>
+    </article>
+
+    <article class="panel room-card" id="room2-card" aria-labelledby="room2-title">
+      <div class="card-head"><h2 id="room2-title">Room 2</h2><span class="freshness" id="room2-fresh">Waiting</span></div>
+      <dl class="metric-grid">
+        <div class="metric"><dt>Temperature</dt><dd id="room2-temp">—</dd></div>
+        <div class="metric"><dt>Setpoint</dt><dd id="room2-setpoint">—</dd></div>
+        <div class="metric"><dt>Occupancy</dt><dd id="room2-occ">—</dd></div>
+        <div class="metric"><dt>HVAC</dt><dd id="room2-hvac">—</dd></div>
+      </dl>
+      <div class="allocation" aria-label="Room 2 requested versus granted airflow">
+        <span class="allocation-label">Airflow</span>
+        <div class="bar-track" id="room2-bar" role="progressbar" aria-label="Room 2 granted airflow as a share of requested airflow" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <span class="bar-request" id="room2-request-bar"></span><span class="bar-grant" id="room2-grant-bar"></span>
+        </div>
+        <span class="allocation-values" id="room2-flow">Requested — · Granted —</span>
+      </div>
+      <p class="reason" id="room2-reason">Waiting for coordinator telemetry.</p>
+    </article>
+  </main>
+
+  <aside class="side" aria-label="Shared equipment telemetry">
+    <section class="panel ahu-card" aria-labelledby="ahu-title">
+      <div class="card-head"><h2 id="ahu-title">Shared AHU</h2><span class="freshness" id="ahu-fresh">Waiting</span></div>
+      <dl class="kv">
+        <dt>Fan speed</dt><dd id="ahu-speed">—</dd>
+        <dt>Delivered / available</dt><dd id="ahu-flow">—</dd>
+        <dt>Supply air</dt><dd id="ahu-supply">—</dd>
+        <dt>Filter clog</dt><dd id="ahu-clog">—</dd>
+      </dl>
+      <div class="clog-track" role="progressbar" aria-label="Filter clog percentage" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="clog-meter"><div class="clog-fill" id="clog-fill"></div></div>
+    </section>
+    <section class="panel risk-card" aria-labelledby="risk-title">
+      <div class="card-head"><h2 id="risk-title">Predictive fan risk</h2><span class="freshness" id="risk-fresh">Waiting</span></div>
+      <dl class="kv">
+        <dt>Simulated risk</dt><dd id="risk-value">—</dd>
+        <dt>Health / wear</dt><dd id="health-value">—</dd>
+        <dt>Model</dt><dd id="model-value">—</dd>
+      </dl>
+      <p class="drivers" id="risk-drivers">Drivers: waiting for fan-health telemetry.</p>
+      <p class="advisory"><strong>Simulation-only advisory.</strong> This estimate does not change airflow, issue a command, or create a work order.</p>
+    </section>
+  </aside>
+
+  <footer class="panel footer">
+    <span class="scenario"><strong>Scenario:</strong> <span id="scenario-name">No scenario telemetry</span></span>
+    <span class="legend" aria-label="Airflow bar legend"><span class="key"><span class="swatch request"></span>Requested</span><span class="key"><span class="swatch"></span>Granted / delivered</span></span>
+  </footer>
 </div>
+<div class="notice" id="lifecycle-notice" role="status" aria-live="polite">Connecting to telemetry. Values will remain last-known if the feed is interrupted.</div>
+<div id="fallback" class="fallback" hidden><div><h1>3D view unavailable</h1><p>This browser could not start WebGL. The operations scene requires WebGL support; try enabling hardware acceleration or using a current browser.</p></div></div>
+<div id="telemetry-summary" class="sr-only" aria-live="polite"></div>
 
 <script src="vendor/mqtt.min.js"></script>
 <script type="module">
 import * as THREE from './vendor/three.module.js';
 
-// ─── 1. Scene setup ──────────────────────────────────────────
+const ROOM_IDS = ['room1', 'room2'];
+const MAX_ROOM_AIRFLOW = 0.16;
+const STALE_AFTER_MS = 12000;
+const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+let reducedMotion = reducedMotionQuery.matches;
+
+const $ = (id) => document.getElementById(id);
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const finite = (value) => {
+  if (value === null || value === undefined || typeof value === 'boolean' || value === '') return null;
+  return Number.isFinite(Number(value)) ? Number(value) : null;
+};
+const pct = (value) => finite(value) === null ? null : clamp(finite(value), 0, 1);
+const fmt = (value, digits = 1) => finite(value) === null ? '—' : Number(value).toFixed(digits);
+const now = () => Date.now();
+
+function mqttUrl() {
+  const supplied = new URLSearchParams(window.location.search).get('mqtt');
+  if (supplied) {
+    try {
+      const parsed = new URL(supplied);
+      if (parsed.protocol === 'ws:' || parsed.protocol === 'wss:') return parsed.href;
+    } catch (_) { /* Invalid overrides safely fall through to the local default. */ }
+  }
+  const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  return `${scheme}://${window.location.hostname || 'localhost'}:9001`;
+}
+
+const brokerUrl = mqttUrl();
+try {
+  const parsedBroker = new URL(brokerUrl);
+  $('broker-label').textContent = `${parsedBroker.hostname}:${parsedBroker.port || (parsedBroker.protocol === 'wss:' ? '443' : '80')}`;
+} catch (_) {
+  $('broker-label').textContent = 'telemetry broker';
+}
+
+const data = {
+  connection: 'connecting',
+  ecosystemStatus: 'unknown',
+  ecosystemSeen: 0,
+  scenario: null,
+  rooms: Object.fromEntries(ROOM_IDS.map((id) => [id, {
+    temperature: null, occupancy: null, hvacOn: null, setpoint: null,
+    requested: null, granted: null, allocationPct: null, reasonCodes: [], lastSeen: 0
+  }])),
+  ahu: {
+    fanSpeed: null, delivered: null, available: null, max: null, supplyTemp: null,
+    filterClog: null, lastSeen: 0
+  },
+  risk: {
+    failureRisk: null, band: null, health: null, wear: null, model: null,
+    drivers: [], lastSeen: 0
+  },
+  decision: null
+};
+
+function supportsWebGL() {
+  try {
+    const canvas = document.createElement('canvas');
+    return Boolean(window.WebGLRenderingContext && (canvas.getContext('webgl2') || canvas.getContext('webgl')));
+  } catch (_) { return false; }
+}
+
+if (!supportsWebGL()) {
+  $('fallback').hidden = false;
+  throw new Error('WebGL unavailable');
+}
+
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0f172a);
-scene.fog = new THREE.FogExp2(0x0f172a, 0.025);
+scene.background = new THREE.Color(0x07111f);
+scene.fog = new THREE.Fog(0x07111f, 19, 34);
 
-const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 100);
-camera.position.set(0, 11, 14);
-camera.lookAt(0, 1, 1);
-
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
+const camera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, 0.1, 80);
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-document.body.appendChild(renderer.domElement);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.domElement.setAttribute('role', 'img');
+renderer.domElement.setAttribute('aria-label', 'Two adjacent lab rooms connected by branching ducts to one shared air handling unit. Air particles represent actual delivered airflow.');
+$('scene-root').appendChild(renderer.domElement);
 
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
+scene.add(new THREE.HemisphereLight(0xcdeeff, 0x162337, 1.05));
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.25);
+keyLight.position.set(-7, 13, 8);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(1024, 1024);
+keyLight.shadow.camera.left = -14;
+keyLight.shadow.camera.right = 14;
+keyLight.shadow.camera.top = 12;
+keyLight.shadow.camera.bottom = -12;
+scene.add(keyLight);
+const fillLight = new THREE.PointLight(0x56d7e8, .65, 20);
+fillLight.position.set(0, 6, -4);
+scene.add(fillLight);
 
-// ─── 2. Lighting ─────────────────────────────────────────────
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.55);
-scene.add(ambientLight);
+const world = new THREE.Group();
+scene.add(world);
+const roomVisuals = {};
+const ductMaterial = new THREE.MeshStandardMaterial({ color: 0x758a9b, metalness: .72, roughness: .28 });
+const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x5e7080, roughness: .72 });
+const glassMaterial = new THREE.MeshStandardMaterial({ color: 0x8fc8da, transparent: true, opacity: .12, roughness: .18, side: THREE.DoubleSide });
+const furnitureMaterial = new THREE.MeshStandardMaterial({ color: 0x26384a, roughness: .62 });
+const tabletopMaterial = new THREE.MeshStandardMaterial({ color: 0xb8c7d2, roughness: .45 });
 
-const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
-sunLight.position.set(8, 15, 10);
-sunLight.castShadow = true;
-sunLight.shadow.mapSize.width = 1024;
-sunLight.shadow.mapSize.height = 1024;
-sunLight.shadow.camera.near = 0.5;
-sunLight.shadow.camera.far = 30;
-sunLight.shadow.camera.left = -10;
-sunLight.shadow.camera.right = 10;
-sunLight.shadow.camera.top = 10;
-sunLight.shadow.camera.bottom = -10;
-scene.add(sunLight);
+function meshBox(width, height, depth, material, x, y, z, parent = world) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
+  mesh.position.set(x, y, z);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  parent.add(mesh);
+  return mesh;
+}
 
-// Lab ceiling point light
-const labLight = new THREE.PointLight(0xe0f2fe, 0.6, 12);
-labLight.position.set(0, 3.2, 0);
-scene.add(labLight);
+function labelSprite(text, accent = '#55d6e7') {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512; canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = 'rgba(7,17,31,.9)';
+  ctx.roundRect(4, 4, 504, 120, 20); ctx.fill();
+  ctx.strokeStyle = accent; ctx.lineWidth = 4; ctx.stroke();
+  ctx.fillStyle = '#f4f8fb'; ctx.font = '700 46px system-ui, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, 256, 65);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.encoding = THREE.sRGBEncoding;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }));
+  sprite.scale.set(3.2, .8, 1);
+  return sprite;
+}
 
-// Corridor ceiling point light
-const corridorLight = new THREE.PointLight(0xfef08a, 0.5, 10);
-corridorLight.position.set(0, 3.2, 6);
-scene.add(corridorLight);
-
-// ─── 3. Environment Architecture (Room + Corridor + Door) ────
-const rootGroup = new THREE.Group();
-scene.add(rootGroup);
-
-// Room Floor (10m wide x 8m deep, z from -4 to 4)
-const roomFloorMat = new THREE.MeshStandardMaterial({ color: 0x2266ff, roughness: 0.3 });
-const roomFloor = new THREE.Mesh(new THREE.BoxGeometry(10, 0.2, 8), roomFloorMat);
-roomFloor.position.set(0, -0.1, 0);
-roomFloor.receiveShadow = true;
-rootGroup.add(roomFloor);
-
-// Corridor Floor (10m wide x 4m deep, z from 4 to 8)
-const corridorFloorMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6 });
-const corridorFloor = new THREE.Mesh(new THREE.BoxGeometry(10, 0.2, 4), corridorFloorMat);
-corridorFloor.position.set(0, -0.1, 6);
-corridorFloor.receiveShadow = true;
-rootGroup.add(corridorFloor);
-
-// Wall materials
-const wallSolidMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5 });
-const wallGlassMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.22, roughness: 0.1 });
-
-// Back Wall (z = -4)
-const backWall = new THREE.Mesh(new THREE.BoxGeometry(10, 3.2, 0.15), wallSolidMat);
-backWall.position.set(0, 1.6, -4);
-rootGroup.add(backWall);
-
-// Side Walls (Left & Right for both room and corridor)
-const leftRoomWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, 3.2, 8), wallGlassMat);
-leftRoomWall.position.set(-5, 1.6, 0);
-rootGroup.add(leftRoomWall);
-
-const rightRoomWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, 3.2, 8), wallGlassMat);
-rightRoomWall.position.set(5, 1.6, 0);
-rootGroup.add(rightRoomWall);
-
-const leftCorridorWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, 3.2, 4), wallSolidMat);
-leftCorridorWall.position.set(-5, 1.6, 6);
-rootGroup.add(leftCorridorWall);
-
-const rightCorridorWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, 3.2, 4), wallSolidMat);
-rightCorridorWall.position.set(5, 1.6, 6);
-rootGroup.add(rightCorridorWall);
-
-// Front Wall splitting Room and Corridor (z = 4), with doorway gap across x: [-1.4, 1.4]
-const leftFrontWall = new THREE.Mesh(new THREE.BoxGeometry(3.6, 3.2, 0.15), wallSolidMat);
-leftFrontWall.position.set(-3.2, 1.6, 4);
-rootGroup.add(leftFrontWall);
-
-const rightFrontWall = new THREE.Mesh(new THREE.BoxGeometry(3.6, 3.2, 0.15), wallSolidMat);
-rightFrontWall.position.set(3.2, 1.6, 4);
-rootGroup.add(rightFrontWall);
-
-// Door header above the sliding doors
-const doorHeader = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.8, 0.15), wallSolidMat);
-doorHeader.position.set(0, 2.8, 4);
-rootGroup.add(doorHeader);
-
-// Automatic Sliding Glass Doors
-const doorMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.4, roughness: 0.1 });
-const leftDoor = new THREE.Mesh(new THREE.BoxGeometry(1.35, 2.4, 0.08), doorMat);
-leftDoor.position.set(-0.68, 1.2, 4);
-rootGroup.add(leftDoor);
-
-const rightDoor = new THREE.Mesh(new THREE.BoxGeometry(1.35, 2.4, 0.08), doorMat);
-rightDoor.position.set(0.68, 1.2, 4);
-rootGroup.add(rightDoor);
-
-let doorOpenAmount = 0.0; // 0.0 = closed, 1.0 = fully open
-
-// ─── 4. Lab Furniture & AC Unit ──────────────────────────────
-const tableMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4 });
-const topMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.2 });
-
-function createLabTable(x, z) {
+function createTable(parent, x, z) {
   const group = new THREE.Group();
-  const top = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.08, 1.2), topMat);
-  top.position.set(0, 0.8, 0); top.castShadow = true; top.receiveShadow = true;
-  group.add(top);
-  [[-1.2,-0.5],[1.2,-0.5],[-1.2,0.5],[1.2,0.5]].forEach(([dx, dz]) => {
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.8, 0.08), tableMat);
-    leg.position.set(dx, 0.4, dz); leg.castShadow = true;
-    group.add(leg);
+  meshBox(2.1, .1, .85, tabletopMaterial, 0, .72, 0, group);
+  [[-.92,-.34],[.92,-.34],[-.92,.34],[.92,.34]].forEach(([dx,dz]) => meshBox(.08, .7, .08, furnitureMaterial, dx, .35, dz, group));
+  group.position.set(x, 0, z); parent.add(group);
+}
+
+function createRoom(id, centerX, accent) {
+  const group = new THREE.Group();
+  group.position.x = centerX;
+  world.add(group);
+  const floorMat = new THREE.MeshStandardMaterial({ color: 0x35566a, roughness: .63, metalness: .08 });
+  meshBox(7.2, .22, 7.0, floorMat, 0, -.11, 0, group);
+  meshBox(7.2, 3.2, .14, wallMaterial, 0, 1.6, -3.5, group);
+  meshBox(.14, 3.2, 7.0, glassMaterial, centerX < 0 ? -3.6 : 3.6, 1.6, 0, group);
+  meshBox(.14, 1.0, 7.0, wallMaterial, centerX < 0 ? 3.6 : -3.6, .5, 0, group);
+  meshBox(7.2, .8, .14, wallMaterial, 0, 2.8, 3.5, group);
+  meshBox(2.25, 2.0, .1, glassMaterial, 0, 1.0, 3.5, group);
+  meshBox(2.45, .12, 1.4, new THREE.MeshStandardMaterial({ color: 0xdce7ed, roughness: .4 }), 0, 3.02, -.2, group);
+  createTable(group, -1.75, .8); createTable(group, 1.75, .8);
+  createTable(group, -1.75, -1.55); createTable(group, 1.75, -1.55);
+  const sign = labelSprite(id === 'room1' ? 'ROOM 1' : 'ROOM 2', accent);
+  sign.position.set(0, 3.7, 2.25); group.add(sign);
+
+  const people = [];
+  const bodyGeometry = new THREE.CapsuleGeometry(.13, .45, 4, 8);
+  const headGeometry = new THREE.SphereGeometry(.15, 10, 8);
+  const palette = [0x55d6e7, 0xff8b82, 0x70daa5, 0xf7c65f, 0xa894ff, 0xe889bb];
+  for (let i = 0; i < 30; i++) {
+    const person = new THREE.Group();
+    const body = new THREE.Mesh(bodyGeometry, new THREE.MeshStandardMaterial({ color: palette[i % palette.length], roughness: .65 }));
+    body.position.y = .48; body.castShadow = true; person.add(body);
+    const head = new THREE.Mesh(headGeometry, new THREE.MeshStandardMaterial({ color: 0xdcae89, roughness: .72 }));
+    head.position.y = .98; head.castShadow = true; person.add(head);
+    const col = i % 6, row = Math.floor(i / 6);
+    person.position.set(-2.75 + col * 1.1, 0, -2.55 + row * 1.15);
+    person.visible = false; group.add(person); people.push(person);
+  }
+  roomVisuals[id] = { group, floorMat, people, accent };
+}
+
+createRoom('room1', -4.05, '#55d6e7');
+createRoom('room2', 4.05, '#a894ff');
+meshBox(16.5, .2, 2.4, new THREE.MeshStandardMaterial({ color: 0x1b2a3b, roughness: .8 }), 0, -.12, 4.7);
+
+const ahuGroup = new THREE.Group();
+ahuGroup.position.set(0, 3.7, -5.6);
+world.add(ahuGroup);
+const ahuBodyMat = new THREE.MeshStandardMaterial({ color: 0x9cacb7, metalness: .68, roughness: .3 });
+meshBox(3.4, 1.8, 1.75, ahuBodyMat, 0, 0, 0, ahuGroup);
+meshBox(1.25, 1.28, .08, new THREE.MeshStandardMaterial({ color: 0x142536, metalness: .3 }), -.72, 0, .9, ahuGroup);
+const ahuSign = labelSprite('SHARED AHU', '#f7c65f');
+ahuSign.position.set(0, 1.35, .1); ahuSign.scale.set(2.7, .68, 1); ahuGroup.add(ahuSign);
+
+const rotor = new THREE.Group();
+rotor.position.set(-.72, 0, .97);
+ahuGroup.add(rotor);
+const hub = new THREE.Mesh(new THREE.CylinderGeometry(.15, .15, .16, 18), new THREE.MeshStandardMaterial({ color: 0x55d6e7, metalness: .5 }));
+hub.rotation.x = Math.PI / 2; rotor.add(hub);
+for (let i = 0; i < 4; i++) {
+  const blade = meshBox(.52, .1, .07, new THREE.MeshStandardMaterial({ color: 0x55d6e7, metalness: .38 }), .38, 0, 0, rotor);
+  blade.rotation.z = i * Math.PI / 2;
+  const holder = new THREE.Group();
+  rotor.remove(blade); holder.rotation.z = i * Math.PI / 2; holder.add(blade); rotor.add(holder);
+}
+
+const filterGroup = new THREE.Group();
+filterGroup.position.set(.83, 0, .94); ahuGroup.add(filterGroup);
+const filterFins = [];
+for (let i = 0; i < 9; i++) {
+  const fin = meshBox(.06, 1.15, .07, new THREE.MeshStandardMaterial({ color: 0xd9e3dc, roughness: .88 }), -.48 + i * .12, 0, 0, filterGroup);
+  filterFins.push(fin);
+}
+
+function cylinderBetween(a, b, radius = .18) {
+  const delta = new THREE.Vector3().subVectors(b, a);
+  const tube = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, delta.length(), 14), ductMaterial);
+  tube.position.copy(a).add(b).multiplyScalar(.5);
+  tube.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), delta.clone().normalize());
+  tube.castShadow = true; world.add(tube); return tube;
+}
+
+const junction = new THREE.Vector3(0, 3.7, -3.15);
+const ahuOutlet = new THREE.Vector3(0, 3.7, -4.7);
+const leftBend = new THREE.Vector3(-4.05, 3.7, -3.15);
+const rightBend = new THREE.Vector3(4.05, 3.7, -3.15);
+const leftDiffuser = new THREE.Vector3(-4.05, 3.05, -.2);
+const rightDiffuser = new THREE.Vector3(4.05, 3.05, -.2);
+cylinderBetween(ahuOutlet, junction, .26);
+cylinderBetween(junction, leftBend, .2); cylinderBetween(leftBend, leftDiffuser, .2);
+cylinderBetween(junction, rightBend, .2); cylinderBetween(rightBend, rightDiffuser, .2);
+
+function createParticlePool(points, color, count) {
+  const group = new THREE.Group(); world.add(group);
+  const particles = [];
+  const geometry = new THREE.SphereGeometry(.07, 7, 6);
+  const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .88 });
+  for (let i = 0; i < count; i++) {
+    const particle = new THREE.Mesh(geometry, material);
+    particle.visible = false; group.add(particle); particles.push(particle);
+  }
+  const segments = [];
+  let total = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    const length = points[i].distanceTo(points[i + 1]);
+    segments.push({ a: points[i], b: points[i + 1], start: total, length }); total += length;
+  }
+  return { particles, segments, total, phase: 0 };
+}
+
+function pointAlong(pool, distance) {
+  const d = ((distance % pool.total) + pool.total) % pool.total;
+  const segment = pool.segments.find((item) => d <= item.start + item.length) || pool.segments[pool.segments.length - 1];
+  return new THREE.Vector3().lerpVectors(segment.a, segment.b, (d - segment.start) / segment.length);
+}
+
+const trunkParticles = createParticlePool([ahuOutlet, junction], 0x91eaf2, 20);
+const branchParticles = {
+  room1: createParticlePool([junction, leftBend, leftDiffuser], 0x55d6e7, 26),
+  room2: createParticlePool([junction, rightBend, rightDiffuser], 0xa894ff, 26)
+};
+
+const comfortColor = new THREE.Color(0x35566a);
+const hotColor = new THREE.Color(0xb84c3f);
+const coldColor = new THREE.Color(0x286bad);
+function updateRoomVisual(id) {
+  const room = data.rooms[id];
+  const visual = roomVisuals[id];
+  visual.people.forEach((person, index) => { person.visible = index < clamp(Math.round(room.occupancy || 0), 0, 30); });
+  if (room.temperature !== null && room.setpoint !== null) {
+    const error = clamp(room.temperature - room.setpoint, -4, 4);
+    visual.floorMat.color.copy(comfortColor);
+    if (error > 0) visual.floorMat.color.lerp(hotColor, error / 4);
+    if (error < 0) visual.floorMat.color.lerp(coldColor, -error / 4);
+  } else {
+    visual.floorMat.color.copy(comfortColor);
+  }
+}
+
+function updateAhuVisual() {
+  const clog = pct(data.ahu.filterClog) || 0;
+  const clean = new THREE.Color(0xd9e3dc), dirty = new THREE.Color(0x6f3d27);
+  filterFins.forEach((fin, index) => {
+    fin.material.color.copy(clean).lerp(dirty, clog);
+    fin.scale.y = 1 - clog * .18 * ((index % 3) + 1) / 3;
   });
-  group.position.set(x, 0, z);
-  rootGroup.add(group);
-}
-createLabTable(-2.4, -1.5);
-createLabTable(2.4, -1.5);
-createLabTable(-2.4, 1.5);
-createLabTable(2.4, 1.5);
-
-// Ceiling AC Unit & Fan
-const acBody = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.2, 1.8), new THREE.MeshStandardMaterial({ color: 0xf8fafc }));
-acBody.position.set(0, 3.1, 0);
-rootGroup.add(acBody);
-
-const fan = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.05, 0.25), new THREE.MeshStandardMaterial({ color: 0x38bdf8 }));
-fan.position.set(0, 2.95, 0);
-rootGroup.add(fan);
-
-// ─── 5. Dynamic Human Agents System ──────────────────────────
-const headGeo = new THREE.SphereGeometry(0.18, 16, 16);
-const bodyGeo = new THREE.CapsuleGeometry(0.18, 0.55, 8, 16);
-const personColors = [0x38bdf8, 0xf43f5e, 0x10b981, 0xf59e0b, 0xa855f7, 0xec4899];
-
-class Person {
-  constructor(id, isEntering = true) {
-    this.id = id;
-    this.group = new THREE.Group();
-    
-    const color = personColors[id % personColors.length];
-    const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.4 });
-    const headMat = new THREE.MeshStandardMaterial({ color: 0xfde047, roughness: 0.5 });
-    
-    this.body = new THREE.Mesh(bodyGeo, mat);
-    this.body.position.y = 0.55;
-    this.body.castShadow = true;
-    this.group.add(this.body);
-    
-    this.head = new THREE.Mesh(headGeo, headMat);
-    this.head.position.y = 1.15;
-    this.head.castShadow = true;
-    this.group.add(this.head);
-    
-    // Initial spawn
-    if (isEntering) {
-      // Spawn in corridor outside
-      this.group.position.set((Math.random() - 0.5) * 6, 0, 7.5);
-      this.state = 'entering_corridor';
-      this.target = { x: (Math.random() - 0.5) * 1.6, z: 4.2 }; // walk to doorway
-    } else {
-      // Spawn directly inside room
-      const spot = this.getRandomRoomSpot();
-      this.group.position.set(spot.x, 0, spot.z);
-      this.state = 'in_room';
-      this.target = spot;
-      this.waitTimer = Math.random() * 3 + 1;
-    }
-    this.speed = 1.8 + Math.random() * 0.6; // m/s
-    this.baseY = 0;
-    rootGroup.add(this.group);
-  }
-
-  getRandomRoomSpot() {
-    // Pick spots around tables or aisles
-    const spots = [
-      { x: (Math.random() - 0.5) * 7, z: (Math.random() - 0.5) * 5 },
-      { x: -2.4 + (Math.random() - 0.5) * 1.5, z: -0.2 },
-      { x: 2.4 + (Math.random() - 0.5) * 1.5, z: -0.2 },
-      { x: 0 + (Math.random() - 0.5) * 1.5, z: 1.5 },
-    ];
-    return spots[Math.floor(Math.random() * spots.length)];
-  }
-
-  startExiting() {
-    if (this.state === 'exiting_room' || this.state === 'exiting_corridor') return;
-    this.state = 'exiting_room';
-    this.target = { x: (Math.random() - 0.5) * 1.4, z: 3.8 }; // walk to inside doorway
-  }
-
-  update(dt, elapsedTime) {
-    const pos = this.group.position;
-    const dx = this.target.x - pos.x;
-    const dz = this.target.z - pos.z;
-    const dist = Math.hypot(dx, dz);
-
-    if (dist > 0.08) {
-      // Walk towards target
-      const move = Math.min(dist, this.speed * dt);
-      pos.x += (dx / dist) * move;
-      pos.z += (dz / dist) * move;
-      
-      // Face direction of movement
-      const angle = Math.atan2(dx, dz);
-      this.group.rotation.y = angle;
-      
-      // Natural walking bob motion
-      pos.y = Math.abs(Math.sin(elapsedTime * 10 + this.id)) * 0.08;
-    } else {
-      pos.y = 0; // standing still
-      
-      // State transitions on reaching waypoint
-      if (this.state === 'entering_corridor') {
-        this.state = 'entering_room';
-        this.target = this.getRandomRoomSpot();
-      } else if (this.state === 'entering_room') {
-        this.state = 'in_room';
-        this.waitTimer = Math.random() * 4 + 2;
-      } else if (this.state === 'in_room') {
-        this.waitTimer -= dt;
-        if (this.waitTimer <= 0) {
-          this.target = this.getRandomRoomSpot();
-          this.waitTimer = Math.random() * 5 + 3;
-        }
-      } else if (this.state === 'exiting_room') {
-        this.state = 'exiting_corridor';
-        this.target = { x: (Math.random() - 0.5) * 6, z: 7.8 }; // walk deep into corridor
-      } else if (this.state === 'exiting_corridor') {
-        this.state = 'removed';
-      }
-    }
-  }
-
-  destroy() {
-    rootGroup.remove(this.group);
-  }
 }
 
-let people = [];
-let targetOccupancy = 0;
-let personIdCounter = 1;
-
-function syncPeopleCount(targetCount) {
-  targetOccupancy = targetCount;
-  
-  // Count how many people are currently staying or entering
-  const activePeople = people.filter(p => p.state !== 'exiting_room' && p.state !== 'exiting_corridor' && p.state !== 'removed');
-  
-  if (activePeople.length < targetOccupancy) {
-    const toAdd = targetOccupancy - activePeople.length;
-    for (let i = 0; i < toAdd; i++) {
-      people.push(new Person(personIdCounter++, true));
-    }
-  } else if (activePeople.length > targetOccupancy) {
-    const toRemove = activePeople.length - targetOccupancy;
-    // Tell people inside the room to walk out to the corridor
-    let removedCount = 0;
-    for (let i = activePeople.length - 1; i >= 0 && removedCount < toRemove; i--) {
-      if (activePeople[i].state === 'in_room' || activePeople[i].state === 'entering_room') {
-        activePeople[i].startExiting();
-        removedCount++;
-      }
-    }
-  }
+const REASON_TEXT = {
+  zone_disabled: 'Zone HVAC is disabled',
+  occupied: 'occupied room priority',
+  unoccupied_lower_priority: 'unoccupied room has lower priority',
+  above_setpoint: 'temperature is above setpoint',
+  at_or_below_setpoint: 'temperature is at or below setpoint',
+  no_airflow_requested: 'no airflow was requested',
+  full_request_granted: 'the full airflow request was granted',
+  capacity_limited: 'shared AHU capacity limited this grant',
+  higher_comfort_priority_applied: 'occupied-comfort priority was applied'
+};
+function humanReasons(codes) {
+  if (!Array.isArray(codes) || !codes.length) return 'Waiting for coordinator telemetry.';
+  const phrases = codes.map((code) => REASON_TEXT[code] || String(code).replaceAll('_', ' '));
+  return phrases[0].charAt(0).toUpperCase() + phrases.join('; ').slice(1) + '.';
 }
 
-// ─── 6. MQTT & Telemetry Handling ────────────────────────────
-let temp = 24.0, hvacOn = false, acPowerPct = 0.0, setpoint = 25.0;
-const validRooms = new Set(['room1', 'room2']);
-const requestedRoom = new URLSearchParams(window.location.search).get('room');
-const roomId = validRooms.has(requestedRoom) ? requestedRoom : 'room1';
-const roomBase = `twin/${roomId}`;
-document.getElementById('room-label').innerText = roomId === 'room2' ? 'Room 2' : 'Room 1';
+function roomFreshness(room) {
+  if (!room.lastSeen) return ['Waiting', ''];
+  if (data.connection !== 'connected' || data.ecosystemStatus === 'offline') return ['Last known', 'offline'];
+  if (now() - room.lastSeen > STALE_AFTER_MS) return ['Last known · stale', 'stale'];
+  return ['Live', ''];
+}
 
-document.title = `Smart Lab Ecosystem — ${roomId === 'room2' ? 'Room 2' : 'Room 1'}`;
-const client = mqtt.connect('ws://localhost:9001');
-client.on('connect', () => {
-  client.subscribe([
-    `${roomBase}/temperature`,
-    `${roomBase}/occupancy`,
-    `${roomBase}/hvac/state`,
-    `${roomBase}/hvac/allocation`,
-    `${roomBase}/ac/detail`
-  ]);
-});
+function updateRoomHud(id) {
+  const room = data.rooms[id];
+  const prefix = id;
+  $(`${prefix}-temp`).textContent = room.temperature === null ? '—' : `${fmt(room.temperature)} °C`;
+  $(`${prefix}-setpoint`).textContent = room.setpoint === null ? '—' : `${fmt(room.setpoint)} °C`;
+  $(`${prefix}-occ`).textContent = room.occupancy === null ? '—' : `${Math.round(room.occupancy)} ppl`;
+  $(`${prefix}-hvac`).textContent = room.hvacOn === null ? '—' : (room.hvacOn ? 'ON' : 'OFF');
+  const requested = Math.max(0, room.requested || 0);
+  const granted = Math.max(0, room.granted || 0);
+  const requestWidth = clamp(requested / MAX_ROOM_AIRFLOW * 100, 0, 100);
+  const grantWidth = clamp(granted / MAX_ROOM_AIRFLOW * 100, 0, 100);
+  $(`${prefix}-request-bar`).style.width = `${requestWidth}%`;
+  $(`${prefix}-grant-bar`).style.width = `${grantWidth}%`;
+  const ratio = requested > 1e-9 ? clamp(granted / requested * 100, 0, 100) : (granted > 0 ? 100 : 0);
+  $(`${prefix}-bar`).setAttribute('aria-valuenow', String(Math.round(ratio)));
+  $(`${prefix}-bar`).setAttribute('aria-valuetext', `${fmt(granted, 3)} cubic metres per second granted of ${fmt(requested, 3)} requested`);
+  $(`${prefix}-flow`).textContent = `Requested ${room.requested === null ? '—' : fmt(requested, 3)} · Granted ${room.granted === null ? '—' : fmt(granted, 3)} m³/s`;
+  $(`${prefix}-reason`).textContent = humanReasons(room.reasonCodes);
+  const [freshText, freshClass] = roomFreshness(room);
+  const fresh = $(`${prefix}-fresh`); fresh.textContent = freshText; fresh.className = `freshness ${freshClass}`;
+  updateRoomVisual(id);
+}
 
-client.on('message', (topic, payload) => {
+function updateAhuHud() {
+  const ahu = data.ahu;
+  $('ahu-speed').textContent = ahu.fanSpeed === null ? '—' : `${Math.round(clamp(ahu.fanSpeed, 0, 1) * 100)}%`;
+  $('ahu-flow').textContent = ahu.delivered === null ? '—' : `${fmt(ahu.delivered, 3)} / ${fmt(ahu.available, 3)} m³/s`;
+  $('ahu-supply').textContent = ahu.supplyTemp === null ? '—' : `${fmt(ahu.supplyTemp)} °C`;
+  $('ahu-clog').textContent = ahu.filterClog === null ? '—' : `${Math.round(clamp(ahu.filterClog, 0, 1) * 100)}%`;
+  const clogPercent = Math.round((pct(ahu.filterClog) || 0) * 100);
+  $('clog-fill').style.width = `${clogPercent}%`;
+  $('clog-fill').style.background = clogPercent >= 75 ? 'var(--red)' : clogPercent >= 45 ? 'var(--amber)' : 'var(--green)';
+  $('clog-meter').setAttribute('aria-valuenow', String(clogPercent));
+  const state = freshness(ahu.lastSeen);
+  $('ahu-fresh').textContent = state.text; $('ahu-fresh').className = `freshness ${state.className}`;
+  updateAhuVisual();
+}
+
+function updateRiskHud() {
+  const risk = data.risk;
+  const riskPct = risk.failureRisk === null ? null : Math.round(clamp(risk.failureRisk, 0, 1) * 100);
+  $('risk-value').textContent = riskPct === null ? '—' : `${riskPct}% · ${risk.band || 'unbanded'}`;
+  $('health-value').textContent = risk.health === null ? '—' : `${Math.round(risk.health)}% / ${Math.round(clamp(risk.wear || 0, 0, 1) * 100)}%`;
+  $('model-value').textContent = risk.model || '—';
+  const driverText = Array.isArray(risk.drivers) && risk.drivers.length
+    ? risk.drivers.slice(0, 3).map((item) => `${String(item.feature || 'factor').replaceAll('_', ' ')} (${Number(item.contribution || 0).toFixed(2)})`).join(', ')
+    : 'waiting for fan-health telemetry';
+  $('risk-drivers').textContent = `Drivers: ${driverText}.`;
+  const state = freshness(risk.lastSeen);
+  $('risk-fresh').textContent = state.text; $('risk-fresh').className = `freshness ${state.className}`;
+}
+
+function freshness(lastSeen) {
+  if (!lastSeen) return { text: 'Waiting', className: '' };
+  if (data.connection !== 'connected' || data.ecosystemStatus === 'offline') return { text: 'Last known', className: 'offline' };
+  if (now() - lastSeen > STALE_AFTER_MS) return { text: 'Last known · stale', className: 'stale' };
+  return { text: 'Live', className: '' };
+}
+
+function updateLifecycle() {
+  const dot = $('connection-dot');
+  const label = $('connection-state');
+  const notice = $('lifecycle-notice');
+  dot.className = 'dot';
+  let message = '';
+  if (data.connection === 'connected' && data.ecosystemStatus !== 'offline') {
+    dot.classList.add('live');
+    label.textContent = data.ecosystemStatus === 'online' ? 'Live' : 'Broker connected';
+    const allSeen = ROOM_IDS.every((id) => data.rooms[id].lastSeen) && data.ahu.lastSeen;
+    const anyStale = [data.ahu.lastSeen, ...ROOM_IDS.map((id) => data.rooms[id].lastSeen)].some((seen) => seen && now() - seen > STALE_AFTER_MS);
+    if (!allSeen) message = 'Broker connected; waiting for the complete two-room and shared-AHU telemetry set.';
+    else if (anyStale) message = 'Telemetry is stale. The scene retains last-known values; do not treat them as live control confirmation.';
+  } else {
+    dot.classList.add('bad');
+    label.textContent = data.ecosystemStatus === 'offline' ? 'Simulator offline' : (data.connection === 'connecting' ? 'Connecting' : 'Disconnected');
+    message = data.ecosystemStatus === 'offline'
+      ? 'Simulator reports offline. Displaying last-known telemetry only.'
+      : 'Telemetry connection interrupted. Displaying last-known values while MQTT reconnects.';
+  }
+  notice.textContent = message;
+  notice.hidden = !message;
+}
+
+function updateAllHud() {
+  ROOM_IDS.forEach(updateRoomHud);
+  updateAhuHud(); updateRiskHud(); updateLifecycle();
+  $('scenario-name').textContent = data.scenario?.name ? String(data.scenario.name).replaceAll('_', ' ') : 'No scenario telemetry';
+  const summary = ROOM_IDS.map((id) => {
+    const room = data.rooms[id];
+    return `${id === 'room1' ? 'Room 1' : 'Room 2'} ${room.temperature === null ? 'temperature unknown' : `${fmt(room.temperature)} degrees`}, ${room.occupancy === null ? 'occupancy unknown' : `${room.occupancy} occupants`}, ${room.granted === null ? 'airflow unknown' : `${fmt(room.granted, 3)} cubic metres per second granted`}`;
+  }).join('. ');
+  $('telemetry-summary').textContent = summary;
+}
+
+function setRoomField(id, field, value) {
+  if (finite(value) !== null) data.rooms[id][field] = finite(value);
+}
+
+function decodeJson(payload) {
   try {
-    const d = JSON.parse(payload.toString());
-    if (topic.endsWith('/temperature')) {
-      temp = d.value;
-      document.getElementById('val-temp').innerText = `${temp.toFixed(1)}°C`;
-      document.getElementById('val-temp').style.color = temp >= 30 ? '#ef4444' : '#fff';
-    } else if (topic.endsWith('/occupancy')) {
-      syncPeopleCount(d.value);
-      document.getElementById('val-occ').innerText = `${d.value}`;
-    } else if (topic.endsWith('/hvac/state')) {
-      hvacOn = d.hvac_on;
-      acPowerPct = d.ac_power_pct || 0;
-      document.getElementById('val-hvac').innerText = hvacOn ? '🟢 ON' : '⚪ OFF';
-      document.getElementById('val-power').innerText = `${Math.round(acPowerPct * 100)}%`;
-    } else if (topic.endsWith('/hvac/allocation')) {
-      const requested = Number(d.requested_airflow_m3_s || 0);
-      const granted = Number(d.granted_airflow_m3_s || 0);
-      const ratio = requested > 0 ? granted / requested : 1;
-      document.getElementById('val-allocation').innerText = `${Math.round(ratio * 100)}% (${granted.toFixed(3)} m³/s)`;
-    } else if (topic.endsWith('/ac/detail')) {
-      acPowerPct = d.ac_power_pct || 0;
-      setpoint = d.setpoint || 25;
-      document.getElementById('val-power').innerText = `${Math.round(acPowerPct * 100)}%`;
-      document.getElementById('val-sp').innerText = `${setpoint.toFixed(1)}°C`;
+    const decoded = JSON.parse(payload.toString());
+    return decoded && typeof decoded === 'object' && !Array.isArray(decoded) ? decoded : null;
+  } catch (_) { return null; }
+}
+
+function handleMessage(topic, payload) {
+  const received = now();
+  if (topic === 'twin/ecosystem/status') {
+    data.ecosystemStatus = payload.toString().trim().toLowerCase();
+    data.ecosystemSeen = received; updateAllHud(); return;
+  }
+  const message = decodeJson(payload);
+  if (!message) return;
+  if (topic === 'twin/ecosystem/scenario/state') {
+    data.scenario = message; updateAllHud(); return;
+  }
+  for (const id of ROOM_IDS) {
+    const base = `twin/${id}`;
+    const room = data.rooms[id];
+    if (topic === `${base}/temperature`) {
+      setRoomField(id, 'temperature', message.value); room.lastSeen = received;
+    } else if (topic === `${base}/occupancy`) {
+      setRoomField(id, 'occupancy', message.value); room.lastSeen = received;
+    } else if (topic === `${base}/hvac/state`) {
+      if (typeof message.hvac_on === 'boolean') room.hvacOn = message.hvac_on;
+      setRoomField(id, 'setpoint', message.setpoint);
+      setRoomField(id, 'requested', message.requested_airflow_m3_s);
+      setRoomField(id, 'granted', message.delivered_airflow_m3_s);
+      setRoomField(id, 'allocationPct', message.allocation_pct);
+      room.lastSeen = received;
+    } else if (topic === `${base}/hvac/allocation`) {
+      setRoomField(id, 'requested', message.requested_airflow_m3_s);
+      setRoomField(id, 'granted', message.granted_airflow_m3_s);
+      setRoomField(id, 'allocationPct', message.allocation_pct);
+      if (Array.isArray(message.reason_codes)) room.reasonCodes = message.reason_codes;
+      room.lastSeen = received;
+    } else continue;
+    updateRoomHud(id); updateLifecycle(); return;
+  }
+  if (topic === 'twin/ahu/state') {
+    const ahu = data.ahu;
+    if (finite(message.fan_speed_pct) !== null) ahu.fanSpeed = finite(message.fan_speed_pct);
+    if (finite(message.delivered_airflow_m3_s) !== null) ahu.delivered = finite(message.delivered_airflow_m3_s);
+    if (finite(message.available_airflow_m3_s) !== null) ahu.available = finite(message.available_airflow_m3_s);
+    if (finite(message.max_airflow_m3_s) !== null) ahu.max = finite(message.max_airflow_m3_s);
+    if (finite(message.supply_air_temp_c) !== null) ahu.supplyTemp = finite(message.supply_air_temp_c);
+    if (finite(message.filter_clog_pct) !== null) ahu.filterClog = finite(message.filter_clog_pct);
+    ahu.lastSeen = received;
+  } else if (topic === 'twin/ahu/fan/health') {
+    const risk = data.risk;
+    if (finite(message.failure_risk) !== null) risk.failureRisk = finite(message.failure_risk);
+    if (finite(message.health_pct) !== null) risk.health = finite(message.health_pct);
+    if (finite(message.wear_pct) !== null) risk.wear = finite(message.wear_pct);
+    if (typeof message.risk_band === 'string') risk.band = message.risk_band;
+    if (typeof message.model_version === 'string') risk.model = message.model_version;
+    if (Array.isArray(message.top_drivers)) risk.drivers = message.top_drivers;
+    risk.lastSeen = received;
+    if (message.telemetry && typeof message.telemetry === 'object') {
+      if (finite(message.telemetry.fan_speed_pct) !== null) data.ahu.fanSpeed = finite(message.telemetry.fan_speed_pct);
+      if (finite(message.telemetry.filter_clog_pct) !== null) data.ahu.filterClog = finite(message.telemetry.filter_clog_pct);
     }
-  } catch (e) { console.error(e); }
+  } else if (topic === 'twin/ahu/coordinator/decision') {
+    data.decision = message;
+    if (Array.isArray(message.rooms)) message.rooms.forEach((decision) => {
+      if (!decision || !ROOM_IDS.includes(decision.room_id)) return;
+      const room = data.rooms[decision.room_id];
+      setRoomField(decision.room_id, 'requested', decision.requested_airflow_m3_s);
+      setRoomField(decision.room_id, 'granted', decision.granted_airflow_m3_s);
+      if (Array.isArray(decision.reason_codes)) room.reasonCodes = decision.reason_codes;
+      room.lastSeen = received;
+    });
+  }
+  updateAllHud();
+}
+
+const subscriptions = [
+  'twin/room1/temperature', 'twin/room1/occupancy', 'twin/room1/hvac/state', 'twin/room1/hvac/allocation',
+  'twin/room2/temperature', 'twin/room2/occupancy', 'twin/room2/hvac/state', 'twin/room2/hvac/allocation',
+  'twin/ahu/state', 'twin/ahu/fan/health', 'twin/ahu/coordinator/decision',
+  'twin/ecosystem/status', 'twin/ecosystem/scenario/state'
+];
+
+let client = null;
+if (!window.mqtt || typeof window.mqtt.connect !== 'function') {
+  data.connection = 'offline';
+  $('lifecycle-notice').textContent = 'The local MQTT client library could not be loaded. Telemetry is unavailable.';
+  updateAllHud();
+} else {
+  client = window.mqtt.connect(brokerUrl, {
+    reconnectPeriod: 2000,
+    connectTimeout: 8000,
+    clean: true,
+    clientId: `room3d_${Math.random().toString(16).slice(2, 10)}`
+  });
+  client.on('connect', () => {
+    data.connection = 'connected';
+    client.subscribe(subscriptions, { qos: 0 }, (error) => {
+      if (error) console.error('MQTT subscribe failed', error);
+    });
+    updateAllHud();
+  });
+  client.on('reconnect', () => { data.connection = 'connecting'; updateAllHud(); });
+  client.on('offline', () => { data.connection = 'offline'; updateAllHud(); });
+  client.on('close', () => { if (data.connection !== 'connecting') data.connection = 'offline'; updateAllHud(); });
+  client.on('error', (error) => { console.error('MQTT error', error); data.connection = 'offline'; updateAllHud(); });
+  client.on('message', handleMessage);
+}
+
+const cameraState = { target: new THREE.Vector3(0, 1.25, -.2), azimuth: 0, elevation: .62, radius: 20.5 };
+const defaultCamera = { azimuth: 0, elevation: .62, radius: 20.5 };
+function applyCamera() {
+  const horizontal = Math.cos(cameraState.elevation) * cameraState.radius;
+  camera.position.set(
+    cameraState.target.x + Math.sin(cameraState.azimuth) * horizontal,
+    cameraState.target.y + Math.sin(cameraState.elevation) * cameraState.radius,
+    cameraState.target.z + Math.cos(cameraState.azimuth) * horizontal
+  );
+  camera.lookAt(cameraState.target);
+}
+applyCamera();
+
+let drag = null;
+renderer.domElement.addEventListener('pointerdown', (event) => {
+  drag = { x: event.clientX, y: event.clientY, azimuth: cameraState.azimuth, elevation: cameraState.elevation };
+  renderer.domElement.setPointerCapture(event.pointerId);
+  renderer.domElement.classList.add('dragging');
+});
+renderer.domElement.addEventListener('pointermove', (event) => {
+  if (!drag) return;
+  cameraState.azimuth = drag.azimuth - (event.clientX - drag.x) * .006;
+  cameraState.elevation = clamp(drag.elevation + (event.clientY - drag.y) * .005, .18, 1.28);
+  applyCamera();
+});
+function endDrag(event) {
+  drag = null; renderer.domElement.classList.remove('dragging');
+  if (event.pointerId !== undefined && renderer.domElement.hasPointerCapture(event.pointerId)) renderer.domElement.releasePointerCapture(event.pointerId);
+}
+renderer.domElement.addEventListener('pointerup', endDrag);
+renderer.domElement.addEventListener('pointercancel', endDrag);
+renderer.domElement.addEventListener('wheel', (event) => {
+  event.preventDefault();
+  cameraState.radius = clamp(cameraState.radius * Math.exp(event.deltaY * .001), 11, 30);
+  applyCamera();
+}, { passive: false });
+$('reset-camera').addEventListener('click', () => {
+  Object.assign(cameraState, defaultCamera); applyCamera(); renderer.domElement.focus();
 });
 
-// ─── 7. Main Animation Loop ──────────────────────────────────
+let hudVisible = true;
+function setHudVisible(visible) {
+  hudVisible = visible;
+  document.querySelector('.hud').classList.toggle('hud-minimized', !visible);
+  $('toggle-hud').textContent = visible ? 'Hide HUD (H)' : 'Show HUD (H)';
+  $('toggle-hud').setAttribute('aria-pressed', String(!visible));
+}
+$('toggle-hud').addEventListener('click', () => setHudVisible(!hudVisible));
+window.addEventListener('keydown', (e) => {
+  if ((e.key === 'h' || e.key === 'H') && !e.target.matches('input, textarea, select, button')) {
+    setHudVisible(!hudVisible);
+  }
+});
+renderer.domElement.tabIndex = -1;
+
+function resize() {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(innerWidth, innerHeight);
+}
+window.addEventListener('resize', resize);
+
+function updateParticlePool(pool, airflow, dt, maxFlow) {
+  const flow = Math.max(0, finite(airflow) || 0);
+  if (flow <= 1e-6) {
+    pool.particles.forEach((particle) => { particle.visible = false; });
+    return;
+  }
+  const ratio = clamp(flow / Math.max(maxFlow, 1e-6), 0, 1);
+  const visibleCount = Math.max(2, Math.round(pool.particles.length * ratio));
+  if (!reducedMotion) pool.phase += dt * (.25 + ratio * 1.4);
+  pool.particles.forEach((particle, index) => {
+    particle.visible = index < visibleCount;
+    if (particle.visible) particle.position.copy(pointAlong(pool, pool.phase + index * pool.total / visibleCount));
+  });
+}
+
 const clock = new THREE.Clock();
-const coldColor = new THREE.Color(0x2266ff);
-const hotColor = new THREE.Color(0xff3322);
-
+let animationFrame = null;
 function animate() {
-  requestAnimationFrame(animate);
-  const dt = clock.getDelta();
-  const elapsedTime = clock.getElapsedTime();
-
-  // Floor color dynamic lerp: blue (comfort/setpoint reached) to red (hotter than setpoint)
-  let k = 0.0;
-  if (temp > setpoint) {
-    k = Math.min((temp - setpoint) / 4.0, 1.0); // fully red if 4°C above setpoint
-  }
-  roomFloorMat.color.copy(coldColor).lerp(hotColor, k);
-
-  // AC Fan spinning speed proportional to power
-  if (hvacOn && acPowerPct > 0) {
-    fan.rotation.y += dt * (2 + acPowerPct * 12);
-  }
-
-  // Update people movement
-  let someoneNearDoor = false;
-  for (let i = people.length - 1; i >= 0; i--) {
-    const p = people[i];
-    p.update(dt, elapsedTime);
-    
-    // Check distance to doorway (x:0, z:4) for door sensor
-    const distToDoor = Math.hypot(p.group.position.x, p.group.position.z - 4);
-    if (distToDoor < 2.4) someoneNearDoor = true;
-
-    if (p.state === 'removed') {
-      p.destroy();
-      people.splice(i, 1);
-    }
-  }
-
-  // Automatic door sliding logic
-  const targetDoorOpen = someoneNearDoor ? 1.0 : 0.0;
-  doorOpenAmount += (targetDoorOpen - doorOpenAmount) * Math.min(1.0, dt * 5);
-  leftDoor.position.x = -0.68 - (0.85 * doorOpenAmount);
-  rightDoor.position.x = 0.68 + (0.85 * doorOpenAmount);
-
-  // Subtle slow camera pan to give dynamic feeling
-  camera.position.x = Math.sin(elapsedTime * 0.15) * 2;
-  camera.lookAt(0, 1, 1);
-
+  animationFrame = requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), .05);
+  if (!reducedMotion) rotor.rotation.z -= dt * (finite(data.ahu.fanSpeed) || 0) * 18;
+  const totalDelivered = finite(data.ahu.delivered) ?? ROOM_IDS.reduce((sum, id) => sum + Math.max(0, data.rooms[id].granted || 0), 0);
+  updateParticlePool(trunkParticles, totalDelivered, dt, finite(data.ahu.max) || .24);
+  ROOM_IDS.forEach((id) => updateParticlePool(branchParticles[id], data.rooms[id].granted, dt, MAX_ROOM_AIRFLOW));
   renderer.render(scene, camera);
 }
+function startAnimation() {
+  if (animationFrame !== null || document.hidden) return;
+  clock.start(); animate();
+}
+function stopAnimation() {
+  if (animationFrame !== null) cancelAnimationFrame(animationFrame);
+  animationFrame = null; clock.stop();
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) stopAnimation(); else startAnimation();
+});
+const onMotionChange = (event) => { reducedMotion = event.matches; };
+if (reducedMotionQuery.addEventListener) reducedMotionQuery.addEventListener('change', onMotionChange);
+else reducedMotionQuery.addListener(onMotionChange);
 
-animate();
+setInterval(updateAllHud, 1000);
+updateAllHud();
+startAnimation();
 </script>
 </body>
 </html>

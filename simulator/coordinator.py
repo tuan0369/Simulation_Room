@@ -1,8 +1,11 @@
 """Transparent shared-AHU allocation policy for the intelligent ecosystem."""
+import math
 from dataclasses import dataclass
 
 
-POLICY_NAME = "occupied-comfort-v1"
+POLICY_NAME = "occupied-comfort-debt-v2"
+MAX_COMFORT_DEBT_C_S = 3_600.0
+COMFORT_DEBT_RECOVERY_RATE = 2.0
 
 
 @dataclass(frozen=True)
@@ -15,6 +18,8 @@ class RoomDemand:
     temperature_c: float
     setpoint_c: float
     enabled: bool
+    comfort_debt_c_s: float = 0.0
+    limited_service_s: float = 0.0
 
     @property
     def temperature_error_c(self) -> float:
@@ -28,8 +33,10 @@ class AllocationDecision:
     room_id: str
     requested_airflow_m3_s: float
     granted_airflow_m3_s: float
-    priority_score: tuple[int, float, int, str]
+    priority_score: tuple[int, float, float, int, str]
     reason_codes: tuple[str, ...]
+    comfort_debt_c_s: float = 0.0
+    limited_service_s: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -42,27 +49,58 @@ class CoordinationResult:
     decisions: tuple[AllocationDecision, ...]
 
 
-def _priority(demand: RoomDemand) -> tuple[int, float, int, str]:
-    """Rank occupied, uncomfortable rooms first with stable tie-breaking."""
+def _finite_nonnegative(value: float) -> float:
+    numeric = float(value)
+    if not math.isfinite(numeric):
+        raise ValueError("Coordinator inputs must be finite")
+    return max(0.0, numeric)
+
+
+def _priority(demand: RoomDemand) -> tuple[int, float, float, int, str]:
+    """Rank occupancy and current comfort need before debt-based tie recovery."""
     return (
         1 if demand.occupancy > 0 else 0,
         demand.temperature_error_c,
+        _finite_nonnegative(demand.comfort_debt_c_s),
         demand.occupancy,
         demand.room_id,
     )
 
 
+def update_comfort_debt(
+    demand: RoomDemand,
+    granted_airflow_m3_s: float,
+    dt: float,
+) -> tuple[float, float]:
+    """Return bounded comfort debt and consecutive limited-service time."""
+    duration = _finite_nonnegative(dt)
+    request = _finite_nonnegative(demand.requested_airflow_m3_s) if demand.enabled else 0.0
+    granted = min(request, _finite_nonnegative(granted_airflow_m3_s))
+    debt = _finite_nonnegative(demand.comfort_debt_c_s)
+    limited = _finite_nonnegative(demand.limited_service_s)
+    if not demand.enabled or demand.occupancy <= 0 or request <= 1e-9:
+        return max(0.0, debt - COMFORT_DEBT_RECOVERY_RATE * duration), 0.0
+    if granted + 1e-9 < request:
+        unmet_ratio = (request - granted) / request
+        debt += demand.temperature_error_c * unmet_ratio * duration
+        limited += duration
+    else:
+        debt -= COMFORT_DEBT_RECOVERY_RATE * duration
+        limited = 0.0
+    return min(MAX_COMFORT_DEBT_C_S, max(0.0, debt)), limited
+
+
 def coordinate(
     demands: list[RoomDemand], available_airflow_m3_s: float
 ) -> CoordinationResult:
-    """Allocate finite AHU airflow using the occupied-comfort-v1 policy.
+    """Allocate finite AHU airflow using the occupied-comfort-debt-v2 policy.
 
     The function is deliberately pure and deterministic so that every allocation
     can be explained, tested, and replayed from a telemetry snapshot.
     """
-    available = max(0.0, available_airflow_m3_s)
+    available = _finite_nonnegative(available_airflow_m3_s)
     requested = sum(
-        max(0.0, demand.requested_airflow_m3_s)
+        _finite_nonnegative(demand.requested_airflow_m3_s)
         for demand in demands
         if demand.enabled
     )
@@ -76,12 +114,13 @@ def coordinate(
             -_priority(demand)[0],
             -_priority(demand)[1],
             -_priority(demand)[2],
-            _priority(demand)[3],
+            -_priority(demand)[3],
+            _priority(demand)[4],
         ),
     )
 
     for demand in ordered:
-        request = max(0.0, demand.requested_airflow_m3_s) if demand.enabled else 0.0
+        request = _finite_nonnegative(demand.requested_airflow_m3_s) if demand.enabled else 0.0
         score = _priority(demand)
         reasons: list[str] = []
         if not demand.enabled:
@@ -95,6 +134,8 @@ def coordinate(
             reasons.append("above_setpoint")
         else:
             reasons.append("at_or_below_setpoint")
+        if demand.comfort_debt_c_s > 1e-9:
+            reasons.append("comfort_debt_priority")
 
         granted = min(request, remaining)
         remaining -= granted
@@ -113,6 +154,8 @@ def coordinate(
             granted_airflow_m3_s=granted,
             priority_score=score,
             reason_codes=tuple(reasons),
+            comfort_debt_c_s=_finite_nonnegative(demand.comfort_debt_c_s),
+            limited_service_s=_finite_nonnegative(demand.limited_service_s),
         )
 
     return CoordinationResult(

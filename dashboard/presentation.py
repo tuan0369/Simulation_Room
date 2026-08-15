@@ -31,7 +31,7 @@ def maintenance_recommendation(risk_band: str, drivers: list[dict] | tuple = ())
         if isinstance(driver, dict) and driver.get("feature")
     ]
     evidence = ", ".join(driver_names[:2]) or "current fan-condition telemetry"
-    band = risk_band.lower()
+    band = risk_band.lower() if isinstance(risk_band, str) else "unknown"
     if band == "high":
         return MaintenanceRecommendation(
             severity="high",
@@ -46,11 +46,26 @@ def maintenance_recommendation(risk_band: str, drivers: list[dict] | tuple = ())
             action="Inspect filter loading and bearing condition; continue monitoring during the next demand peak.",
             rationale=f"Medium simulated risk is driven by {evidence}.",
         )
+    if band == "low":
+        return MaintenanceRecommendation(
+            severity="low",
+            title="Continue simulated monitoring",
+            action="No maintenance action is generated. Reassess if condition telemetry or risk rises.",
+            rationale=f"Current simulated condition is stable; review {evidence} if it changes.",
+        )
+    if band == "out_of_distribution":
+        rationale = "Telemetry is outside the model training domain, so no risk estimate is shown."
+    elif band == "abstained":
+        rationale = "The model abstained because the available telemetry could not be scored safely."
+    elif band == "unavailable":
+        rationale = "The fan-risk model is unavailable, so no risk estimate is shown."
+    else:
+        rationale = "The prediction state is unknown, so it must not be interpreted as low risk."
     return MaintenanceRecommendation(
-        severity="low",
-        title="Continue simulated monitoring",
-        action="No maintenance action is generated. Reassess if condition telemetry or risk rises.",
-        rationale=f"Current simulated condition is stable; review {evidence} if it changes.",
+        severity="unknown",
+        title="Fan-risk assessment unavailable",
+        action="Do not infer low risk. Verify model status and telemetry before making a maintenance decision.",
+        rationale=rationale,
     )
 
 

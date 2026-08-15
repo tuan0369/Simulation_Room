@@ -9,10 +9,10 @@ from pathlib import Path
 import numpy as np
 
 try:  # Supports both `python -m simulator...` and legacy script launches.
-    from .fan_health import FEATURE_NAMES, MODEL_VERSION
+    from .fan_health import ARTIFACT_TYPE, FEATURE_NAMES, MODEL_VERSION
     from .generate_fan_data import DEFAULT_SEED, generate_rows, write_csv
 except ImportError:  # pragma: no cover - exercised by direct script entry points.
-    from fan_health import FEATURE_NAMES, MODEL_VERSION
+    from fan_health import ARTIFACT_TYPE, FEATURE_NAMES, MODEL_VERSION
     from generate_fan_data import DEFAULT_SEED, generate_rows, write_csv
 
 DEFAULT_ARTIFACT = Path(__file__).with_name("models") / "fan_risk_logistic.json"
@@ -29,7 +29,17 @@ def _matrix(rows: list[dict[str, float | int]]) -> tuple[np.ndarray, np.ndarray]
     return features, labels
 
 
-def _metrics(probabilities: np.ndarray, labels: np.ndarray) -> dict[str, float]:
+def _roc_auc(probabilities: np.ndarray, labels: np.ndarray) -> float:
+    """Compute deterministic ROC AUC using pairwise positive/negative ordering."""
+    positive = probabilities[labels == 1]
+    negative = probabilities[labels == 0]
+    if len(positive) == 0 or len(negative) == 0:
+        return 0.0
+    comparisons = positive[:, None] - negative[None, :]
+    return float((np.sum(comparisons > 0) + 0.5 * np.sum(comparisons == 0)) / comparisons.size)
+
+
+def _metrics(probabilities: np.ndarray, labels: np.ndarray) -> dict[str, float | int]:
     predicted = probabilities >= 0.5
     truth = labels.astype(bool)
     true_positive = int(np.sum(predicted & truth))
@@ -38,10 +48,20 @@ def _metrics(probabilities: np.ndarray, labels: np.ndarray) -> dict[str, float]:
     true_negative = int(np.sum(~predicted & ~truth))
     precision = true_positive / max(1, true_positive + false_positive)
     recall = true_positive / max(1, true_positive + false_negative)
+    specificity = true_negative / max(1, true_negative + false_positive)
+    clipped = np.clip(probabilities, 1e-12, 1.0 - 1e-12)
     return {
+        "holdout_rows": int(len(labels)),
+        "positive_prevalence": round(float(labels.mean()), 4),
         "accuracy": round((true_positive + true_negative) / max(1, len(labels)), 4),
+        "balanced_accuracy": round((recall + specificity) / 2.0, 4),
         "precision": round(precision, 4),
         "recall": round(recall, 4),
+        "specificity": round(specificity, 4),
+        "f1_score": round(2.0 * precision * recall / max(1e-12, precision + recall), 4),
+        "roc_auc": round(_roc_auc(probabilities, labels), 4),
+        "brier_score": round(float(np.mean((probabilities - labels) ** 2)), 4),
+        "log_loss": round(float(-np.mean(labels * np.log(clipped) + (1.0 - labels) * np.log(1.0 - clipped))), 4),
         "true_positive": true_positive,
         "false_positive": false_positive,
         "false_negative": false_negative,
@@ -78,14 +98,34 @@ def fit_model(
         weights -= learning_rate * (x.T @ error / len(train_y))
         intercept -= learning_rate * float(error.mean())
     test_probabilities = _sigmoid(((test_x - means) / scales) @ weights + intercept)
+    domain_padding_fraction = 0.30
+    domain_mins = train_x.min(axis=0)
+    domain_maxs = train_x.max(axis=0)
+    domain_padding = (domain_maxs - domain_mins) * domain_padding_fraction
+    physical_limits = {
+        "filter_clog_pct": (0.0, 1.0),
+        "fan_speed_pct": (0.0, 1.0),
+        "vibration_mm_s": (0.0, math.inf),
+        "bearing_temp_c": (0.0, math.inf),
+        "run_hours": (0.0, math.inf),
+    }
+    feature_domain = {}
+    for index, feature in enumerate(FEATURE_NAMES):
+        physical_min, physical_max = physical_limits[feature]
+        feature_domain[feature] = {
+            "min": round(max(physical_min, float(domain_mins[index] - domain_padding[index])), 8),
+            "max": round(min(physical_max, float(domain_maxs[index] + domain_padding[index])), 8),
+        }
     artifact = {
-        "artifact_type": "standardized_logistic_regression",
+        "artifact_type": ARTIFACT_TYPE,
         "model_version": MODEL_VERSION,
         "description": "Synthetic-data fan failure risk model. It estimates simulated failure risk, not real-world equipment failure probability.",
         "feature_names": list(FEATURE_NAMES),
         "means": [round(float(value), 8) for value in means],
         "scales": [round(float(value), 8) for value in scales],
         "coefficients": [round(float(value), 8) for value in weights],
+        "feature_domain": feature_domain,
+        "feature_domain_method": "physical_limits_and_training_min_max_with_30pct_range_padding",
         "intercept": round(float(intercept), 8),
         "medium_threshold": 0.35,
         "high_threshold": 0.65,

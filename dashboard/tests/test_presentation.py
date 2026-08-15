@@ -34,6 +34,27 @@ def test_maintenance_recommendation_returns_actionable_band_guidance(
     assert "bearing temp c, vibration mm s" in recommendation.rationale
 
 
+@pytest.mark.parametrize(
+    ("risk_band", "expected_rationale"),
+    [
+        ("out_of_distribution", "outside the model training domain"),
+        ("abstained", "could not be scored safely"),
+        ("unavailable", "model is unavailable"),
+        ("unexpected", "must not be interpreted as low risk"),
+        (None, "must not be interpreted as low risk"),
+    ],
+)
+def test_maintenance_recommendation_never_treats_non_predictions_as_low_risk(
+    risk_band, expected_rationale
+):
+    recommendation = maintenance_recommendation(risk_band)
+
+    assert recommendation.severity == "unknown"
+    assert recommendation.title == "Fan-risk assessment unavailable"
+    assert "Do not infer low risk" in recommendation.action
+    assert expected_rationale in recommendation.rationale
+
+
 def test_maintenance_recommendation_uses_telemetry_fallback_for_missing_drivers():
     recommendation = maintenance_recommendation("LOW", drivers=[None, {}, {"other": "ignored"}])
 

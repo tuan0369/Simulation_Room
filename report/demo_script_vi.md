@@ -1,135 +1,161 @@
-# Smart Lab Digital Twin — Kịch bản Video Demo
+# EcoHVAC Guardian — Kịch bản Video Demo (Project 2 / HW2)
 
-**Thời lượng mục tiêu:** ~6–7 phút
-**Định dạng:** Quay màn hình kèm thuyết minh (voice-over). Mỗi cảnh liệt kê nội dung hiển thị trên màn hình, thao tác cần làm, và lời thuyết minh gợi ý.
+**Thời lượng mục tiêu:** ~5–6 phút
+**Học phần:** SUTD Digital Twin — Project 2 (Intelligent Ecosystem & Strategic Optimization)
+**Định dạng:** Quay màn hình kèm thuyết minh (voice-over). Mỗi cảnh liệt kê hình ảnh hiển thị, thao tác thực hiện, và lời thoại gợi ý.
 
 ---
 
 ## Danh sách kiểm tra trước khi quay
 
-1. Khởi động toàn bộ hệ thống:
+1. **Khởi động toàn bộ hệ thống Multi-Twin:**
    ```bash
-   docker compose up -d                                  # Broker Mosquitto
-   uv run simulator/publisher.py                         # Terminal 1
-   uv run streamlit run dashboard/app.py                 # Terminal 2
-   uv run python -m http.server 8000 --directory room3d  # Terminal 3
+   # 1. Khởi động broker Mosquitto (MQTT 1883, WS 9001)
+   docker compose up -d
+
+   # 2. Chạy simulator (Terminal 1)
+   uv run python simulator/publisher.py
+
+   # 3. Chạy server 3D tĩnh (Terminal 2)
+   uv run python -m http.server 8080 --directory room3d
+
+   # 4. Chạy Streamlit Operations Dashboard (Terminal 3)
+   ECOHVAC_3D_URL=http://localhost:8080 uv run streamlit run dashboard/app.py
    ```
-2. Mở `http://localhost:8501` (dashboard) và `http://localhost:8000` (chế độ xem 3D độc lập) trên hai tab trình duyệt riêng.
-3. Đưa về trạng thái ban đầu sạch: HVAC **TẮT (OFF)**, số người thấp (~2 người), setpoint 24 °C, tốc độ mô phỏng ×1.
-4. Giữ một cửa sổ terminal hiển thị để demo lệnh MQTT (Cảnh 7).
-5. Tắt thông báo / các cửa sổ không liên quan; chỉnh mức zoom trình duyệt để hiển thị vừa toàn bộ dashboard.
+2. **Mở các tab trình duyệt:**
+   - Operations Dashboard: `http://localhost:8501`
+   - Unified 3D Two-Room View: `http://localhost:8080/room3d.html`
+3. **Đưa về trạng thái ban đầu:** Đảm bảo dashboard tải ở chế độ `baseline` (`Safe`, `Online`, Rủi ro quạt thấp).
+4. **Chuẩn bị sẵn Terminal để demo lệnh CLI nếu cần.**
 
 ---
 
-## Cảnh 1 — Giới thiệu (0:00 – 0:40)
+## Cảnh 1 — Giới thiệu & Kiến trúc Hệ sinh thái (0:00 – 0:50)
 
-**Trên màn hình:** Slide tiêu đề hoặc README, sau đó lướt nhanh qua sơ đồ kiến trúc (`docs/architecture.md`).
+**Trên màn hình:** Sơ đồ Kiến trúc Tích hợp (`report/hw2-evidence/00-integrated-architecture.png`) hoặc `docs/architecture.md`.
 
 **Thuyết minh:**
-> "Xin chào, đây là bản demo của Smart Lab Digital Twin — một bản sao số (digital twin) thời gian thực của một phòng thí nghiệm. Một bộ mô phỏng vật lý sẽ mô hình hóa nhiệt độ, độ ẩm và số người trong phòng. Dữ liệu telemetry được truyền qua MQTT tới một dashboard Streamlit và một chế độ xem 3D tương tác dựng bằng Three.js. Quan trọng hơn, đây là một digital twin thực sự chứ không chỉ là 'bóng số' (digital shadow): các lệnh điều khiển được gửi ngược từ dashboard về bộ mô phỏng, khép kín vòng lặp. Bên cạnh đó, một bộ điều khiển PID tự động điều chỉnh công suất điều hòa để giữ nhiệt độ ở bất kỳ mức mục tiêu nào."
+> "Xin chào thầy cô và các bạn! Chào mừng đến với buổi demo dự án **EcoHVAC Guardian** — hệ sinh thái Digital Twin trong Project 2 cho việc quản lý và vận hành thông minh hệ thống HVAC phòng lab.
+>
+> Trong Project 1, chúng ta mới chỉ mô phỏng một phòng đơn lẻ. Sang Project 2, chúng tôi đã nâng cấp thành một **hệ sinh thái đa bản sao số (Multi-Twin Ecosystem)** hoàn chỉnh: gồm hai phòng thí nghiệm độc lập (`Room 1` và `Room 2`) cùng chia sẻ công suất làm mát từ một cụm xử lý không khí (AHU) có dung lượng giới hạn.
+>
+> Kiến trúc của hệ thống tích hợp bộ điều khiển PID cục bộ, bộ điều phối chia sẻ công bằng dưới điều kiện thiết bị xuống cấp, tính toán năng lượng thời gian thực với COP 3.2, mô hình Machine Learning dự đoán rủi ro hỏng quạt có tính giải thích cao, và hiển thị trực quan 3D thời gian thực."
 
-**Thao tác:** Lướt nhanh qua sơ đồ kiến trúc 6 lớp: Bộ mô phỏng → Broker MQTT → Dashboard/Chế độ xem 3D → Lệnh người dùng → quay lại Bộ mô phỏng.
+**Thao tác:** Rê chuột theo luồng kiến trúc 6 tầng: Multi-Twin + Local PID $\rightarrow$ Fairness Coordinator $\rightarrow$ Shared AHU $\rightarrow$ Predictive Model $\rightarrow$ MQTT $\rightarrow$ Dashboard & 3D Viewer.
 
 ---
 
-## Cảnh 2 — Tham quan Dashboard (0:40 – 1:30)
+## Cảnh 2 — Trung tâm Vận hành & Trạng thái Cơ sở (0:50 – 1:40)
 
-**Trên màn hình:** Dashboard Streamlit tại `http://localhost:8501`.
+**Trên màn hình:** Streamlit Operations Dashboard tại `http://localhost:8501` (tab `Operations centre`).
 
 **Thuyết minh:**
-> "Đây là dashboard chính. Phía trên là các chỉ số trực tiếp — nhiệt độ phòng, độ ẩm và số người — được cập nhật vài giây một lần qua MQTT. Đây là bảng trạng thái HVAC, cho biết điều hòa đang bật hay tắt và công suất làm mát hiện tại tính theo phần trăm. Bên dưới là biểu đồ xu hướng nhiệt độ kèm cảnh báo dự đoán, và chế độ xem 3D nhúng ngay trong trang. Bên trái là bảng điều khiển: bật/tắt điều hòa, đặt nhiệt độ mục tiêu, ghi đè số người, và tỉ lệ tốc độ mô phỏng."
+> "Đây là **Trung tâm Vận hành (Operations Centre)**. Ở thanh trạng thái trên cùng: simulator báo `ONLINE`, công suất chia sẻ ở mức `SAFE` (An toàn), và rủi ro quạt ở mức `LOW (15%)`.
+>
+> Phía dưới, hai phòng đang vận hành độc lập:
+> - `Room 1` có 8 người, nhiệt độ 22.8 °C.
+> - `Room 2` có 2 người, nhiệt độ 22.8 °C.
+> - Cụm AHU hoạt động với bộ lọc sạch (nghẹt 5%) và quạt tốt (hao mòn 3%), đáp ứng 80% lưu lượng khí mà không bị nghẽn công suất.
+>
+> Toàn bộ dữ liệu telemetry đều được gắn ID snapshot tuần tự và timestamp đồng bộ qua các topic MQTT có lưu trữ (retained)."
 
-**Thao tác:** Di chuột chậm qua từng khu vực khi được nhắc đến: các thẻ chỉ số → bảng HVAC → biểu đồ → chế độ xem 3D → bảng điều khiển. Chỉ vào chỉ báo trạng thái `online` (Last Will & Testament).
-
----
-
-## Cảnh 3 — Vấn đề: Phòng nóng lên (1:30 – 2:20)
-
-**Trên màn hình:** Dashboard. Đặt tốc độ mô phỏng thành **×10** để thấy thay đổi diễn ra nhanh.
-
-**Thao tác & Thuyết minh:**
-1. Đặt số người thành **25**.
-   > "Hãy mô phỏng một buổi làm việc đông đúc — tôi ghi đè số người lên 25. Mỗi người tỏa thêm nhiệt, khoảng một trăm watt mỗi người, nên bây giờ phòng có khoảng 2,5 kilowatt nhiệt sinh ra bên trong."
-2. Để chạy 20–30 giây; quan sát nhiệt độ leo lên trên biểu đồ.
-   > "Khi điều hòa tắt, nhiệt độ tăng đều. Chú ý cảnh báo dự đoán trên biểu đồ báo rằng phòng sẽ quá nóng nếu không có gì thay đổi."
-3. Chuyển nhanh sang chế độ xem 3D.
-   > "Trong chế độ xem 3D, bạn có thể thấy người đi vào qua cửa trượt tự động khi số người tăng, và sàn nhà chuyển sang màu đỏ khi phòng nóng lên."
+**Thao tác:** Cuộn chuột qua các thẻ trạng thái, thông số đo của Room 1 / Room 2, và trạng thái cấp gió AHU.
 
 ---
 
-## Cảnh 4 — Điều khiển vòng kín: PID hoạt động (2:20 – 3:40)
+## Cảnh 3 — Kịch bản Thử tải Nghẽn Công suất (1:40 – 2:45)
 
-**Trên màn hình:** Dashboard, hiển thị bảng HVAC và biểu đồ nhiệt độ.
-
-**Thao tác & Thuyết minh:**
-1. **Bật điều hòa (AC ON)**, setpoint **22 °C**.
-   > "Bây giờ tôi bật điều hòa với nhiệt độ mục tiêu 22 độ. Bộ điều khiển PID tiếp quản: nó đo sai số giữa nhiệt độ phòng và setpoint, rồi điều chỉnh liên tục công suất điều hòa từ 0 đến 100 phần trăm của công suất tối đa 3,5 kilowatt."
-2. Quan sát `ac_power_pct` tăng vọt lên ~100 %, rồi nhiệt độ giảm.
-   > "Khi sai số lớn, thành phần tỉ lệ (proportional) đẩy điều hòa lên công suất tối đa. Khi nhiệt độ tiến gần setpoint, công suất giảm dần một cách mượt mà thay vì bật/tắt thô kiểu đóng-mở."
-3. Đợi đến khi nhiệt độ khóa chặt ở 22 °C với điều hòa chạy ở mức công suất một phần, ổn định.
-   > "Và đây là kết quả then chốt: nhiệt độ khóa chính xác ở 22 độ, ngay cả khi có 25 người bên trong. Thành phần tích phân (integral) loại bỏ sai số tĩnh mà một bộ điều khiển tỉ lệ đơn thuần sẽ để lại, còn thành phần vi phân (derivative) dập tắt hiện tượng vọt lố. Cơ chế chống bão hòa (anti-windup) giữ cho bộ điều khiển vẫn phản hồi nhanh ngay cả sau thời gian dài chạy hết công suất."
-
----
-
-## Cảnh 5 — Vòng phản hồi của Digital Twin (3:40 – 4:30)
-
-**Trên màn hình:** Bảng điều khiển và trạng thái HVAC đặt cạnh nhau.
-
-**Thao tác & Thuyết minh:**
-1. Đổi setpoint từ 22 → **25 °C**.
-   > "Hãy xem điều gì xảy ra khi tôi đổi setpoint. Dashboard không tự ý giả định giá trị mới — nó phát một lệnh qua MQTT, bộ mô phỏng áp dụng, rồi trạng thái *đã xác nhận* quay về và cập nhật màn hình. Chính vòng khứ hồi đó khiến đây là một digital twin thực sự chứ không phải một 'bóng số' một chiều."
-2. Cho thấy công suất điều hòa giảm (phòng đang mát hơn setpoint mới), rồi ổn định ở 25 °C.
-   > "Bộ điều khiển lập tức giảm công suất vì phòng giờ đã dưới mục tiêu, rồi hội tụ lại ở setpoint mới."
-
----
-
-## Cảnh 6 — Chế độ xem phòng 3D (4:30 – 5:20)
-
-**Trên màn hình:** Chế độ xem 3D độc lập tại `http://localhost:8000` (hoặc chế độ xem nhúng, toàn màn hình).
-
-**Thao tác & Thuyết minh:**
-1. Xoay camera quanh phòng lab và hành lang.
-   > "Chế độ xem 3D được dựng bằng Three.js và đăng ký (subscribe) trực tiếp các topic MQTT ngay từ trình duyệt qua WebSocket — không cần thêm backend nào."
-2. Giảm số người xuống **5**; quan sát người đi ra qua cửa trượt.
-   > "Khi tôi giảm số người trên dashboard, các nhân vật đi ra qua cửa kính tự động theo thời gian thực."
-3. Chỉ vào màu sàn.
-   > "Màu sàn mã hóa nhiệt độ — xanh dương khi phòng ở đúng setpoint, và chuyển dần sang đỏ khi nóng lên."
-
----
-
-## Cảnh 7 — Giao diện lệnh MQTT & Khả năng phục hồi (5:20 – 6:10)
-
-**Trên màn hình:** Terminal đặt cạnh dashboard.
-
-**Thao tác & Thuyết minh:**
-1. Phát một lệnh từ terminal:
-   ```bash
-   docker exec mosquitto mosquitto_pub -t twin/room1/cmd/occupancy -m '{"value": 30}'
-   ```
-   > "Mọi thứ được điều khiển qua các topic MQTT mở, nên bất kỳ client nào cũng có thể tham gia. Ở đây tôi đặt số người thành 30 thẳng từ dòng lệnh — và cả dashboard lẫn chế độ xem 3D đều phản ứng ngay lập tức."
-2. (Tùy chọn) Dừng bộ mô phỏng bằng Ctrl-C; cho thấy dashboard chuyển sang `offline`.
-   > "Nếu bộ mô phỏng chết, cơ chế Last Will and Testament của broker lập tức đánh dấu twin là offline trên dashboard. Khi khởi động lại, các message được lưu giữ (retained) sẽ khôi phục trạng thái mới nhất ngay tức thì."
-3. Khởi động lại bộ mô phỏng.
-
----
-
-## Cảnh 8 — Tổng kết (6:10 – 6:40)
-
-**Trên màn hình:** Sơ đồ kiến trúc lần nữa, hoặc dashboard ở trạng thái ổn định tại setpoint.
+**Trên màn hình:** Mục Guided Scenarios trên Dashboard.
 
 **Thuyết minh:**
-> "Tóm lại: một bộ mô phỏng phòng dựa trên vật lý, giao tiếp MQTT hướng sự kiện với trạng thái lưu giữ và phát hiện sự cố, một dashboard trực tiếp cùng trực quan hóa 3D, và một vòng phản hồi khép kín với bộ điều khiển PID tự điều chỉnh — tất cả hợp thành một digital twin hoàn chỉnh, thời gian thực của một phòng thí nghiệm thông minh. Cảm ơn các bạn đã theo dõi."
+> "Bây giờ, chúng ta sẽ mô phỏng một tình huống vận hành khắc nghiệt: thiết bị xuống cấp kết hợp tải nhiệt tăng vọt.
+>
+> Tôi sẽ nhấn kích hoạt kịch bản **'Run shared-capacity stress test'**."
+
+**Thao tác:** Nhấp chuột vào nút **`Run shared-capacity stress test`**.
+
+**Thuyết minh:**
+> "Ngay lập tức, bộ mô phỏng áp dụng các biến đổi:
+> 1. Bộ lọc bị nghẹt 85% và quạt mòn 75%, làm lưu lượng gió tối đa của AHU tụt xuống chỉ còn khoảng 40%.
+> 2. Đồng thời, số người ở Room 1 tăng vọt lên 24 sinh viên, tạo yêu cầu làm mát tới 10.0 kW. Room 2 yêu cầu 3.5 kW.
+>
+> Hãy quan sát: Tổng lưu lượng khí yêu cầu vượt xa khả năng cung cấp của AHU. Trạng thái hệ thống lập tức chuyển sang **`CONSTRAINED`** (Bị nghẽn công suất)."
+
+**Thao tác:** Chỉ vào cảnh báo `CONSTRAINED`, sự chênh lệch giữa lưu lượng yêu cầu và lưu lượng thực cấp, và nhiệt độ Room 1 bắt đầu tăng do thiếu khí làm mát.
 
 ---
 
-## Ý tưởng cảnh phụ / B-roll
+## Cảnh 4 — Bộ điều phối Công bằng & Nợ Tiện nghi (2:45 – 3:45)
 
-- Terminal chạy `uv run pytest -v` với toàn bộ unit test pass.
-- Cận cảnh các hệ số PID trong `simulator/pid_controller.py` trong khi thuyết minh vai trò của Kp/Ki/Kd.
-- Đặt cạnh nhau biểu đồ nhiệt độ trên dashboard và màu sàn 3D trong lúc phòng đang hạ nhiệt.
+**Trên màn hình:** Khu vực Coordination & Allocation trên Dashboard.
 
-## Mẹo quay
+**Thuyết minh:**
+> "Hệ thống giải quyết sự tranh chấp tài nguyên này như thế nào?
+>
+> EcoHVAC Guardian sử dụng thuật toán điều phối tất định **`occupied-comfort-debt-v2`**:
+> 1. Ưu tiên tuyệt đối cho phòng có người sử dụng.
+> 2. Ưu tiên phòng có độ lệch nhiệt độ dương lớn hơn.
+> 3. Tích lũy **Nợ Tiện nghi (Comfort Debt)** (tính bằng °C·giây) cho các phòng bị thiếu hụt lưu lượng gió theo thời gian, đảm bảo tính công bằng dài hạn và chống bỏ đói dịch vụ.
+>
+> Đặc biệt, lưu lượng thực tế được cấp được phản hồi ngược về bộ PID. Cơ chế **Actuator Feedback** này giúp xả tích phân và ngăn ngừa hiện tượng bão hòa tích phân (anti-windup) khi tài nguyên vật lý bị nghẽn."
 
-- Quay ở tốc độ mô phỏng ×10 cho mọi giai đoạn biến đổi nhiệt; cắt bỏ thời gian chết khi dựng.
-- Quay Cảnh 3–5 trong một lần liền mạch để lịch sử biểu đồ kể trọn câu chuyện.
-- Giữ chuột đứng yên khi thuyết minh; chỉ di chuột để chỉ vào đúng thứ đang được mô tả.
+**Thao tác:** Chỉ vào các mã lý do điều phối (`occupied`, `above_setpoint`, `capacity_limited`, `higher_comfort_priority_applied`) và biểu đồ tích lũy Comfort Debt.
+
+---
+
+## Cảnh 5 — Trí tuệ Dự đoán & AI Có thể Giải thích (3:45 – 4:35)
+
+**Trên màn hình:** Chuyển sang tab **`Predictive intelligence`**.
+
+**Thuyết minh:**
+> "Tiếp theo là khả năng bảo trì dự đoán thiết bị.
+>
+> Trong tab Predictive Intelligence, mô hình **Logistic Regression** tính toán xác suất hỏng quạt trong vòng 7 ngày tới. Dưới kịch bản stress test, rủi ro đã tăng lên **63.0% (Rủi ro Trung bình - Cần kiểm tra)**.
+>
+> Khác với các mô hình AI hộp đen, mô hình của chúng tôi hoàn toàn minh bạch:
+> - Hiển thị trực tiếp các trọng số **log-odds đóng góp rủi ro**: độ rung cao (4.27 mm/s) và bộ lọc nghẹt (+85%) là hai nguyên nhân chính.
+> - Tích hợp cơ chế kiểm tra miền dữ liệu (Domain Bounds): nếu dữ liệu bị lỗi, thiếu hoặc vượt ngoài miền huấn luyện (OOD), mô hình sẽ chủ động **từ chối dự đoán (Abstain)** thay vì đưa ra kết quả giả mạo.
+> - Về mặt an toàn, dự đoán này đóng vai trò **khuyến nghị hỗ trợ con người ra quyết định (Human-in-the-loop)**, không tự ý can thiệp nguy hiểm vào phần cứng."
+
+**Thao tác:** Chỉ vào đồng hồ đo rủi ro (63%), danh sách các nhân tố log-odds chính, và biểu đồ quỹ đạo rủi ro.
+
+---
+
+## Cảnh 6 — Chế độ xem 3D Đồng bộ & Kết nối MQTT (4:35 – 5:15)
+
+**Trên màn hình:** Chuyển sang tab `http://localhost:8080/room3d.html` (Mô hình 3D).
+
+**Thuyết minh:**
+> "Đây là **Giao diện 3D Digital Twin**, được xây dựng bằng Three.js và kết nối trực tiếp qua MQTT WebSockets.
+>
+> Cả Room 1 và Room 2 được mô phỏng trực quan đồng thời cùng hệ thống ống gió AHU ở giữa:
+> - Bản đồ nhiệt sàn đổi màu theo nhiệt độ thực tế của phòng.
+> - Nhân vật di chuyển ra vào phòng theo số lượng người cập nhật thời gian thực.
+> - Luồng hạt trong ống gió hiển thị trực quan lưu lượng khí được phân bổ.
+>
+> Mọi thao tác điều khiển đều hỗ trợ kiểm tra chống lặp lệnh (Idempotency) với mã `command_id` duy nhất."
+
+**Thao tác:** Xoay camera quanh 2 phòng lab, xem đường ống AHU và chỉ báo kết nối WebSocket.
+
+---
+
+## Cảnh 7 — Lộ trình Chiến lược, ROI & Tổng kết (5:15 – 5:45)
+
+**Trên màn hình:** Quay lại Dashboard $\rightarrow$ tab **`Strategy & governance`**.
+
+**Thuyết minh:**
+> "Cuối cùng, tab **Strategy & Governance** trình bày khung triển khai thực tế:
+> - Một **Sandbox tính toán ROI** minh bạch với thời gian hoàn vốn thực tế khoảng 33 tháng.
+> - Lộ trình triển khai 5 giai đoạn: từ mô phỏng thử nghiệm, Digital Shadow đọc dữ liệu thực, phi công có con người giám sát, đến tự động hóa toàn diện cho nhiều tòa nhà.
+>
+> Tóm lại, EcoHVAC Guardian đã hoàn thành xuất sắc các yêu cầu của Project 2 với hệ sinh thái đa bản sao số, điều khiển tối ưu công bằng, AI có khả năng giải thích và trực quan hóa 3D. Cảm ơn thầy cô và các bạn đã lắng nghe!"
+
+**Thao tác:** Lướt nhanh qua bảng tính ROI và lộ trình 5 giai đoạn để kết thúc.
+
+---
+
+## Gợi ý trả lời khi bảo vệ / Q&A
+
+- **Khi được hỏi về PID so với ML:** "Bộ điều khiển PID và coordinator trung tâm đảm nhận việc điều phối lưu lượng vật lý theo luật tất định; trong khi mô hình Machine Learning đóng vai trò tư vấn bảo trì dự đoán cho người vận hành."
+- **Khi được hỏi về kiểm thử:** Chạy lệnh `uv run pytest` trong terminal để chứng minh 144 unit tests vượt qua 100% trong 0.4 giây.
+- **Khi được hỏi về bảo mật:** "Phiên bản lớp học sử dụng MQTT nội bộ, nhưng chúng tôi đã thiết kế và tài liệu hóa đầy đủ mô hình sản xuất mục tiêu với mTLS, ACL phân quyền theo topic và nhật ký kiểm toán SQLite hash-chain."

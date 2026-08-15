@@ -1,7 +1,11 @@
+import pytest
+
 from ahu import (
+    COOLING_COP,
     AHUState,
     advance_ahu,
     available_airflow,
+    calculate_energy,
     cooling_power_w,
     step_temperature_from_supply_air,
 )
@@ -31,3 +35,15 @@ def test_ahu_energy_integrates_over_simulated_time():
     assert next_ahu.energy_kwh > ahu.energy_kwh
     assert next_ahu.total_power_w > 0
     assert next_ahu.filter_clog_pct > ahu.filter_clog_pct
+
+
+def test_energy_fields_share_an_explicit_electrical_basis():
+    energy = calculate_energy(
+        AHUState(filter_clog_pct=0.0),
+        total_delivered_airflow_m3_s=0.12,
+        room_cooling_w=1600.0,
+    )
+    assert energy.cooling_electric_power_w == pytest.approx(1600.0 / COOLING_COP)
+    assert energy.total_electric_power_w == pytest.approx(
+        energy.fan_electric_power_w + energy.cooling_electric_power_w
+    )

@@ -1,135 +1,161 @@
-# Smart Lab Digital Twin — Video Demo Script
+# EcoHVAC Guardian — Video Demo Script (Project 2 / HW2)
 
-**Target length:** ~6–7 minutes
-**Format:** Screen recording with voice-over. Each scene lists what to show on screen, what to do, and the suggested narration.
+**Target length:** ~5–6 minutes
+**Course Deliverable:** SUTD Digital Twin — Project 2 (Intelligent Ecosystem & Strategic Optimization)
+**Format:** Screen recording with voice-over. Each scene lists on-screen visuals, user interactions, and narration.
 
 ---
 
 ## Pre-recording Checklist
 
-1. Start the stack:
+1. **Start the Multi-Twin Stack:**
    ```bash
-   docker compose up -d                                  # Mosquitto broker
-   uv run simulator/publisher.py                         # Terminal 1
-   uv run streamlit run dashboard/app.py                 # Terminal 2
-   uv run python -m http.server 8000 --directory room3d  # Terminal 3
+   # 1. Start Mosquitto broker (MQTT 1883, WS 9001)
+   docker compose up -d
+
+   # 2. Start Simulator Engine (Terminal 1)
+   uv run python simulator/publisher.py
+
+   # 3. Start 3D Operations Server (Terminal 2)
+   uv run python -m http.server 8080 --directory room3d
+
+   # 4. Start Streamlit Operations Dashboard (Terminal 3)
+   ECOHVAC_3D_URL=http://localhost:8080 uv run streamlit run dashboard/app.py
    ```
-2. Open `http://localhost:8501` (dashboard) and `http://localhost:8000` (standalone 3D view) in separate browser tabs.
-3. Reset to a clean baseline: HVAC **OFF**, occupancy low (~2 people), setpoint 24 °C, timescale ×1.
-4. Keep one terminal visible for the MQTT command demo (Scene 7).
-5. Close notifications / unrelated windows; set browser zoom so the full dashboard fits.
+2. **Open Browser Tabs:**
+   - Operations Dashboard: `http://localhost:8501`
+   - Unified 3D Two-Room View: `http://localhost:8080/room3d.html`
+3. **Reset Baseline:** Ensure the dashboard loads in `baseline` state (`Safe`, `Online`, Low fan risk).
+4. **Prepare Terminal for CLI Command Demo (Scene 6).**
 
 ---
 
-## Scene 1 — Introduction (0:00 – 0:40)
+## Scene 1 — Introduction & Ecosystem Architecture (0:00 – 0:50)
 
-**On screen:** Title slide or README, then a quick glance at the architecture diagram (`docs/architecture.md`).
+**On screen:** Integrated Architecture Diagram (`report/hw2-evidence/00-integrated-architecture.png`) or `docs/architecture.md`.
 
 **Narration:**
-> "Hi, this is a demo of the Smart Lab Digital Twin — a real-time digital twin of a laboratory room. A physics simulator models the room's temperature, humidity, and occupancy. It streams telemetry over MQTT to a Streamlit dashboard and an interactive Three.js 3D view. Crucially, this is a true digital twin, not just a digital shadow: commands flow back from the dashboard to the simulator, closing the loop. On top of that, a PID controller automatically regulates the air-conditioning power to hold any target temperature."
+> "Hello! Welcome to the demonstration of **EcoHVAC Guardian** — our Project 2 Digital Twin ecosystem for intelligent smart-laboratory HVAC operations.
+>
+> In Project 1, we simulated an isolated single room. For Project 2, we have expanded this into a complete **multi-twin ecosystem**: two independent laboratory classrooms (`Room 1` and `Room 2`) competing for cooling from a single, finite-capacity Air Handling Unit (AHU).
+>
+> Our architecture combines local PID comfort control, centralized deterministic fairness coordination under physical degradation, real-time energy accounting with simulated COP 3.2, explainable predictive maintenance via an inspectable logistic regression model, and synchronized 3D digital twin visualization."
 
-**Action:** Briefly scroll the 6-layer architecture diagram: Simulator → MQTT broker → Dashboard/3D view → User commands → back to Simulator.
+**Action:** Hover cursor over the 6-layer architecture flow: Room Twins + Local PIDs $\rightarrow$ Fairness Coordinator $\rightarrow$ Shared AHU Physics $\rightarrow$ Predictive Model $\rightarrow$ MQTT Broker $\rightarrow$ Dashboard & 3D Viewer.
 
 ---
 
-## Scene 2 — Dashboard Tour (0:40 – 1:30)
+## Scene 2 — Operations Dashboard & Baseline State (0:50 – 1:40)
 
-**On screen:** The Streamlit dashboard at `http://localhost:8501`.
+**On screen:** Streamlit Operations Dashboard at `http://localhost:8501` (`Operations centre` tab).
 
 **Narration:**
-> "This is the main dashboard. At the top we have live metrics — room temperature, humidity, and occupancy — updated every few seconds over MQTT. Here is the HVAC status panel, showing whether the AC is on and its current cooling power as a percentage. Below, a temperature trend chart with a predictive alert, and an inline 3D view of the room. On the left, the control panel: AC on/off, target setpoint, occupancy override, and simulation time-scale."
+> "This is the **Operations Centre**. At the top, live status strips confirm the simulator is `ONLINE`, shared capacity is `SAFE`, and fan risk is `LOW (15%)`.
+>
+> Below, we see both room twins running independently:
+> - `Room 1` is occupied with 8 people, currently at 22.8 °C.
+> - `Room 2` is occupied with 2 people, at 22.8 °C.
+> - The shared AHU has clean filters (5% clog) and healthy fan condition (3% wear), comfortably supplying 80% airflow with zero capacity deficit.
+>
+> Notice that every telemetry update is backed by a monotonic snapshot ID and correlated timestamp over retained MQTT topics."
 
-**Action:** Move the cursor slowly over each area as it's mentioned: metric cards → HVAC panel → chart → 3D view → control panel. Point out the `online` status indicator (Last Will & Testament).
-
----
-
-## Scene 3 — The Problem: Room Heats Up (1:30 – 2:20)
-
-**On screen:** Dashboard. Set timescale to **×10** so changes are visible quickly.
-
-**Action & Narration:**
-1. Set occupancy to **25 people**.
-   > "Let's simulate a busy lab session — I'll override occupancy to 25 people. Each person adds heat load, roughly a hundred watts each, so the room now has around 2.5 kilowatts of internal heat."
-2. Let it run 20–30 seconds; watch temperature climb on the chart.
-   > "With the AC off, the temperature climbs steadily. Notice the predictive alert on the chart warning that the room will overheat if nothing changes."
-3. Switch to the 3D view briefly.
-   > "In the 3D view, you can see people walking in through the automatic sliding doors as occupancy rises, and the floor turning red as the room gets hot."
+**Action:** Scroll through the top status cards, the Room 1 and Room 2 telemetry metrics, and the AHU supply airflow status.
 
 ---
 
-## Scene 4 — Closed-Loop Control: PID in Action (2:20 – 3:40)
+## Scene 3 — Shared Capacity Stress Scenario (1:40 – 2:45)
 
-**On screen:** Dashboard, HVAC panel and temperature chart in view.
-
-**Action & Narration:**
-1. Turn **AC ON**, setpoint **22 °C**.
-   > "Now I turn the AC on with a 22-degree setpoint. The PID controller takes over: it measures the error between room temperature and setpoint, and modulates the AC power continuously from 0 to 100 percent of its 3.5-kilowatt capacity."
-2. Watch `ac_power_pct` jump to ~100 %, then temperature fall.
-   > "With a large error, the proportional term drives the AC to full power. As the temperature approaches the setpoint, power backs off smoothly instead of crudely switching on and off."
-3. Wait until temperature locks onto 22 °C with the AC at a partial, steady power.
-   > "And here's the key result: the temperature locks onto exactly 22 degrees, even with 25 people inside. The integral term eliminates the steady-state offset that a simple proportional controller would leave, and the derivative term damps the overshoot. Anti-windup keeps the controller responsive even after long periods at full power."
-
----
-
-## Scene 5 — Digital Twin Feedback Loop (3:40 – 4:30)
-
-**On screen:** Dashboard control panel and HVAC status side by side.
-
-**Action & Narration:**
-1. Change the setpoint from 22 → **25 °C**.
-   > "Watch what happens when I change the setpoint. The dashboard doesn't just assume the new value — it publishes a command over MQTT, the simulator applies it, and the *confirmed* state comes back and updates the display. That round trip is what makes this a digital twin rather than a one-way shadow."
-2. Show AC power dropping (room is already cooler than the new setpoint), then stabilizing at 25 °C.
-   > "The controller immediately reduces power since the room is now below target, and re-converges on the new setpoint."
-
----
-
-## Scene 6 — 3D Room View (4:30 – 5:20)
-
-**On screen:** Standalone 3D view at `http://localhost:8000` (or the inline view, full screen).
-
-**Action & Narration:**
-1. Orbit the camera around the lab and corridor.
-   > "The 3D view is built with Three.js and subscribes to the same MQTT topics directly from the browser over WebSockets — no extra backend needed."
-2. Drop occupancy to **5**; watch people walk out through the sliding doors.
-   > "When I lower occupancy on the dashboard, characters walk out through the automatic glass doors in real time."
-3. Point at floor color.
-   > "The floor color encodes temperature — blue when the room is at setpoint, shifting toward red as it heats up."
-
----
-
-## Scene 7 — MQTT Command Interface & Resilience (5:20 – 6:10)
-
-**On screen:** Terminal next to the dashboard.
-
-**Action & Narration:**
-1. Publish a command from the terminal:
-   ```bash
-   docker exec mosquitto mosquitto_pub -t twin/room1/cmd/occupancy -m '{"value": 30}'
-   ```
-   > "Everything is driven by open MQTT topics, so any client can participate. Here I set occupancy to 30 straight from the command line — and the dashboard and 3D view both react instantly."
-2. (Optional) Stop the simulator with Ctrl-C; show the dashboard flipping to `offline`.
-   > "If the simulator dies, the broker's Last Will and Testament immediately marks the twin offline on the dashboard. Restarting it, retained messages restore the latest state instantly."
-3. Restart the simulator.
-
----
-
-## Scene 8 — Wrap-up (6:10 – 6:40)
-
-**On screen:** Architecture diagram again, or the dashboard in steady state at setpoint.
+**On screen:** Dashboard Guided Scenarios section.
 
 **Narration:**
-> "To recap: a physics-based room simulator, event-driven MQTT communication with retained state and failure detection, a live dashboard and 3D visualization, and a closed feedback loop with an auto-regulating PID controller — together forming a complete, real-time digital twin of a smart laboratory. Thanks for watching."
+> "Now let's simulate a severe operational challenge: equipment degradation combined with high cooling demand.
+>
+> I will trigger the **'Run shared-capacity stress test'** preset."
+
+**Action:** Click the **`Run shared-capacity stress test`** button.
+
+**Narration:**
+> "Instantly, the simulator applies the stress scenario:
+> 1. Filter clog jumps to 85% and fan wear to 75%, derating AHU available supply airflow down to approximately 40%.
+> 2. Simultaneously, Room 1 occupancy jumps to 24 students, creating a heavy 10.0 kW cooling request. Room 2 requests 3.5 kW.
+>
+> Notice how the system reacts: Total requested airflow now far exceeds available AHU supply air. The status immediately flips to **`CONSTRAINED`**."
+
+**Action:** Show the status indicator change to `CONSTRAINED`, point to the gap between requested and granted airflow in the telemetry cards, and watch Room 1 temperature rise as cooling is constrained.
 
 ---
 
-## Backup / B-roll Ideas
+## Scene 4 — Deterministic Fairness Coordination & Comfort Debt (2:45 – 3:45)
 
-- Terminal running `uv run pytest -v` with all unit tests passing.
-- Close-up of the PID gains in `simulator/pid_controller.py` while narrating the Kp/Ki/Kd roles.
-- Side-by-side of dashboard chart and 3D floor color during a cool-down.
+**On screen:** Coordination & Allocation section of the dashboard.
 
-## Recording Tips
+**Narration:**
+> "How does the system resolve this conflict?
+>
+> EcoHVAC Guardian employs our deterministic **`occupied-comfort-debt-v2`** coordination policy. Rather than naive static splitting, it dynamically arbitrates scarce air:
+> 1. Occupied rooms receive absolute priority over unoccupied rooms.
+> 2. Higher positive temperature error is prioritized.
+> 3. Over time, under-served rooms accumulate **Comfort Debt** (in °C·seconds), ensuring long-term fairness and preventing starvation.
+>
+> Crucially, granted airflow is fed directly back into each room's PID controller. This **actuator feedback mechanism** bleeds down integral error and prevents controller windup while the physical asset is saturated."
 
-- Record at ×10 timescale for all thermal transitions; cut dead time in editing.
-- Capture Scenes 3–5 in one continuous take so the chart history tells the story.
-- Keep the mouse still while narrating; move it only to point at what's being described.
+**Action:** Point out the reason codes (`occupied`, `above_setpoint`, `capacity_limited`, `higher_comfort_priority_applied`) and the comfort debt tracking chart.
+
+---
+
+## Scene 5 — Predictive Intelligence & Explainable AI (3:45 – 4:35)
+
+**On screen:** Switch to the **`Predictive intelligence`** tab.
+
+**Narration:**
+> "Next, let's look at predictive equipment health.
+>
+> In the Predictive Intelligence tab, our runtime **Logistic Regression Model** evaluates simulated 7-day fan failure probability. Under our stress scenario, risk has escalated to **63.0% (Medium Risk)**.
+>
+> Unlike a black-box AI, our model is fully explainable:
+> - It exposes the exact signed **log-odds feature drivers**: high vibration (4.27 mm/s) and severe filter clogging (+85%) are the primary risk contributors.
+> - It includes built-in domain validation: if sensor inputs are missing, corrupted, or out-of-domain, the model explicitly **abstains** rather than outputting a false sense of security.
+> - As an ethical AI guardrail, this prediction serves as **human-in-the-loop advisory decision support**—it suggests inspection without making dangerous autonomous control overrides."
+
+**Action:** Highlight the risk gauge (63%), the top log-odds drivers list, and the risk trajectory timeline.
+
+---
+
+## Scene 6 — Unified 3D Digital Twin & MQTT Control (4:35 – 5:15)
+
+**On screen:** Tab over to `http://localhost:8080/room3d.html` (Unified 3D Room Scene).
+
+**Narration:**
+> "Here is our **Unified 3D Digital Twin Viewer**, built in Three.js and connected live over MQTT WebSockets.
+>
+> Both Room 1 and Room 2 are rendered simultaneously alongside the central AHU ducting. The visual environment reflects real-time physics:
+> - Dynamic room heat maps on the floor change color based on temperature.
+> - Animated occupants dynamically enter and exit as occupancy updates.
+> - AHU duct airflow particles visually represent granted supply volume.
+>
+> Furthermore, all commands support idempotency and replay protection via correlated `command_id` envelopes."
+
+**Action:** Orbit camera around the two rooms, show the connecting AHU ducts, and highlight the responsive WebSocket status.
+
+---
+
+## Scene 7 — Strategic Roadmap, ROI & Conclusion (5:15 – 5:45)
+
+**On screen:** Return to Dashboard $\rightarrow$ **`Strategy & governance`** tab.
+
+**Narration:**
+> "Finally, the **Strategy & Governance** tab presents our deployment framework:
+> - An interactive **ROI Sandbox** showing a realistic 33-month capital payback period.
+> - A 5-stage deployment roadmap transitioning from this simulated prototype to a digital shadow, human-in-the-loop pilot, and eventual federated facility automation.
+>
+> In summary, EcoHVAC Guardian successfully integrates multi-twin simulation, fair closed-loop control, explainable machine learning, and interactive 3D visualization. Thank you for watching!"
+
+**Action:** Briefly scroll the ROI calculator and the 5-stage roadmap, concluding on the title header.
+
+---
+
+## B-Roll / Defense Tips for Live Q&A
+
+- **If asked about PID vs ML:** "The local PID and central coordinator handle real-time physical airflow allocation deterministically; the ML model provides explainable predictive maintenance advisory to facility operators."
+- **If asked about test verification:** Run `uv run pytest` in terminal showing all 144 unit tests passing in ~0.4s.
+- **If asked about security:** "Our classroom stack uses standard MQTT for development, but we have architected and documented the production target with TLS, topic ACLs, and hash-chained SQLite audit logging."

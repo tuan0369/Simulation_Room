@@ -72,6 +72,24 @@ def test_zero_dt_no_crash():
     assert 0.0 <= out <= 1.0
 
 
+def test_actuator_feedback_reduces_integral_under_shared_capacity_limit():
+    constrained = PIDController()
+    unconstrained = PIDController()
+    for _ in range(20):
+        requested = constrained.compute(current_temp=27.0, setpoint=24.0, dt=1.0)
+        constrained.apply_actuator_feedback(requested, requested * 0.25, dt=1.0)
+        unconstrained.compute(current_temp=27.0, setpoint=24.0, dt=1.0)
+    assert constrained._integral < unconstrained._integral
+
+
+def test_actuator_feedback_ignores_full_delivery():
+    pid = PIDController()
+    requested = pid.compute(current_temp=27.0, setpoint=24.0, dt=1.0)
+    before = pid._integral
+    pid.apply_actuator_feedback(requested, requested, dt=1.0)
+    assert pid._integral == before
+
+
 def test_steady_state_at_setpoint():
     """When temperature equals setpoint, output should be near zero."""
     pid = PIDController()

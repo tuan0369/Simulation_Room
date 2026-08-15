@@ -1,0 +1,41 @@
+# ACL TEMPLATE — identities are placeholders; this file contains no secrets.
+# Create matching password-file users with mosquitto_passwd. Rename accounts
+# for the deployment and narrow grants further if components are separated.
+
+# Simulator publishes state and consumes commands.
+user simulator-publisher
+# Room telemetry/state (the single-level wildcard is the room identifier).
+topic write twin/+/temperature
+topic write twin/+/humidity
+topic write twin/+/occupancy
+topic write twin/+/status
+topic write twin/+/hvac/state
+topic write twin/+/hvac/allocation
+topic write twin/+/ac/detail
+topic write twin/+/energy
+# Shared AHU and ecosystem state produced by the simulator.
+topic write twin/ahu/state
+topic write twin/ahu/energy
+topic write twin/ahu/fan/health
+topic write twin/ahu/coordinator/decision
+topic write twin/ecosystem/status
+topic write twin/ecosystem/command/result
+topic write twin/ecosystem/scenario/state
+topic write twin/ecosystem/presentation/state
+# Commands consumed by the simulator.
+topic read twin/+/cmd/#
+topic read twin/ahu/cmd/#
+topic read twin/ecosystem/cmd/#
+
+# Trusted operator UI: read all state and send only command topics.
+user dashboard-operator
+topic read twin/#
+topic write twin/+/cmd/#
+topic write twin/ahu/cmd/#
+topic write twin/ecosystem/cmd/#
+
+# Read-only browser/visualisation client.
+# A password embedded in public browser code is not a secret. Prefer a gateway
+# issuing short-lived credentials before enabling this identity on the Internet.
+user visualization-viewer
+topic read twin/#

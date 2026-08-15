@@ -10,9 +10,6 @@ from __future__ import annotations
 import json
 import os
 import sys
-import threading
-import uuid
-from collections import deque
 from datetime import datetime
 from pathlib import Path
 
@@ -32,6 +29,16 @@ from dashboard.presentation import (
     illustrative_roi,
     maintenance_recommendation,
 )
+from dashboard.telemetry import (
+    AHU_BASE,
+    ECOSYSTEM_BASE,
+    apply_message,
+    new_command,
+    new_store,
+    reconcile_pending_commands,
+    set_transport_state,
+    snapshot_store as telemetry_snapshot_store,
+)
 
 BROKER_HOST = os.getenv("ECOHVAC_BROKER_HOST", "localhost")
 BROKER_PORT = int(os.getenv("ECOHVAC_BROKER_PORT", "1883"))
@@ -39,8 +46,6 @@ ROOM3D_BASE_URL = os.getenv("ECOHVAC_3D_URL", "http://localhost:8000").rstrip("/
 ROOM_IDS = ("room1", "room2")
 ROOM_LABELS = {"room1": "Room 1", "room2": "Room 2"}
 ROOM_COLORS = {"room1": "#2a78d6", "room2": "#eb6834"}
-AHU_BASE = "twin/ahu"
-ECOSYSTEM_BASE = "twin/ecosystem"
 ESTIMATED_TARIFF_SGD_PER_KWH = 0.30
 MODEL_ARTIFACT_PATH = Path(__file__).resolve().parents[1] / "simulator" / "models" / "fan_risk_logistic.json"
 MODEL_METRICS_PATH = MODEL_ARTIFACT_PATH.with_suffix(".metrics.json")
@@ -59,30 +64,14 @@ def load_model_evidence() -> tuple[dict, dict]:
 
 @st.cache_resource
 def get_mqtt():
-    """Create one MQTT client and a lock-protected multi-twin telemetry store."""
-    store = {
-        "rooms": {
-            room_id: {
-                "temperature": deque(maxlen=180),
-                "humidity": deque(maxlen=120),
-                "occupancy": deque(maxlen=180),
-                "hvac": {},
-                "detail": {},
-                "allocation": {},
-                "energy": {},
-                "status": "unknown",
-            }
-            for room_id in ROOM_IDS
-        },
-        "ahu": {"state": {}, "energy": {}, "fan_health": {}, "decision": {}},
-        "ecosystem_status": "unknown",
-        "command_result": {},
-        "scenario": {},
-        "risk_history": deque(maxlen=180),
-        "lock": threading.Lock(),
-    }
+    """Create one MQTT client backed by the reusable pure telemetry store."""
+    store = new_store(ROOM_IDS, sensor_history=180, humidity_history=120, risk_history=180)
 
     def on_connect(client, userdata, flags, reason_code, properties):
+        if reason_code != 0:
+            set_transport_state(store, "unavailable", f"Broker rejected connection: {reason_code}")
+            return
+        set_transport_state(store, "connected")
         subscriptions = []
         for room_id in ROOM_IDS:
             base = f"twin/{room_id}"
@@ -103,6 +92,7 @@ def get_mqtt():
                 (f"{ECOSYSTEM_BASE}/status", 0),
                 (f"{ECOSYSTEM_BASE}/command/result", 0),
                 (f"{ECOSYSTEM_BASE}/scenario/state", 0),
+                (f"{ECOSYSTEM_BASE}/presentation/state", 0),
                 (f"{AHU_BASE}/state", 0),
                 (f"{AHU_BASE}/energy", 0),
                 (f"{AHU_BASE}/fan/health", 0),
@@ -111,87 +101,29 @@ def get_mqtt():
         )
         client.subscribe(subscriptions)
 
-    def decode_payload(payload):
-        try:
-            value = json.loads(payload)
-        except (json.JSONDecodeError, UnicodeDecodeError):
-            return None
-        return value if isinstance(value, dict) else None
-
     def on_message(client, userdata, msg):
-        topic = msg.topic
-        with store["lock"]:
-            if topic == f"{ECOSYSTEM_BASE}/status":
-                store["ecosystem_status"] = msg.payload.decode(errors="replace")
-                return
-            if topic == f"{ECOSYSTEM_BASE}/command/result":
-                data = decode_payload(msg.payload)
-                if data is not None:
-                    store["command_result"] = data
-                return
-            if topic == f"{ECOSYSTEM_BASE}/scenario/state":
-                data = decode_payload(msg.payload)
-                if data is not None:
-                    store["scenario"] = data
-                return
-            parts = topic.split("/")
-            if len(parts) >= 3 and parts[0] == "twin" and parts[1] in ROOM_IDS:
-                room_id = parts[1]
-                room = store["rooms"][room_id]
-                if parts[2] == "status":
-                    room["status"] = msg.payload.decode(errors="replace")
-                    return
-                data = decode_payload(msg.payload)
-                if data is None:
-                    return
-                if parts[2] in ("temperature", "humidity", "occupancy"):
-                    timestamp = data.get("timestamp")
-                    value = data.get("value")
-                    if timestamp is None or not isinstance(value, (int, float)):
-                        return
-                    try:
-                        ts = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
-                    except (TypeError, ValueError):
-                        return
-                    room[parts[2]].append((ts, float(value)))
-                elif parts[2] == "hvac" and len(parts) == 4:
-                    if parts[3] == "state":
-                        room["hvac"] = data
-                    elif parts[3] == "allocation":
-                        room["allocation"] = data
-                elif parts[2] == "ac" and len(parts) == 4 and parts[3] == "detail":
-                    room["detail"] = data
-                elif parts[2] == "energy":
-                    room["energy"] = data
-                return
-            if topic.startswith(f"{AHU_BASE}/"):
-                data = decode_payload(msg.payload)
-                if data is None:
-                    return
-                key = {
-                    f"{AHU_BASE}/state": "state",
-                    f"{AHU_BASE}/energy": "energy",
-                    f"{AHU_BASE}/fan/health": "fan_health",
-                    f"{AHU_BASE}/coordinator/decision": "decision",
-                }.get(topic)
-                if key:
-                    store["ahu"][key] = data
-                    if key == "fan_health":
-                        timestamp = data.get("timestamp")
-                        risk = data.get("failure_risk")
-                        if isinstance(timestamp, str) and isinstance(risk, (int, float)):
-                            try:
-                                store["risk_history"].append(
-                                    (datetime.fromisoformat(timestamp.replace("Z", "+00:00")), float(risk))
-                                )
-                            except ValueError:
-                                pass
+        apply_message(store, msg.topic, msg.payload)
+
+    def on_connect_fail(client, userdata):
+        set_transport_state(store, "unavailable", "Broker connection failed")
+
+    def on_disconnect(client, userdata, disconnect_flags, reason_code, properties):
+        if reason_code != 0:
+            set_transport_state(store, "reconnecting", f"Broker disconnected: {reason_code}")
+        else:
+            set_transport_state(store, "disconnected")
 
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     client.on_connect = on_connect
+    client.on_connect_fail = on_connect_fail
+    client.on_disconnect = on_disconnect
     client.on_message = on_message
-    client.connect(BROKER_HOST, BROKER_PORT)
-    client.loop_start()
+    client.reconnect_delay_set(min_delay=1, max_delay=30)
+    try:
+        client.connect_async(BROKER_HOST, BROKER_PORT)
+        client.loop_start()
+    except (OSError, ValueError) as error:
+        set_transport_state(store, "unavailable", str(error))
     return client, store
 
 
@@ -219,32 +151,42 @@ def human_reason(reasons: list[str] | tuple[str, ...]) -> str:
     return " · ".join(labels.get(reason, reason.replace("_", " ")) for reason in reasons)
 
 
-def command_payload(**values) -> str:
-    """Attach a correlation ID so the simulator's demo trace can confirm a command."""
-    return json.dumps({**values, "command_id": uuid.uuid4().hex, "source": "dashboard"})
-
-
-def room_snapshot_copy(room: dict) -> dict:
-    return {
-        **{
-            key: list(value) if isinstance(value, deque) else value.copy() if isinstance(value, dict) else value
-            for key, value in room.items()
-        }
+def publish_command(client, topic: str, **values) -> str | None:
+    """Queue a correlated command only when the broker transport is connected."""
+    if not client.is_connected():
+        st.error("Command not sent: the MQTT broker is unavailable.")
+        return None
+    command = new_command(values)
+    command_id = command["command_id"]
+    result = client.publish(topic, json.dumps(command), retain=False)
+    if result.rc != mqtt.MQTT_ERR_SUCCESS:
+        st.error(f"Command not sent: MQTT publish failed ({mqtt.error_string(result.rc)}).")
+        return None
+    pending = dict(st.session_state.get("pending_commands", {}))
+    pending[command_id] = {
+        "topic": topic,
+        "submitted_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
+    st.session_state["pending_commands"] = pending
+    return command_id
 
 
-def snapshot_store(store: dict) -> tuple[dict, dict, str, dict, dict, list]:
-    with store["lock"]:
-        rooms = {room_id: room_snapshot_copy(room) for room_id, room in store["rooms"].items()}
-        ahu = {key: value.copy() for key, value in store["ahu"].items()}
-        return (
-            rooms,
-            ahu,
-            store["ecosystem_status"],
-            store["command_result"].copy(),
-            store["scenario"].copy(),
-            list(store["risk_history"]),
-        )
+def reconcile_command_history(
+    command_results: list[dict], command_result_count: int
+) -> tuple[dict, ...]:
+    """Reconcile newly observed simulator results with pending dashboard commands."""
+    processed = int(st.session_state.get("processed_command_results", 0))
+    unseen_count = max(0, command_result_count - processed)
+    new_results = command_results[-unseen_count:] if unseen_count else []
+    pending, matched = reconcile_pending_commands(
+        st.session_state.get("pending_commands", {}),
+        new_results,
+    )
+    st.session_state["pending_commands"] = pending
+    st.session_state["processed_command_results"] = command_result_count
+    if matched:
+        st.session_state["matched_command_results"] = matched
+    return matched
 
 
 def room_airflow(room: dict) -> tuple[float, float, float]:
@@ -256,12 +198,22 @@ def room_airflow(room: dict) -> tuple[float, float, float]:
     return requested, granted, ratio
 
 
-def publish_room_policy(client, room_id: str, *, setpoint: float, mode: str, occupancy: int, timescale: int) -> None:
-    """Send validated individual commands through the established MQTT contract."""
-    client.publish(f"twin/{room_id}/cmd/mode", command_payload(mode=mode))
-    client.publish(f"twin/{room_id}/cmd/setpoint", command_payload(value=setpoint))
-    client.publish(f"twin/{room_id}/cmd/occupancy", command_payload(value=occupancy))
-    client.publish(f"twin/{room_id}/cmd/timescale", command_payload(value=timescale))
+def publish_room_policy(
+    client,
+    room_id: str,
+    *,
+    setpoint: float,
+    mode: str,
+    occupancy: int,
+    timescale: int,
+) -> tuple[str, ...]:
+    """Send separately correlated commands through the established MQTT contract."""
+    return (
+        publish_command(client, f"twin/{room_id}/cmd/mode", mode=mode),
+        publish_command(client, f"twin/{room_id}/cmd/setpoint", value=setpoint),
+        publish_command(client, f"twin/{room_id}/cmd/occupancy", value=occupancy),
+        publish_command(client, f"twin/{room_id}/cmd/timescale", value=timescale),
+    )
 
 
 def sync_room_control_state(room_id: str, room: dict) -> None:
@@ -279,6 +231,8 @@ def render_status_strip(rooms: dict, ahu: dict, status: str) -> None:
     decision = ahu["decision"]
     constrained = bool(decision.get("constrained"))
     risk_band = str(fan_health.get("risk_band", "unknown")).upper()
+    risk_value = fan_health.get("failure_risk")
+    risk_display = f"{float(risk_value):.0%}" if isinstance(risk_value, (int, float)) else "UNAVAILABLE"
     temperatures = []
     for room_id in ROOM_IDS:
         room = rooms[room_id]
@@ -288,7 +242,7 @@ def render_status_strip(rooms: dict, ahu: dict, status: str) -> None:
     columns = st.columns([0.9, 1.4, 1.2, 1.2])
     columns[0].metric("Simulator", status.upper())
     columns[1].metric("Shared capacity", "CONSTRAINED" if constrained else "AVAILABLE")
-    columns[2].metric("Fan risk", f"{float(fan_health.get('failure_risk', 0.0)):.0%}", risk_band)
+    columns[2].metric("Advisory fan risk", risk_display, risk_band)
     columns[3].metric("Rooms", " · ".join(temperatures))
 
 
@@ -324,11 +278,15 @@ def render_guided_scenarios(client, scenario: dict, command_result: dict) -> Non
         left, middle, right = st.columns([1, 1.5, 1.2])
         with left:
             if st.button("Restore safe baseline", key="scenario_baseline", use_container_width=True):
-                client.publish(f"{ECOSYSTEM_BASE}/cmd/scenario", command_payload(command="baseline"))
+                publish_command(client, f"{ECOSYSTEM_BASE}/cmd/scenario", command="baseline")
                 st.session_state["scenario_pending"] = "baseline"
         with middle:
             if st.button("Run shared-capacity stress test", key="scenario_stress", use_container_width=True):
-                client.publish(f"{ECOSYSTEM_BASE}/cmd/scenario", command_payload(command="shared_capacity_stress"))
+                publish_command(
+                    client,
+                    f"{ECOSYSTEM_BASE}/cmd/scenario",
+                    command="shared_capacity_stress",
+                )
                 st.session_state["scenario_pending"] = "shared_capacity_stress"
         with right:
             if scenario:
@@ -345,6 +303,9 @@ def render_guided_scenarios(client, scenario: dict, command_result: dict) -> Non
                 f"Latest simulator command: **{result}** · {command_result.get('reason', 'waiting for detail')} "
                 f"· {command_result.get('timestamp', 'no timestamp')}"
             )
+        pending_count = len(st.session_state.get("pending_commands", {}))
+        if pending_count:
+            st.caption(f"Awaiting simulator result for {pending_count} correlated command(s).")
 
 
 def render_room_controls(client, rooms: dict) -> None:
@@ -393,9 +354,10 @@ def render_room_controls(client, rooms: dict) -> None:
                 st.caption("Manual cooling is disabled until the simulator confirms Manual mode.")
             elif st.button("Toggle manual cooling", key=f"manual_{selected_room}", use_container_width=True):
                 now_on = bool(room["hvac"].get("hvac_on", False))
-                client.publish(
+                publish_command(
+                    client,
                     f"twin/{selected_room}/cmd/hvac",
-                    command_payload(command="off" if now_on else "on"),
+                    command="off" if now_on else "on",
                 )
         st.caption(
             f"Confirmed simulator state: **{current_mode.title()}**. Manual cooling changes only this room's request; "
@@ -418,7 +380,7 @@ def render_ahu_controls(client, ahu: dict) -> None:
                 key="filter_clog_pct",
             )
             if st.button("Apply filter condition", key="apply_filter", use_container_width=True):
-                client.publish(f"{AHU_BASE}/cmd/filter_clog", command_payload(value=clog / 100))
+                publish_command(client, f"{AHU_BASE}/cmd/filter_clog", value=clog / 100)
         with right:
             wear = st.slider(
                 "Fan wear (%)",
@@ -429,7 +391,7 @@ def render_ahu_controls(client, ahu: dict) -> None:
                 key="fan_wear_pct",
             )
             if st.button("Apply fan condition", key="apply_wear", use_container_width=True):
-                client.publish(f"{AHU_BASE}/cmd/fan_wear", command_payload(value=wear / 100))
+                publish_command(client, f"{AHU_BASE}/cmd/fan_wear", value=wear / 100)
 
 
 def render_operate_workspace(client, rooms: dict, ahu: dict, status: str, command_result: dict, scenario: dict) -> None:
@@ -481,7 +443,8 @@ def render_operate_workspace(client, rooms: dict, ahu: dict, status: str, comman
 def render_predictive_workspace(ahu: dict, risk_history: list, command_result: dict) -> None:
     fan, state = ahu["fan_health"], ahu["state"]
     artifact, metrics = load_model_evidence()
-    risk = float(fan.get("failure_risk", 0.0))
+    risk_value = fan.get("failure_risk")
+    risk = float(risk_value) if isinstance(risk_value, (int, float)) else None
     band = str(fan.get("risk_band", "unknown"))
     recommendation = maintenance_recommendation(band, fan.get("top_drivers", []))
     freshness_label, freshness_text = data_freshness(fan.get("timestamp"))
@@ -493,7 +456,11 @@ def render_predictive_workspace(ahu: dict, risk_history: list, command_result: d
     left, middle, right = st.columns([1.1, 1.1, 1.25])
     with left.container(border=True):
         st.markdown(f"### {recommendation.title}")
-        st.metric("Current simulated risk", f"{risk:.1%}", band.upper())
+        st.metric(
+            "Current simulated risk",
+            f"{risk:.1%}" if risk is not None else "Unavailable",
+            band.upper(),
+        )
         st.write(recommendation.action)
         st.caption(recommendation.rationale)
         st.caption(f"Telemetry: **{freshness_label}** — {freshness_text}")
@@ -644,32 +611,38 @@ def render_strategy_workspace(ahu: dict, command_result: dict) -> None:
 
 
 def render_3d_workspace() -> None:
-    st.subheader("3D room comparison")
+    st.subheader("Unified Digital Twin operations scene")
     st.caption(
-        "Both room twins are visible simultaneously for visual comparison. These are read-only views using the same retained MQTT topic contract; "
-        "use Operate & demo for commands."
+        "One read-only facility scene shows both room twins, their shared AHU, and the coordinator's live request/grant outcome. "
+        "Use Operations centre for commands."
     )
-    columns = st.columns(2)
-    for column, room_id in zip(columns, ROOM_IDS):
-        with column.container(border=True):
-            st.markdown(f"### {ROOM_LABELS[room_id]}")
-            st.iframe(f"{ROOM3D_BASE_URL}/room3d.html?room={room_id}", height=420)
+    st.iframe(f"{ROOM3D_BASE_URL}/room3d.html?view=operations", height=690)
 
 
-st.set_page_config(page_title="EcoHVAC Guardian", layout="wide")
+st.set_page_config(page_title="EcoHVAC Operations Centre", page_icon="◈", layout="wide")
 st.markdown(
     """
     <style>
-        .block-container { padding-top: 1.25rem; padding-bottom: 1.5rem; }
-        [data-testid="stMetricValue"] { font-size: 1.4rem; }
+        :root { --ops-navy:#071525; --ops-blue:#2c7be5; --ops-cyan:#21c7d9; --ops-line:#d8e2ee; }
+        .stApp { background: linear-gradient(180deg, #f4f8fc 0%, #eef3f8 100%); }
+        .block-container { max-width: 1500px; padding-top: 1rem; padding-bottom: 2rem; }
+        [data-testid="stMetric"] { background: rgba(255,255,255,.84); border: 1px solid var(--ops-line); border-radius: 14px; padding: .8rem 1rem; box-shadow: 0 8px 24px rgba(7,21,37,.05); }
+        [data-testid="stMetricValue"] { font-size: 1.35rem; color: var(--ops-navy); }
+        [data-testid="stVerticalBlockBorderWrapper"] { background: rgba(255,255,255,.78); border-radius: 16px; box-shadow: 0 10px 30px rgba(7,21,37,.045); }
+        div[role="radiogroup"] { background:#fff; border:1px solid var(--ops-line); border-radius:14px; padding:.35rem; }
+        .ops-masthead { padding:1.15rem 1.3rem; border-radius:18px; color:#f8fbff; background:radial-gradient(circle at 85% 0%, #164b75 0%, var(--ops-navy) 48%); box-shadow:0 16px 45px rgba(7,21,37,.18); margin-bottom:.9rem; }
+        .ops-eyebrow { color:#83eaf2; letter-spacing:.14em; font-size:.72rem; font-weight:700; text-transform:uppercase; }
+        .ops-masthead h1 { margin:.25rem 0 .25rem; font-size:2rem; }
+        .ops-masthead p { margin:0; color:#c7d5e3; max-width:76rem; }
+        @media (max-width: 760px) { .block-container { padding-left:.7rem; padding-right:.7rem; } .ops-masthead h1 { font-size:1.45rem; } }
     </style>
+    <div class="ops-masthead">
+      <div class="ops-eyebrow">Intelligent ecosystem · simulation pilot</div>
+      <h1>EcoHVAC Digital Twin Operations Centre</h1>
+      <p>Two interacting room twins. One capacity-limited AHU. Explainable coordination, advisory fan-risk intelligence, and evidence-safe scenario control.</p>
+    </div>
     """,
     unsafe_allow_html=True,
-)
-st.title("EcoHVAC Guardian")
-st.caption(
-    "A two-room intelligent Digital Twin ecosystem: transparent shared-AHU coordination, simulated fan-risk prediction, "
-    "and a governed path from classroom pilot to safe facility deployment."
 )
 
 client, store = get_mqtt()
@@ -678,7 +651,7 @@ if "selected_room" not in st.session_state:
 
 workspace = st.radio(
     "Workspace",
-    ("Operate & demo", "Predictive intelligence", "Strategy & governance", "3D room comparison"),
+    ("Operations centre", "Predictive intelligence", "Strategy & governance", "Unified 3D facility"),
     horizontal=True,
     label_visibility="collapsed",
     key="workspace",
@@ -687,12 +660,28 @@ workspace = st.radio(
 
 @st.fragment(run_every=1.0)
 def live_workspace():
-    rooms, ahu, status, command_result, scenario, risk_history = snapshot_store(store)
-    if status == "offline":
+    snapshot = telemetry_snapshot_store(store)
+    rooms = snapshot["rooms"]
+    ahu = snapshot["ahu"]
+    status = snapshot["ecosystem_status"]
+    command_result = snapshot["command_result"]
+    scenario = snapshot["scenario"]
+    risk_history = snapshot["risk_history"]
+    reconcile_command_history(
+        snapshot["command_results"],
+        snapshot["command_result_count"],
+    )
+    broker_status = snapshot.get("broker_status", "unknown")
+    if broker_status != "connected":
+        st.error(
+            f"MQTT broker {broker_status} — offline presentation mode. Live controls are unavailable; "
+            "any displayed telemetry is last-known evidence."
+        )
+    elif status == "offline":
         st.error("Ecosystem simulator is offline — displaying the last retained values.")
     elif status != "online":
-        st.info("Waiting for retained ecosystem telemetry from the simulator…")
-    if workspace == "Operate & demo":
+        st.info("Broker connected; waiting for retained ecosystem telemetry from the simulator…")
+    if workspace == "Operations centre":
         render_operate_workspace(client, rooms, ahu, status, command_result, scenario)
     elif workspace == "Predictive intelligence":
         render_predictive_workspace(ahu, risk_history, command_result)

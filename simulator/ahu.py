@@ -11,6 +11,7 @@ AIR_SPECIFIC_HEAT_J_KG_C = 1005.0
 DEFAULT_SUPPLY_AIR_TEMP_C = 16.0
 DEFAULT_MAX_AIRFLOW_M3_S = 0.24
 MAX_FILTER_CLOG_PCT = 0.95
+COOLING_COP = 3.2
 
 
 @dataclass(frozen=True)
@@ -27,6 +28,18 @@ class AHUState:
     total_power_w: float = 0.0
     energy_kwh: float = 0.0
 
+    @property
+    def fan_electric_power_w(self) -> float:
+        return self.fan_power_w
+
+    @property
+    def cooling_electric_power_w(self) -> float:
+        return self.cooling_power_w
+
+    @property
+    def total_electric_power_w(self) -> float:
+        return self.total_power_w
+
 
 @dataclass(frozen=True)
 class AHUEnergy:
@@ -35,6 +48,18 @@ class AHUEnergy:
     fan_power_w: float
     cooling_power_w: float
     total_power_w: float
+
+    @property
+    def fan_electric_power_w(self) -> float:
+        return self.fan_power_w
+
+    @property
+    def cooling_electric_power_w(self) -> float:
+        return self.cooling_power_w
+
+    @property
+    def total_electric_power_w(self) -> float:
+        return self.total_power_w
 
 
 def available_airflow(ahu: AHUState) -> float:
@@ -102,8 +127,8 @@ def calculate_energy(
     resistance = 1.0 + 1.8 * clamp(ahu.filter_clog_pct, 0.0, MAX_FILTER_CLOG_PCT)
     wear_penalty = 1.0 + 0.25 * clamp(ahu.fan_wear_pct, 0.0, 1.0)
     fan_power = 180.0 * speed**3 * resistance * wear_penalty
-    # COP 3.2 means every 3.2 W of cooling needs approximately 1 W electric.
-    cooling_power = max(0.0, room_cooling_w) / 3.2
+    # COP defines thermal cooling delivered per watt of cooling electricity.
+    cooling_power = max(0.0, room_cooling_w) / COOLING_COP
     return AHUEnergy(
         fan_power_w=fan_power,
         cooling_power_w=cooling_power,

@@ -7,6 +7,11 @@ mosquitto/data/
 mosquitto/log/
 .claude/worktrees/
 
+# Local tamper-evident audit journal runtime files
+/runtime/audit/*.db
+/runtime/audit/*.db-wal
+/runtime/audit/*.db-shm
+
 # LaTeX build intermediates (retain final PDF and source package)
 *.aux
 *.bbl
