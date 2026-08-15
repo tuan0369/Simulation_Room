@@ -1,0 +1,16 @@
+Project-managed notebook execution
+==================================
+
+Command:
+uv run --group notebook jupyter nbconvert --to notebook --execute notebooks/fan_failure_prediction.ipynb --output release-evidence/project2/notebook/fan_failure_prediction.executed.ipynb --ExecutePreprocessor.timeout=300
+
+Result:
+- nbconvert completed successfully.
+- Retained executed notebook size: 224522 bytes.
+- Code cells: 11.
+- Execution counts: 1 through 11.
+- Error outputs: 0.
+- Submission and retained executed notebook SHA-256: 5f3edd88c2ee84f8b5e28a1e3d06e827e4ca7e709ffdbfcdf88db8c8291b9322.
+
+Scope boundary:
+All generated data and labels are synthetic. Passing execution demonstrates deterministic software behavior only; it does not establish real-facility failure probability or production fitness.

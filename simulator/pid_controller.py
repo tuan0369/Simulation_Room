@@ -64,6 +64,22 @@ class PIDController:
         output = p_term + i_term + d_term
         return max(0.0, min(1.0, output))
 
+    def apply_actuator_feedback(
+        self,
+        requested_output: float,
+        applied_output: float,
+        dt: float,
+    ) -> None:
+        """Bleed integral state when the shared actuator cannot meet a request."""
+        duration = max(0.0, float(dt))
+        requested = max(0.0, min(1.0, float(requested_output)))
+        applied = max(0.0, min(requested, float(applied_output)))
+        if duration <= 0.0 or requested <= applied + 1e-9 or self.ki <= 0.0:
+            return
+        tracking_error = requested - applied
+        self._integral -= tracking_error * duration / max(self.ki * 10.0, 1e-9)
+        self._integral = max(-self.INTEGRAL_MAX, min(self.INTEGRAL_MAX, self._integral))
+
     def reset(self):
         """Reset controller state. Call when HVAC is turned off."""
         self._integral = 0.0

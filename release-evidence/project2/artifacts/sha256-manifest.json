@@ -1,0 +1,68 @@
+{
+  "scope": "Current Project 2 model and deliverable artifacts only",
+  "source_head": "3187e93981d41ec2b84263559ab8c170069feef4",
+  "working_tree": "dirty",
+  "refresh_required_after_commits": true,
+  "artifacts": [
+    {
+      "path": "simulator/models/fan_risk_logistic.json",
+      "bytes": 1312,
+      "sha256": "fc389d1dfa7c01cf398332f05d783c676f85aeb67147c16423526fd8c2d757a2"
+    },
+    {
+      "path": "simulator/models/fan_risk_logistic.metrics.json",
+      "bytes": 364,
+      "sha256": "b409f2866dd1232fa4b7d2499d1b184678d3c1cc10a6d7c61b902b3e680f70f0"
+    },
+    {
+      "path": "simulator/data/fan_failure_synthetic.csv",
+      "bytes": 123269,
+      "sha256": "8cd9248067f299eab96c61fdfa500170ecbfa794518d932886201626a6aa06ee"
+    },
+    {
+      "path": "notebooks/fan_failure_prediction.ipynb",
+      "bytes": 224522,
+      "sha256": "5f3edd88c2ee84f8b5e28a1e3d06e827e4ca7e709ffdbfcdf88db8c8291b9322"
+    },
+    {
+      "path": "report/academic-report/main.pdf",
+      "bytes": 1043764,
+      "sha256": "fc8f2eb730e9a0da536c1df1ed1f374864cf5cec2d761d4f9a88910b68a72f63"
+    },
+    {
+      "path": "report/academic-report/EcoHVAC_Guardian_LaTeX_Source.zip",
+      "bytes": 709822,
+      "sha256": "8f08cb3d80512dd90393b02b65f4de9760da56ae8a0d21613339c18649a9efa8"
+    },
+    {
+      "path": "report/pitch/EcoHVAC_Guardian_Project2_Pitch.pptx",
+      "bytes": 440129,
+      "sha256": "408daf3309ec35c3db5cd16bbc4a439578e21217609363f7bb0ef5c9ca04aa63"
+    },
+    {
+      "path": "report/pitch/EcoHVAC_Guardian_Project2_Pitch.pdf",
+      "bytes": 287864,
+      "sha256": "897fc92b93044b26a12095882032bce41f784b73babb54c1cafde9d5d2745122"
+    },
+    {
+      "path": "report/pitch/generate_project2_pitch.js",
+      "bytes": 23411,
+      "sha256": "12fdb73a6ea0e08e6f4a5def504407c989b47f48015acf4c9bae761587409f5b"
+    },
+    {
+      "path": "report/pitch/evidence-index.json",
+      "bytes": 6312,
+      "sha256": "fec70d14cbc8d12ae65d6aa00ff0f365ba3ace145d2f7dfe2733cea0a82e2f48"
+    },
+    {
+      "path": "report/pitch/verification/verification.json",
+      "bytes": 3470,
+      "sha256": "6c5c65f391fc98b97422faedd399340f845f1a34646cd745459769dcedbf54fc"
+    },
+    {
+      "path": "release-evidence/project2/notebook/fan_failure_prediction.executed.ipynb",
+      "bytes": 224522,
+      "sha256": "5f3edd88c2ee84f8b5e28a1e3d06e827e4ca7e709ffdbfcdf88db8c8291b9322"
+    }
+  ]
+}

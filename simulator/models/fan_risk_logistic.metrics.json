@@ -1,0 +1,17 @@
+{
+  "accuracy": 0.8042,
+  "balanced_accuracy": 0.7491,
+  "brier_score": 0.1467,
+  "f1_score": 0.6619,
+  "false_negative": 63,
+  "false_positive": 31,
+  "holdout_rows": 480,
+  "log_loss": 0.4471,
+  "positive_prevalence": 0.3229,
+  "precision": 0.748,
+  "recall": 0.5935,
+  "roc_auc": 0.8449,
+  "specificity": 0.9046,
+  "true_negative": 294,
+  "true_positive": 92
+}

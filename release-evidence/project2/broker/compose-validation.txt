@@ -1,0 +1,13 @@
+Command: docker compose -f docker-compose.yml config --quiet
+Exit code: 0
+Result: PASS
+
+Validated configuration: default classroom docker-compose.yml
+Service: mosquitto
+Image declaration: eclipse-mosquitto:2
+Published ports: 1883/tcp (MQTT), 9001/tcp (WebSocket)
+Configuration mount: mosquitto/config/mosquitto.conf (read-only)
+Security scope: anonymous plaintext classroom/local demo configuration; not suitable for an untrusted network.
+
+Runtime integration note:
+An already-running Compose-managed Mosquitto container from this repository was used. Its image reported Mosquitto 2.1.2. Because the container predated this evidence run, it was deliberately left running. The current simulator publisher and capture subscriber started for the scenario were stopped.

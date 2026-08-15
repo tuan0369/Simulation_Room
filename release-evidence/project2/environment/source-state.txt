@@ -1,0 +1,13 @@
+Source branch: feat/intelligent-ecosystem
+Source HEAD: 3187e93981d41ec2b84263559ab8c170069feef4
+Working tree: DIRTY
+Release state: pre-final-commit working tree
+
+This evidence validates the current Project 2 working tree, not a final immutable release commit. The SHA-256 manifest should be refreshed after the intended commits because both source HEAD and working-tree contents may change.
+
+Dirty-state scope at evidence generation:
+- Modified tracked Project 2 implementation, tests, broker configuration, dashboard, documentation, report, and model artifact files were present.
+- Untracked Project 2 implementation, tests, notebook, hardened broker configuration, report, and pitch files were present.
+- The release-evidence/project2 directory itself was newly generated and untracked.
+
+Use `git status --short --branch` in the final release checkout to refresh exact dirty-state details without embedding machine-specific paths.

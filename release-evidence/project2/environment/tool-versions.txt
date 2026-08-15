@@ -1,0 +1,26 @@
+Project 2 release-evidence environment
+======================================
+Source platform: macOS Darwin 24.6.0 (arm64)
+Project Python: Python 3.10.9
+pytest: pytest 9.1.1
+uv: uv 0.9.21 (0dc9556ad 2025-12-30)
+Docker client: Docker version 23.0.5, build bc4487a
+Docker server: 23.0.5
+Docker Compose: Docker Compose version v2.17.3
+Mosquitto image runtime: 2.1.2 (eclipse-mosquitto:2)
+paho-mqtt: 2.1.0
+NumPy (project environment): 2.2.6
+Streamlit: 1.59.2
+Plotly: 6.9.0
+Jupyter nbconvert: 7.17.1
+nbclient: 0.8.0
+nbformat: 5.9.2
+IPython: 8.14.0
+pandas (notebook runtime): 2.3.3
+matplotlib (notebook runtime): 3.9.0
+NumPy (notebook runtime): 2.4.6
+
+Notes:
+- Version output intentionally excludes usernames, hostnames, and absolute paths.
+- Project tests ran in the repository virtual environment.
+- Notebook validation ran with the available Jupyter kernel environment because nbclient was not installed in the project virtual environment.

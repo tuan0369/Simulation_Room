@@ -1,0 +1,41 @@
+# Opt-in external deployment example. The default docker-compose.yml remains
+# the anonymous plaintext classroom configuration.
+services:
+  mosquitto-hardened:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto-hardened
+    profiles: ["hardened"]
+    ports:
+      - "8883:8883"   # MQTT over TLS
+      - "9002:9002"   # MQTT over secure WebSockets (WSS)
+    volumes:
+      - ./mosquitto/config/mosquitto-hardened.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./mosquitto/config/acl.hardened:/mosquitto/config/acl.hardened:ro
+      - ./mosquitto/runtime/certs:/mosquitto/certs:ro
+      - mosquitto-hardened-data:/mosquitto/data
+    secrets:
+      - mosquitto_passwords
+    # Mosquitto 2.1 warns when ACL/password files are not mode 0600 and owned
+    # by its service user. A real orchestrator should mount them that way. This
+    # Compose-only wrapper stages read-only inputs with those permissions, then
+    # drops privileges before starting the broker.
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        install -o mosquitto -g mosquitto -m 0600 /mosquitto/config/acl.hardened /tmp/acl.hardened
+        install -o mosquitto -g mosquitto -m 0600 /run/secrets/mosquitto_passwords /tmp/mosquitto_passwords
+        sed -e 's#/mosquitto/config/acl.hardened#/tmp/acl.hardened#' \
+            -e 's#/run/secrets/mosquitto_passwords#/tmp/mosquitto_passwords#' \
+            /mosquitto/config/mosquitto.conf > /tmp/mosquitto.conf
+        exec su mosquitto -s /bin/sh -c 'exec mosquitto -c /tmp/mosquitto.conf'
+    restart: unless-stopped
+
+secrets:
+  # Docker Compose secrets are mounted files, not a secret-management system.
+  # Keep this generated password file out of version control and use the target
+  # platform's secret store for a real deployment.
+  mosquitto_passwords:
+    file: ./mosquitto/runtime/secrets/passwords
+
+volumes:
+  mosquitto-hardened-data:

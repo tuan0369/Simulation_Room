@@ -1,0 +1,80 @@
+\chapter{Physical, Control, Degradation, and Energy Models}
+\label{ch:physics}
+
+\section{Discrete-time assumptions}
+All models are lightweight teaching proxies, not calibrated building models. The simulator uses a non-negative step $\Delta t$ in seconds, normally selected from $\{1,2,5,10\}$. State clipping prevents numerical values outside demonstration bounds. Occupancy may advance through a bounded stochastic random walk after room physics; deterministic scenario analysis should disable or seed it. Reported values are rounded only at MQTT/display boundaries.
+
+\section{Local PID request}
+The temperature error is positive when a room is hot:
+\begin{equation}e_{i,k}=T_{i,k}-T^{sp}_{i,k}.\end{equation}
+The implemented discrete controller is
+\begin{align}
+I_{i,k}&=\clip(I_{i,k-1}+e_{i,k}\Delta t;-20,20),\\
+D_{i,k}&=\begin{cases}(e_{i,k}-e_{i,k-1})/\Delta t,&\Delta t>0,\\0,&\Delta t=0,\end{cases}\\
+u_{i,k}&=\clip(0.40e_{i,k}+0.05I_{i,k}+0.05D_{i,k};0,1),\\
+r_{i,k}&=0.16h_{i,k}u_{i,k}\quad [\si{\meter\cubed\per\second}].
+\end{align}
+On first use, previous error is initialized to current error, so the derivative is zero. Integral clamping bounds its contribution to $\pm1$. After allocation, \code{apply\_actuator\_feedback} converts granted flow to applied output $u_i^{app}=g_i/0.16$ and bleeds the integral when $u_i>u_i^{app}$:
+\begin{equation}I_i\leftarrow\clip\!\left(I_i-\frac{(u_i-u_i^{app})\Delta t}{10K_i};-20,20\right),\qquad K_i>0.\end{equation}
+This back-calculation-style feedback reduces windup under shared-actuator saturation; it does not itself guarantee fairness or eliminate a sustained full request under persistent heat load. PID fundamentals and anti-windup concerns are discussed in \citet{astrom2006advanced}.
+
+Auto mode switches cooling off at zero occupancy and on when an occupied room is above setpoint; otherwise it keeps the previous binary state. Setpoints are clamped to \SIrange{18}{30}{\celsius}.
+
+\section{Available shared airflow}
+With nameplate flow $F_{\max}=\SI{0.24}{\meter\cubed\per\second}$, clog fraction $c_k\in[0,0.95]$, and wear fraction $w_k\in[0,1]$,
+\begin{equation}
+F^{avail}_k=F_{\max}(1-0.65c_k)(1-0.15w_k).
+\label{eq:available}
+\end{equation}
+At defaults $c_0=0.05,w_0=0.03$, \cref{eq:available} gives \SI{0.2311551}{\meter\cubed\per\second}; at maximum modeled degradation it gives \SI{0.07803}{\meter\cubed\per\second}. Names ending in \code{\_pct} for clog, wear, and speed are fractions, not numbers in $[0,100]$; the dashboard formats them as percentages. Humidity and health, in contrast, are percentage-point quantities.
+
+\section{Active supply-air thermal equation}
+The active ecosystem computes occupant and envelope loads and sensible supply-air cooling:
+\begin{align}
+Q^{people}_{i,k}&=n_{i,k}q_p, & q_p&=\SI{100}{\watt\per\person},\\
+Q^{wall}_{i,k}&=K_w(T_o-T_{i,k}), &K_w&=\SI{0.05}{\watt\per\celsius},\quad T_o=\SI{32}{\celsius},\\
+Q^{cool}_{i,k}&=\rho_ac_{p,a}g_{i,k}\max(0,T_{i,k}-T_s),
+\end{align}
+where $\rho_a=\SI{1.2}{\kilogram\per\meter\cubed}$, $c_{p,a}=\SI{1005}{\joule\per\kilogram\per\celsius}$, and $T_s=\SI{16}{\celsius}$. Thus $\rho_ac_{p,a}=\SI{1206}{\joule\per\meter\cubed\per\celsius}$. With lumped heat capacity $C_r=\SI{25000}{\joule\per\celsius}$,
+\begin{equation}
+T_{i,k+1}=\clip\!\left(T_{i,k}+\frac{\Delta t}{C_r}[Q^{people}_{i,k}+Q^{wall}_{i,k}-Q^{cool}_{i,k}];15,40\right).
+\label{eq:thermal}
+\end{equation}
+The very low nominal envelope conductance and heat capacity are classroom assumptions. No infiltration, solar gain, thermal mass separation, duct losses, latent psychrometrics, or sensor dynamics are calibrated. Accordingly, the output demonstrates causal logic, not compliance with a comfort standard such as ASHRAE~55 \citep{ashrae55}.
+
+\paragraph{Legacy distinction.} \code{physics.py} retains an older direct-AC equation with a $-3500h_iu_i$ W term. \code{EcosystemSimulator.tick} calls \code{step\_temperature\_from\_supply\_air}, so \cref{eq:thermal}---not the legacy direct term---is the report's active model.
+
+\section{Humidity proxy}
+\begin{equation}
+H_{i,k+1}=\clip\!\left(H_{i,k}+\Delta t(0.06n_{i,k}-2.1g_{i,k});15,80\right).
+\label{eq:humidity}
+\end{equation}
+Here $0.06n$ is an empirical occupancy moisture increment and $2.1g$ an airflow-driven drying rate in units required to produce percentage points per second. This is not a humidity-ratio or latent-load calculation and should not be interpreted psychrometrically.
+
+\section{Filter, fan condition, and energy}
+Total delivered flow and normalized speed are
+\begin{equation}G_k=\sum_i g_{i,k},\qquad s_k=\clip(G_k/F_{\max};0,1).\end{equation}
+The filter grows as
+\begin{equation}c_{k+1}=\clip(c_k+2.5\times10^{-6}s_k\max(0,\Delta t);0,0.95).\end{equation}
+Fan wear and derived telemetry are
+\begin{align}
+w_{k+1}&=\clip[w_k+\Delta t\,s_k(8\times10^{-7}+1.5\times10^{-6}c_{k+1});0,1],\\
+T^*_{b,k+1}&=31+23s_k+13c_{k+1}+12w_{k+1},\\
+T_{b,k+1}&=T_{b,k}+\min(1,\Delta t/45)(T^*_{b,k+1}-T_{b,k}),\\
+v_{k+1}&=0.8+4w_{k+1}+1.4c_{k+1}s_k,\\
+h^{fan}_{k+1}&=\clip(100-72w_{k+1}-20c_{k+1};0,100),\\
+t^{run}_{k+1}&=t^{run}_k+\Delta t\,s_k/3600.
+\end{align}
+These are empirical simulation relations, not identified degradation laws. The $c_{k+1}$ indices are intentional: \code{advance\_ahu} updates filter loading before \code{step\_fan\_state} receives the clog value. Fan speed $s_k$ and energy, in contrast, are calculated from the just-completed allocation using pre-update AHU condition.
+
+The modeled fan and cooling electrical powers are
+\begin{align}
+P^{fan}_k&=180s_k^3(1+1.8c_k)(1+0.25w_k),\label{eq:fanpower}\\
+P^{cool,e}_k&=\frac{\sum_iQ^{cool}_{i,k}}{3.2},\\
+P^{total}_k&=P^{fan}_k+P^{cool,e}_k,\\
+E_{k+1}&=E_k+\frac{P^{total}_k\Delta t}{3.6\times10^6}\quad[\si{\kilo\watt\hour}].
+\end{align}
+The cubic relation reflects the familiar fan-system affinity-law trend, while actual systems depend on their operating curve and controls \citep{doefan2003}. Importantly, clog does \emph{not} unconditionally increase modeled total power. At fixed $s$, the resistance multiplier in \cref{eq:fanpower} increases with $c$; under saturated demand, however, clog reduces available flow and therefore $s^3$, which can dominate. The report therefore claims only increased modeled resistance at fixed flow.
+
+\section{Timing consistency}
+The room runtime stores the exact pre-state sensible thermal cooling used by the room update and AHU calculation, and MQTT publishes that stored value as \code{thermal\_cooling\_power\_w}. AHU telemetry separately publishes fan electrical power, COP-derived cooling electrical power, total electrical power, and cumulative electrical energy. Thus the earlier pre/post-step recomputation discrepancy is removed and thermal versus electrical quantities are explicit; they remain uncalibrated simulation estimates rather than facility measurements.

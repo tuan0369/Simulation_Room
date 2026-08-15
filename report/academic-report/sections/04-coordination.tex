@@ -1,0 +1,42 @@
+\chapter{Centralized Coordination}
+\label{ch:coordination}
+
+\section{Priority and allocation}
+For enabled room $i$, positive comfort error and request are
+\begin{equation}e_i^+=\max(0,T_i-T_i^{sp}),\qquad r_i=\max(0,r_i^{raw}).\end{equation}
+The implemented \code{occupied-comfort-debt-v2} priority tuple is
+\begin{equation}
+\pi_i=(\indicator[n_i>0],e_i^+,d_i,n_i,\mathrm{roomID}_i),
+\end{equation}
+where $d_i$ is bounded accumulated comfort debt in \si{\celsius\second}. Sorting is descending on the first four fields and ascending lexical room ID. Let $(1),\ldots,(N)$ be that order. Starting with $R_0=F^{avail}$,
+\begin{equation}
+g_{(j)}=\min(r_{(j)},R_{j-1}),\qquad R_j=R_{j-1}-g_{(j)}.
+\label{eq:greedy}
+\end{equation}
+Disabled rooms request zero. Capacity is flagged constrained when $\sum_i r_i>F^{avail}+10^{-9}$.
+
+\section{Comfort-debt state and actuator feedback}
+For an enabled occupied room with positive request, limited service adds
+\begin{equation}
+d_{i,k+1}=\clip\!\left[d_{i,k}+e_i^+\left(\frac{r_i-g_i}{r_i}\right)\Delta t;0,3600\right]
+\end{equation}
+and increments consecutive limited-service time by $\Delta t$. Full service recovers debt at $2$~\si{\celsius\second} per simulated second and resets consecutive limited-service time; disabled, unoccupied, or no-request states also recover debt and reset that timer. Debt enters priority only after current occupancy and temperature error, so it mitigates near-tie starvation but cannot overrule a larger current error.
+
+The grant is also fed back to the local PID as applied output $g_i/0.16$. This reduces integral windup when the shared actuator cannot deliver the requested output; it does not make allocation proportional or guarantee minimum service.
+
+\section{Safety invariants and replayability}
+Because each update is a minimum with a non-negative remainder, the pure function guarantees
+\begin{equation}0\le g_i\le r_i,\qquad \sum_i g_i\le F^{avail}.\end{equation}
+The same demand list, including debt state, and capacity produce the same decisions, scores, and reason codes. This makes allocation unit-testable and replayable. Sorting dominates complexity at $O(N\log N)$; allocation is $O(N)$.
+
+\section{Interpretation and limits}
+The rule can be interpreted as lexicographically maximizing the service sequence in ranked order, but it is not a scalar multi-objective optimization. It has no explicit energy, risk, minimum-ventilation, switching-cost, or guaranteed proportional-fairness term. An occupied room with a larger current error may consume all remaining flow despite another room's debt. Equal current conditions may be influenced by debt; if debt and occupancy also tie, stable room ID remains the final resolver.
+
+Appropriate reported metrics include room allocation ratio $g_i/r_i$, comfort debt, consecutive limited-service time, denied-flow integral $\sum_k(r_i-g_i)\Delta t$, degree-hours outside the comfort band, and maximum room disparity. Production policy would additionally need explicit minimum ventilation and owner-approved comfort/starvation limits.
+
+\section{Why two rooms are sufficient}
+Two rooms already create the non-trivial inequality $r_1+r_2>F^{avail}$ and expose every core mechanism: cross-twin causality, capacity conservation, priority, a full or partial grant, a zero grant, debt accumulation/recovery, comfort consequences, and shared fan/energy state. Five copies without a new hypothesis would add UI surface, not intelligence.
+
+For future equal maximum requests,
+\begin{equation}R_{max}(N)=0.16N,\qquad \phi_N=F^{avail}/(0.16N).\end{equation}
+At initial availability, $\phi_2=0.7224$ and $\phi_5=0.2889$. At $c=0.85,w=0.75$, $F^{avail}=\SI{0.0953175}{\meter\cubed\per\second}$, giving $\phi_2=0.2979$ and $\phi_5=0.1191$. These are aggregate ratios; under greedy allocation some lower-ranked rooms receive zero. A five-room extension is therefore justified only as a fairness, latency, message-load, and scalability experiment accompanied by generalized configuration and tests.

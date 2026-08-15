@@ -1,0 +1,28 @@
+{
+  "pptx_valid_zip": true,
+  "pptx_slide_xml_count": 8,
+  "pptx_notes_xml_count": 8,
+  "personal_absolute_path_absent": true,
+  "pdf_page_count": 0,
+  "fact_checks": {
+    "current_runtime_rooms": 4,
+    "runtime_ahu_max_m3_s": 0.24,
+    "stress_request_m3_s": 0.3776,
+    "stress_available_m3_s": 0.0953175,
+    "current_verified_tests": "161 passed; 0 failures/errors/skips",
+    "notebook": "11/11 code cells executed in archived prior-revision run",
+    "unsupported_report_claims_not_propagated": true
+  },
+  "pdf_pages": [],
+  "visual_review": "Regenerated all 8 PDF-derived slide PNGs and the contact sheet; visually inspected the complete contact sheet with no clipping, overlap, missing content, or unreadable layout observed.",
+  "source_reproduction": "npm ci && npm run build; export PPTX to PDF with Microsoft PowerPoint",
+  "dependency_note": "PptxGenJS 4.0.1 resolves image-size 2.0.2 via override; npm audit still reports two high-severity parser DoS advisories. Deck generation uses repository-controlled PNG input only.",
+  "sha256": {
+    "EcoHVAC_Guardian_Project2_Pitch.pptx": "030ec516a64a4ab31f48e92f251fc0c9d8a143edeff91aa64851adaf009c4e53",
+    "EcoHVAC_Guardian_Project2_Pitch.pdf": "3a16883879a3f05043755190589b9d981f7903bdbe311e40b0df696d672110c7",
+    "generate_project2_pitch.js": "09d6f493ce3b2674d542ac5e600e3161efb2766283dc2269ecb7dd7790d6d990",
+    "evidence-index.json": "3b3c2ca377a2e3c980e42d31a292fb2efcb7744b31828c958afb26265fd1acdb",
+    "package.json": "c620a61e2290e30407006c6f367b4a96febb44e10cba68f8e089f08eeb9b73f3",
+    "package-lock.json": "01c5eaa4486899d2d2ffa88c9c07b4109608c23f71f4ea52fc908a1085da5a1d"
+  }
+}

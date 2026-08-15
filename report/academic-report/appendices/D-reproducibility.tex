@@ -1,0 +1,37 @@
+\chapter{Reproducibility and Submission Manifest}
+\label{app:repro}
+
+\section{Environment and commands}
+The Python project declares Python $\ge3.10$ and Streamlit, Paho MQTT, Plotly, NumPy, and pytest development dependencies. Mosquitto is launched through Compose; simulator/dashboard/3D server require separate host commands. The LaTeX build was produced with TeX Live 2025 and \code{latexmk}.
+
+\begin{lstlisting}[language=bash,caption={Core reproduction commands (from the Simulation\_Room root unless noted).}]
+# Broker
+docker compose up -d
+# Regenerate deterministic data/model/metrics
+uv run python simulator/train_fan_model.py --seed 20260805 --rows 2400
+# Verify Python suite
+uv run pytest -q
+# Compile, verify and package report
+cd report/academic-report
+make distclean
+make all
+make verify
+make package
+make verify-package
+\end{lstlisting}
+
+\section{Known pre-submission placeholders and missing evidence}
+\begin{enumerate}
+\item Replace bracketed team/student-ID and course/instructor fields in \code{metadata.tex}.
+\item Record final branch, report commit hash, clean/dirty status, operating system, Python and package versions after the report commit is created.
+\item Retain raw test output/JUnit and coverage tied to that final commit if required by the submission channel.
+\item Verify the present executed training notebook reruns cleanly in the submitted environment and preserve its outputs/provenance.
+\item Add the final current-system Project~2 executive pitch in PPTX and exported PDF; the Markdown outline exists but is not the named deliverable, and legacy Project~1 PPTX/video are invalid evidence.
+\item Repair/remove guided scenarios, then capture one command manifest and raw telemetry log.
+\end{enumerate}
+
+\section{Figure provenance}
+Only five current Project~2 images are copied into this package: integrated architecture, two-room stress, predictive intelligence, strategy/governance, and two-room 3D. The generic operate-dashboard capture and all legacy Project~1 screenshots, deck, scripts, and videos are excluded deliberately.
+
+\section{Integrity manifest and source archive}
+The canonical source directory contains the modular LaTeX files, bibliography, five figures, build configuration, final PDF, source ZIP, and \code{SHA256SUMS}. The source ZIP contains only the files needed to rebuild the report; it excludes generated LaTeX intermediates, the PDF, the ZIP itself, and the checksum manifest. \code{make package} recreates the source ZIP and then writes hashes for both the PDF and ZIP plus every source file. \code{make verify-package} verifies all hashes and tests the ZIP archive. If any source, figure, or metadata changes, rebuild the PDF and rerun both targets before publication.

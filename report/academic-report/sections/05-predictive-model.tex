@@ -1,0 +1,106 @@
+\chapter{Predictive-Maintenance Model}
+\label{ch:model}
+
+\section{Task and evidence boundary}
+The operational feature vector is
+\begin{equation}\mathbf{x}=(c,s,v,T_b,t^{run})^\top,\end{equation}
+comprising filter-clog fraction, fan-speed fraction, vibration (\si{\milli\meter\per\second}), bearing temperature (\si{\celsius}), and run hours. The binary target is named \code{failure\_within\_7d}. That name is a declared synthetic maintenance horizon: no asset trajectory is advanced seven days, and no observed future event, censoring, maintenance reset, or equipment ID exists. The model estimates the synthetic label relationship, not a calibrated real-fan probability.
+
+\section{Seeded synthetic generator}
+The generator creates 2,400 independent rows with seed 20260805:
+\begin{align}
+c&\sim U(0,0.95),&s&\sim U(0.08,1),&t^{run}&\sim U(0,9000),\\
+\epsilon_w&\sim U(-0.08,0.08),&w&=\min(1,0.05+t^{run}/15000+\epsilon_w),\\
+\epsilon_v&\sim\mathcal N(0,0.22^2),&v&=\max(0.4,0.7+3.9w+1.35cs+\epsilon_v),\\
+\epsilon_T&\sim\mathcal N(0,1.4^2),&T_b&=30+22s+15c+15w+\epsilon_T.
+\end{align}
+The hidden label relation is
+\begin{align}
+\eta^{gen}={}&-6.3+1.6c+0.9s+0.75(v-1)\\
+&+0.105(T_b-35)+0.00014t^{run},\\
+p^{gen}&=\sigma[\clip(\eta^{gen};-50,50)],\qquad y\sim\operatorname{Bernoulli}(p^{gen}).
+\end{align}
+The Bernoulli draw uses the unrounded generated values. The five predictors are then rounded to six decimal places before they are stored and passed to training. The generator's wear expression has an upper but no explicit lower clamp; given its specified ranges, slightly negative wear is possible near zero run hours. This is a dataset-quality limitation.
+
+\section{Training algorithm}
+A seeded permutation creates 1,920 training and 480 holdout rows. Means $\mu_j$ and population standard deviations $\sigma_j$ are calculated from training rows only; scales below $10^{-9}$ are replaced with one:
+\begin{equation}z_{ij}=(x_{ij}-\mu_j)/\sigma_j.\end{equation}
+Starting with zero coefficients/intercept, 2,400 full-batch gradient steps at learning rate $\alpha=0.08$ minimize unregularized binary cross-entropy
+\begin{equation}
+\mathcal L(\boldsymbol\beta,b)=-\frac1m\sum_{i=1}^m[y_i\log p_i+(1-y_i)\log(1-p_i)],
+\end{equation}
+using
+\begin{align}
+\mathbf p&=\sigma(Z\boldsymbol\beta+b),\\
+\boldsymbol\beta&\leftarrow\boldsymbol\beta-0.08Z^\top(\mathbf p-\mathbf y)/m,\\
+b&\leftarrow b-0.08\operatorname{mean}(\mathbf p-\mathbf y).
+\end{align}
+This is conventional binary logistic regression \citep{bishop2006pattern}. There is no conventional standardization leakage, because holdout rows do not define the training means/scales. There is nevertheless \emph{generator circularity}: labels arise from these same predictors and a logistic family that the learner is designed to recover.
+
+\section{Stored model and exact runtime equation}
+\begin{table}[H]
+\centering
+\caption{Checked-in model parameters. Means and scales are train-set statistics; coefficients act on standardized features.}
+\label{tab:modelparams}
+\begin{tabular}{lrrr}
+\toprule
+Feature $j$ & $\mu_j$ & $\sigma_j$ & $\beta_j$\\
+\midrule
+Filter clog fraction & 0.48097131 & 0.27703595 & 0.52486318\\
+Fan speed fraction & 0.54311963 & 0.26961559 & 0.32268269\\
+Vibration (mm/s) & 2.39246047 & 0.79832257 & 0.72890271\\
+Bearing temperature (\si{\celsius}) & 54.29740422 & 7.94594929 & 0.65599373\\
+Run hours & 4392.58951949 & 2595.06254848 & 0.39002046\\
+\bottomrule
+\end{tabular}
+\end{table}
+With intercept $b=-1.45350261$, the deployed logit is
+\begin{align}
+\eta={}&-1.45350261+0.52486318\frac{c-0.48097131}{0.27703595}
++0.32268269\frac{s-0.54311963}{0.26961559}\\
+&+0.72890271\frac{v-2.39246047}{0.79832257}
++0.65599373\frac{T_b-54.29740422}{7.94594929}\\
+&+0.39002046\frac{t^{run}-4392.58951949}{2595.06254848},\\
+\risk&=\sigma[\clip(\eta;-50,50)].
+\label{eq:risk}
+\end{align}
+The artifact version is \code{fan-risk-logistic-v1}. The trainer also persists per-feature domain bounds: physical limits intersected with the training minimum/maximum expanded by 30\% of its range. Runtime scoring first requires all five finite numeric inputs inside those bounds; otherwise it returns no probability and an explicit abstained or out-of-distribution status. A missing/corrupt default artifact loads an unavailable non-predicting fallback. These are safe non-prediction states, not evidence of low risk. Runtime bands for an in-domain score are
+\begin{equation}
+\operatorname{band}(p)=\begin{cases}\text{low},&p<0.35,\\\text{medium},&0.35\le p<0.65,\\\text{high},&p\ge0.65.\end{cases}
+\end{equation}
+These operating labels are distinct from the $0.5$ cutoff used to calculate stored classification metrics. Conflating the two would make the dashboard threshold and reported confusion matrix appear inconsistent.
+
+\section{Explainability}
+For each feature, the displayed contribution is
+\begin{equation}d_j=\beta_j(x_j-\mu_j)/\sigma_j,\qquad \eta=b+\sum_jd_j.\end{equation}
+It is an additive log-odds decomposition, not a causal effect. Correlated generated features (wear influences vibration and temperature) mean contributions should not be interpreted independently. The code selects the three largest \emph{signed} $d_j$, not the largest magnitudes; a strong negative risk-reducing contribution can therefore be omitted. A fuller UI would show the intercept, all five signed terms, and the final sigmoid.
+
+\section{Holdout results}
+\begin{table}[H]
+\centering
+\caption{Holdout confusion matrix at classification cutoff 0.5 ($n=480$).}
+\begin{tabular}{lrr}
+\toprule & Predicted negative & Predicted positive\\
+\midrule
+Actual negative & TN = 294 & FP = 31\\
+Actual positive & FN = 63 & TP = 92\\
+\bottomrule
+\end{tabular}
+\end{table}
+Stored metrics are
+\begin{align}
+\mathrm{Accuracy}&=(TP+TN)/480=0.8042,\\
+\mathrm{Precision}&=TP/(TP+FP)=0.7480,\\
+\mathrm{Recall}&=TP/(TP+FN)=0.5935.
+\end{align}
+The 63 false negatives are operationally material. The current metrics artifact stores the following expanded measures (earlier versions stored only the basic counts/rates):
+\begin{align}
+\mathrm{Specificity}&=TN/(TN+FP)=0.9046,\\
+F_1&=2TP/(2TP+FP+FN)=0.6619,\\
+\mathrm{NPV}&=TN/(TN+FN)=0.8235,\\
+\mathrm{Balanced\ accuracy}&=(\mathrm{Recall}+\mathrm{Specificity})/2=0.7491.
+\end{align}
+Holdout positive prevalence is $155/480=0.3229$, so an always-negative classifier scores 0.6771 accuracy; model accuracy is 0.1271 higher. Accuracy alone is insufficient, and PR curves are particularly useful under unequal class prevalence \citep{saito2015pr}. The stored artifact now includes ROC-AUC 0.8449, log loss 0.4471, and Brier score 0.1467; the executed notebook adds the majority baseline, confusion matrix, and calibration bins. PR-AUC/average precision, confidence intervals, cost-based threshold selection, and field calibration remain absent. Brier score assesses probability error \citep{brier1950}; synthetic calibration bins do not establish calibration on real assets \citep{guo2017calibration}.
+
+\section{Validity and deployment gaps}
+One random holdout has no temporal or asset-group separation, repeated seeds, confidence intervals, external data, or prospective drift evaluation. Missing/non-finite inputs and univariate domain violations now cause explicit abstention; however, in-bound multivariate combinations can still be unlike training rows. Thresholds are not selected from maintenance costs. The executed notebook provides EDA, a majority baseline, expanded metrics, calibration bins, OOD examples, limitations, and exact artifact reproduction. The remaining evidence upgrade is realistic asset/time trajectories, grouped or temporal validation, PR analysis, bootstrap intervals, threshold-cost analysis, multivariate drift/OOD behavior, and a prospectively governed model card \citep{mitchell2019modelcards}.

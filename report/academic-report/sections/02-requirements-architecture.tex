@@ -1,0 +1,73 @@
+\chapter{Requirements, System Boundary, and Architecture}
+\label{ch:architecture}
+
+\section{Operational definitions}
+Here, an \emph{asset/zone twin} has a referent, a state vector, update rules, interfaces, and lifecycle. Room~1, Room~2, and the shared AHU/fan satisfy this prototype definition. Energy and risk are analytical models/views derived from asset state; the coordinator is a decision service; MQTT is communication infrastructure; the dashboard and 3D clients are presentation/operator applications. This taxonomy avoids inflating every software component into a twin.
+
+\emph{Autonomous} means the simulator can repeatedly sense state, calculate room requests, allocate shared capacity, apply the grant to physical state, and publish the result without a human selecting each allocation. It does not mean that the ML model autonomously operates or maintains the AHU. \emph{Intelligent} refers to runtime predictive inference plus context-aware, explainable coordination, not to general agency.
+
+\section{Requirements and acceptance criteria}
+\begin{longtable}{L{0.07\textwidth}L{0.27\textwidth}L{0.30\textwidth}L{0.25\textwidth}}
+\caption{HW2 requirement interpretation and auditable acceptance criteria.}\label{tab:req}\\
+\toprule
+ID & Brief requirement & Acceptance criterion & As-built evidence/status \\
+\midrule
+\endfirsthead
+\toprule ID & Brief requirement & Acceptance criterion & As-built evidence/status \\
+\midrule\endhead
+R1 & Intelligent/autonomous ecosystem & Repeating closed state-to-decision-to-physical-state loop & Local PID, coordinator, supply-air physics; \textbf{met for deterministic control}. \\
+R2 & Failure-prediction model & Versioned trained model produces runtime risk & JSON logistic artifact scored each tick; \textbf{met with synthetic validity boundary}. \\
+R3 & Multiple interacting twins & One twin's demand changes another's grant through a shared constraint & Two-room stress evidence; \textbf{met}. \\
+R4 & Data-flow map and coordination strategy & Diagram names flows and central/federated strategy & Integrated architecture and centralized allocator; \textbf{met}. \\
+R5 & Cybersecurity measures & Current controls and target controls are separated and threat-led & Strict validation, retained-command rejection, correlated results, bounded replay cache, optional local hash-chain command audit, and LWT are current; TLS/identity/ACL files are undeployed examples; \textbf{partial}. \\
+R6 & ROI analysis & Equations, inputs, outputs, provenance, sensitivity & Calculator and illustrative scenarios; no measured baseline; \textbf{partial}. \\
+R7 & Transparency and bias mitigation & Model/policy explanation plus operational mitigation process & Coefficients, contributions, reason codes; subgroup thresholds/process planned; \textbf{partial}. \\
+R8 & Pilot-to-scale roadmap & Stages, owners, gates, KPIs, rollback & Five-stage governed plan; \textbf{documented, not executed}. \\
+R9 & Notebook or AutoML result & Executable named deliverable included & Fully executed \code{notebooks/fan\_failure\_prediction.ipynb} is present and inspected; clean submission-environment rerun remains; \textbf{met as present}. \\
+R10 & Executive pitch & Current Project~2 PPTX plus exported PDF focused on value, evidence, security, ethics, and the pilot ask & Markdown outline only; final Project~2 deck/export absent; Project~1 PPTX/video are legacy and invalid as Project~2 evidence; \textbf{not met}. \\
+\bottomrule
+\end{longtable}
+
+\section{Submission deliverables register}
+\label{sec:deliverables}
+This report does not substitute for verifying the executed HW2 training notebook in the submission environment or for producing the final executive-pitch PPTX/PDF. The register separates files that exist from work still needed; ``current'' means found in the audited project/package, not independently approved by the instructor.
+\begin{longtable}{L{0.24\textwidth}L{0.27\textwidth}L{0.38\textwidth}}
+\caption{Named submission assets and closure actions.}\label{tab:deliverables}\\
+\toprule
+Deliverable & Current status & Action and acceptance evidence\\
+\midrule
+\endfirsthead
+\toprule Deliverable & Current status & Action and acceptance evidence\\
+\midrule\endhead
+Academic report PDF and portable source & \current: PDF, TeX, bibliography, figures, build files, source ZIP, and hashes & Complete metadata; clean-build from extracted ZIP; submit current PDF/source with verified manifest.\\
+Executed model notebook or accepted AutoML output & \current: 23-cell notebook with all 11 code cells executed; includes EDA, baseline/expanded metrics, confusion matrix, calibration bins, OOD/abstention examples, limitations, and exact artifact checks & Verify a clean rerun in the submitted environment; preserve outputs, environment/provenance, and byte-for-byte artifact/metric checks.\\
+Ecosystem/data-flow diagram & \current: integrated two-room architecture figure & Verify legibility and consistency with exactly two rooms, centralized allocation, active supply-air model, and advisory ML boundary.\\
+Project~2 executive pitch PPTX and exported PDF & \current: editable generator, eight-slide PPTX, eight-page PDF, evidence index, and rendered verification under \code{report/pitch/} & Preserve source-relative assets and final hashes; team must still name the pitch owner and rehearse against the assigned time. Legacy Project~1 PPTX and videos remain invalid evidence.\\
+Current evidence screenshots & \current: five Project~2 figures copied into the source package & Retain provenance; ensure captions distinguish state evidence from intervention/repeated-run proof.\\
+Model artifacts & \current: versioned JSON coefficients and stored metrics; synthetic only & Hash and include artifact, metrics, generator/trainer version, and executed notebook evidence; do not present audit-derived metrics as stored.\\
+Test evidence & \current recorded run: 145 tests pass; raw console/JUnit, environment, hashes, and real-broker stress/pause/baseline evidence are archived under \code{release-evidence/project2/} & Refresh source-state and hashes after the final commit; add coverage, browser automation, hardened-client integration, and reviewer disposition.\\
+Reproducibility manifest & \current: build commands, source ZIP, and \code{SHA256SUMS} & Verify hashes after final metadata/content changes and prove a clean build from the extracted archive without parent files.\\
+\bottomrule
+\end{longtable}
+
+\section{Logical architecture}
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{00-integrated-architecture.png}
+\caption{As-built two-room logical architecture. Green/blue data paths link local control, centralized allocation, shared-AHU physics, fan risk, MQTT, and evidence clients. Prediction is intentionally marked advisory.}
+\label{fig:architecture}
+\end{figure}
+
+The coordinator is centralized because one service has the complete demand set and controls one indivisible shared capacity. PID remains local to preserve per-zone state and response. A federated strategy is not implemented and would be relevant only across multiple AHUs/buildings or when local operation must survive loss of a higher-level coordinator.
+
+\section{State, interfaces, and update order}
+For room $i$, a useful abstract state is
+\begin{equation}
+\mathbf{x}_{i,k}=[T_{i,k},H_{i,k},n_{i,k},T^{sp}_{i,k},h_{i,k},u_{i,k},r_{i,k},g_{i,k}]^\top .
+\end{equation}
+The AHU state includes maximum and available airflow, supply temperature, clog, wear, speed, instantaneous power, and cumulative energy. Fan-health state includes run hours, wear, vibration, bearing temperature, and health.
+
+One \code{tick} executes in this exact order: (1) auto-HVAC and PID requests; (2) available-capacity calculation; (3) centralized allocation; (4) room temperature/humidity updates using granted flow; (5) AHU filter/energy update; (6) fan-state update; (7) logistic-risk inference; (8) coherent snapshot return and periodic MQTT publication. Risk therefore follows the current allocation and cannot affect it.
+
+\section{Communication and deployment boundary}
+The Paho client publishes retained state and telemetry so late subscribers obtain the latest evidence. Retained commands are rejected before queueing. Non-retained commands are queued in the MQTT callback before mutation on the simulator thread; correlated application results distinguish accepted, changed, replayed, and conflicting command IDs. MQTT semantics and retained/LWT behavior are protocol features, not security controls \citep{mqtt5}. Current Compose packages only Mosquitto; simulator, dashboard, and static 3D server remain host processes. The publisher and browser use \code{localhost}; this is suitable for a local demonstration, not remote deployment.
