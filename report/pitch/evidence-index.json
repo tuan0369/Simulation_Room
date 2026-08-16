@@ -1,123 +1,106 @@
 {
-  "schema_version": "2.0",
-  "deliverable": "EcoHVAC Guardian executive pitch focused on ROI, cybersecurity, and ethical safety",
-  "scope": "Eight-slide governed evidence-hardening pitch",
-  "claim_boundary": "Simulated classroom pilot. No facility measurements, real ROI, production security, safety certification, production approval, physical autonomy, named approvals, or real seven-day failure prediction.",
-  "claim_types": {
-    "CURRENT / IMPLEMENTED": "Supported by current source, tests, or archived software evidence.",
-    "ILLUSTRATIVE / ASSUMPTION": "Editable scenario arithmetic, not an observed result or forecast.",
-    "TARGET / REQUIRED": "A proposed control or evidence artifact that is not currently deployed.",
-    "GATE / NO-GO RULE": "Failure prevents advancement; no authority or approval is implied."
-  },
-  "source_state": {
-    "repository": "../.. (resolved from report/pitch)",
-    "working_tree": "Deck uses current runtime and archived software evidence while excluding unsupported report claims.",
-    "canonical_report_edited": false,
-    "runtime_or_notebook_edited": false
-  },
+  "schema_version": "6.0",
+  "deliverable": "Executive EcoHVAC Guardian pitch: business opportunity, shared-HVAC value problem, Digital Twin functions, conditional future potential, and governed pilot decision",
+  "scope": "Nine-page PDF-first executive pitch",
+  "claim_boundary": "Closed-loop four-room classroom simulation Digital Twin with illustrative economics. Physical integration, measured facility outcomes, field model validation, production security, and deployment authority require separate evidence.",
   "generation": {
-    "editable_source": "generate_project2_pitch.js",
-    "pptx": "EcoHVAC_Guardian_Project2_Pitch.pptx",
-    "pdf": "EcoHVAC_Guardian_Project2_Pitch.pdf",
-    "generator": "Node.js + PptxGenJS 4.0.1",
-    "pdf_export": "Microsoft PowerPoint",
-    "font": "Arial",
-    "slide_count": 8,
+    "editable_source": "generate_project2_pitch_pdf.js",
+    "intermediate_html": "EcoHVAC_Guardian_Project2_Pitch.html",
+    "canonical_pdf": "EcoHVAC_Guardian_Project2_Pitch.pdf",
+    "generator": "Node.js + self-contained HTML/CSS/images + headless Google Chrome",
+    "slide_count": 9,
     "aspect_ratio": "16:9",
-    "determinism": "Source layout, text, colors, and order are deterministic; OOXML timestamps may vary."
+    "powerpoint_required": false
   },
   "slides": [
     {
       "slide": 1,
-      "claim": "The next decision should test value while treating cybersecurity and ethical safety as independent veto gates.",
-      "claim_types": ["CURRENT / IMPLEMENTED", "ILLUSTRATIVE / ASSUMPTION", "TARGET / REQUIRED"],
-      "sources": ["dashboard/presentation.py", "report/academic-report/sections/07-governance-security.tex", "report/academic-report/sections/08-roi-roadmap.tex"],
-      "limitation": "S$9,080/year is illustrative arithmetic; no pilot funding or deployment approval is asserted."
+      "title": "Turn shared HVAC from a hidden trade-off into a visible, governable business decision",
+      "claim": "EcoHVAC Guardian is presented as an evidence-building opportunity to test business value, occupant outcomes and trustworthy expansion before operational authority increases.",
+      "sources": ["report/academic-report/sections/07-governance-security.tex", "report/academic-report/sections/08-roi-roadmap.tex", "simulator/ecosystem.py"],
+      "limitation": "The opening is a pitch proposition for a governed classroom simulation and illustrative business case—not a measured outcome, approved investment or deployment authorization."
     },
     {
       "slide": 2,
-      "claim": "The illustrative base case produces S$9,080 annual net benefit and 33.04-month simple payback, with avoided incidents supplying about 92% of gross modeled benefit.",
-      "claim_types": ["ILLUSTRATIVE / ASSUMPTION"],
-      "sources": ["dashboard/presentation.py", "dashboard/app.py", "report/academic-report/sections/08-roi-roadmap.tex"],
-      "illustrative_inputs": {
-        "annual_kwh": 45000,
-        "tariff_sgd_per_kwh": 0.30,
-        "energy_reduction": 0.08,
-        "avoided_incidents_sgd_per_year": 12000,
-        "support_sgd_per_year": 4000,
-        "implementation_sgd": 25000
-      },
-      "illustrative_outputs": {
-        "energy_saving_sgd_per_year": 1080,
-        "gross_modeled_benefit_sgd_per_year": 13080,
-        "annual_net_benefit_sgd_per_year": 9080,
-        "first_year_roi_pct": -63.68,
-        "payback_months": 33.04,
-        "avoided_incident_share_pct": 91.74
-      },
-      "limitation": "No facility baseline, applicable tariff, incident record, quote, or measured reduction is attached."
+      "title": "A shared AHU turns separate room demands into one comfort, reliability and cost decision",
+      "claim": "The business problem is cross-zone consequence: four instantiated simulated room twins share one finite-capacity AHU, so local demands affect comfort, equipment state and cost across the ecosystem.",
+      "sources": ["report/images/07_3d_digital_twin_fullscreen.png", "simulator/ecosystem.py", "simulator/ahu.py", "room3d/room3d.html"],
+      "runtime_facts": {"instantiated_rooms": 4, "shared_ahu_max_airflow_m3_s": 0.24},
+      "limitation": "The screenshot is current simulated UI/state evidence, not a connected physical building or field-synchronization result."
     },
     {
       "slide": 3,
-      "claim": "Illustrative sensitivity ranges from no payback to 8.10 months, motivating a pilot that replaces assumptions with evidence.",
-      "claim_types": ["ILLUSTRATIVE / ASSUMPTION", "TARGET / REQUIRED"],
-      "sources": ["report/academic-report/sections/08-roi-roadmap.tex"],
-      "illustrative_scenarios": {
-        "low": {"annual_net_benefit_sgd": -1600, "payback": "none"},
-        "base": {"annual_net_benefit_sgd": 9080, "payback_months": 33.04},
-        "high": {"annual_net_benefit_sgd": 29625, "payback_months": 8.10}
-      },
-      "required_evidence": ["normalized energy baseline", "applicable tariff", "implementation and support quotes", "incident frequency and consequence", "comfort and workload outcomes"],
-      "limitation": "Scenarios are not forecasts, and unverified avoided-incident value is the dominant uncertainty."
+      "title": "The modeled value case lives or dies on avoided incidents—not energy savings alone",
+      "claim": "The illustrative base case yields S$9,080 annual net value and 33.04-month payback, but approximately 91.74% of gross modeled benefit comes from assumed avoided incidents.",
+      "sources": ["dashboard/presentation.py", "report/academic-report/sections/08-roi-roadmap.tex"],
+      "illustrative_inputs": {"annual_hvac_energy_kwh": 45000, "tariff_sgd_per_kwh": 0.3, "energy_reduction_pct": 8, "avoided_incidents_sgd_per_year": 12000, "annual_support_sgd": 4000, "implementation_sgd": 25000},
+      "illustrative_outputs": {"energy_value_sgd_per_year": 1080, "annual_net_value_sgd_per_year": 9080, "first_year_roi_pct": -63.68, "payback_months": 33.04, "avoided_incident_share_of_gross_pct": 91.74},
+      "illustrative_sensitivity": {"low_annual_net_value_sgd": -1600, "low_payback": "none", "base_annual_net_value_sgd": 9080, "base_payback_months": 33.04, "high_annual_net_value_sgd": 29625, "high_payback_months": 8.1},
+      "limitation": "All values are editable scenarios—not measured savings, forecasts, quotations, realized ROI or an approved investment."
     },
     {
       "slide": 4,
-      "claim": "The current classroom broker is anonymous and plaintext; implemented safeguards improve reliability and accountability but do not establish production security.",
-      "claim_types": ["CURRENT / IMPLEMENTED"],
-      "sources": ["mosquitto/config/mosquitto.conf", "simulator/contracts.py", "simulator/publisher.py", "simulator/audit.py", "simulator/ecosystem.py"],
-      "current_exposure": ["allow_anonymous true", "MQTT 1883", "WebSockets 9001", "no deployed production identity or ACL evidence", "no independently verified recovery"],
-      "implemented_safeguards": ["strict command contracts", "application acknowledgements", "bounded process-local command deduplication", "optional local command hash chain", "simulation pause and stop"],
-      "limitation": "The journal is optional, command-scoped, locally recomputable, and not externally anchored or non-repudiating."
+      "title": "The Digital Twin converts a shared constraint into a closed operating loop",
+      "claim": "Persistent ecosystem state connects mirror, predict, coordinate, respond and verify functions beneath the Operations Centre interface.",
+      "sources": ["report/images/01_operations_centre_dashboard.png", "simulator/ecosystem.py", "simulator/publisher.py", "simulator/coordinator.py", "simulator/pid_controller.py", "simulator/knowledge_base.py"],
+      "current_boundary": "The current source instantiates four rooms, while ROOM_IDS and parts of MQTT room command/status plumbing remain two-room.",
+      "limitation": "Current UI/state visibility does not establish symmetric four-room remote commandability or physical-building operation."
     },
     {
       "slide": 5,
-      "claim": "Real connection requires evidence for identity, protected transport, authorization and freshness, protected audit, and recovery.",
-      "claim_types": ["TARGET / REQUIRED", "GATE / NO-GO RULE"],
-      "sources": ["mosquitto/config/mosquitto-hardened.conf", "mosquitto/README.md", "report/academic-report/sections/07-governance-security.tex"],
-      "required_controls": ["per-device identity or mTLS", "TLS/WSS", "least-privilege ACL", "authenticated authorization and command freshness", "protected and externally anchored audit", "independent fallback and rehearsed recovery"],
-      "limitation": "Target files are examples and do not prove deployed certificates, credentials, ACL identities, recovery, ownership, approval, or security testing."
+      "title": "The twin records what airflow was actually granted—not merely what each room requested",
+      "claim": "An archived two-room MQTT trace demonstrates correlated command acceptance, finite-capacity grants, bounded comfort-debt memory, actuator feedback, pause behavior and deterministic reset.",
+      "sources": ["release-evidence/project2/broker/scenario/mqtt-transcript.txt", "simulator/contracts.py", "simulator/coordinator.py", "simulator/pid_controller.py", "simulator/ecosystem.py"],
+      "archived_trace": {"topology": "two-room", "requested_airflow_m3_s": 0.32, "available_airflow_m3_s": 0.0953, "room1_grant_m3_s": 0.0953, "room2_grant_m3_s": 0.0, "comfort_debt_c_s_sequence": [6.0, 12.02, 24.12]},
+      "limitation": "The archived two-room trace is explicitly separate from the current four-room screenshots and does not prove universal fairness or one immutable release."
     },
     {
       "slide": 6,
-      "claim": "Economic benefit must be reported together with comfort, fairness, workload, privacy, security, and missed-risk burdens.",
-      "claim_types": ["CURRENT / IMPLEMENTED", "TARGET / REQUIRED"],
-      "sources": ["simulator/coordinator.py", "simulator/models/fan_risk_logistic.metrics.json", "report/academic-report/sections/07-governance-security.tex"],
-      "synthetic_evidence": {"holdout_rows": 480, "false_negatives_at_0_5_cutoff": 63},
-      "required_burden_measures": ["comfort degree-hours", "denied-flow duration", "maximum starvation", "room-to-room disparity", "false-alert workload", "false negatives", "privacy inference", "security exceptions"],
-      "limitation": "The 63 false negatives are synthetic holdout evidence, not field failures or a facility risk rate."
+      "title": "The twin projects what may happen next—and abstains outside supported inputs",
+      "claim": "The current predictive UI presents four-room +5/+15-minute trajectories, explicit OOD/abstention behavior, a 15-tick simulated evaluation lifecycle and archived software-test evidence.",
+      "sources": ["report/images/02_predictive_intelligence_hub.png", "simulator/intelligence.py", "simulator/fan_health.py", "simulator/models/fan_risk_logistic.metrics.json", "release-evidence/project2/tests/pytest-console.txt"],
+      "verified_software_result": {"tests": 161, "failures": 0, "errors": 0, "skipped": 0},
+      "synthetic_model_evidence": {"training_rows": 1920, "holdout_rows": 480, "roc_auc": 0.8449, "recall": 0.5935, "false_negatives": 63},
+      "limitation": "Thermal projections are deterministic teaching-model continuations; fan-risk data are synthetic; software tests do not establish field performance or physical safety."
     },
     {
       "slide": 7,
-      "claim": "Human review remains the default and every increase in authority requires a separate evidence gate.",
-      "claim_types": ["CURRENT / IMPLEMENTED", "TARGET / REQUIRED", "GATE / NO-GO RULE"],
-      "sources": ["simulator/ecosystem.py", "simulator/knowledge_base.py", "report/academic-report/sections/07-governance-security.tex"],
-      "current_boundary": "Explicit opt-in auto mode mutates simulated state only; no physical equipment or work-order integration exists.",
-      "proposed_stages": ["simulation with manual review", "read-only shadow", "human-reviewed alerts", "bounded automation after signed gates"],
-      "limitation": "The four 15-tick heuristic checks are software evaluation aids, not safety certification, physical fail-safe evidence, or facility approval."
+      "title": "Trust is an operating function: expose who waits, preserve human authority and secure every step",
+      "claim": "The trust envelope combines observable benefit/burden signals, aggregate-occupancy purpose limits, acknowledged human authority, simulation stop controls, and current-versus-target cybersecurity.",
+      "sources": ["simulator/coordinator.py", "simulator/contracts.py", "simulator/publisher.py", "simulator/audit.py", "simulator/ecosystem.py", "simulator/models/fan_risk_logistic.metrics.json", "mosquitto/config/mosquitto.conf", "mosquitto/config/mosquitto-hardened.conf", "report/academic-report/sections/07-governance-security.tex"],
+      "purpose_boundary": "Aggregate occupancy supports HVAC decisions and must not become identity, attendance, productivity or disciplinary profiling.",
+      "current_broker_profile": ["anonymous access", "plaintext MQTT 1883", "plaintext WebSocket 9001"],
+      "limitation": "Synthetic false negatives are not field failures; local audit is not immutable; hardened identity/TLS/ACL/recovery controls are targets, not deployed evidence."
     },
     {
       "slide": 8,
-      "claim": "The decision ask is a governed evidence-hardening and read-only pilot, ending in advance, redesign, or stop—not production deployment.",
-      "claim_types": ["TARGET / REQUIRED", "GATE / NO-GO RULE"],
-      "sources": ["release-evidence/project2/tests/pytest-junit.xml", "release-evidence/project2/tests/pytest-console.txt", "dashboard/presentation.py", "mosquitto/config/mosquitto.conf", "report/academic-report/sections/07-governance-security.tex", "report/academic-report/sections/08-roi-roadmap.tex"],
-      "verified_software_result": {"tests": 161, "failures": 0, "errors": 0, "skipped": 0, "time_seconds": 2.59},
-      "workstreams": ["ROI evidence", "cybersecurity evidence", "ethical-safety and authority evidence"],
-      "limitation": "Passing software tests do not establish field validation, safety certification, production security, deployment approval, or physical autonomy. No amount, schedule, owner, signatory, or approval is asserted."
+      "title": "Operational authority can expand only as evidence, safeguards and accountability mature",
+      "claim": "Conditional future potential progresses from simulation to read-only shadow, human-reviewed advice, bounded reversible control and separately governed site scale.",
+      "sources": ["report/academic-report/sections/07-governance-security.tex", "report/academic-report/sections/08-roi-roadmap.tex", "simulator/ecosystem.py", "simulator/knowledge_base.py"],
+      "roadmap": [
+        {"stage": "simulate", "status": "current", "gate": "software evidence"},
+        {"stage": "shadow", "status": "conditional", "gate": "data quality and security"},
+        {"stage": "advise", "status": "conditional", "gate": "field model and human impact"},
+        {"stage": "bounded control", "status": "conditional", "gate": "safety, rollback and named authority"},
+        {"stage": "scale", "status": "conditional", "gate": "site-by-site value and trust"}
+      ],
+      "limitation": "No schedule, budget, facility approval, physical autonomy, site-scale outcome or deployment authorization is asserted."
+    },
+    {
+      "slide": 9,
+      "title": "Approve an evidence-building pilot—not autonomous deployment",
+      "claim": "The proposed decision is to prove value, protect people and earn trust, with advance to read-only shadow, redesign or stop as evidence-based exits.",
+      "sources": ["release-evidence/project2/tests/pytest-console.txt", "report/academic-report/sections/07-governance-security.tex", "report/academic-report/sections/08-roi-roadmap.tex"],
+      "limitation": "No pilot amount, schedule, owner, signatory, facility authorization, production deployment or physical autonomy is asserted."
     }
   ],
   "visual_asset_policy": {
-    "used": [],
-    "approach": "Native PowerPoint shapes only; no legacy screenshot or unsupported financial graphic is embedded.",
-    "excluded": ["legacy two-room screenshots", "unsupported financial screenshots", "unsupported retrofit economics", "figures showing conflicting 0.48 m3/s capacity", "fabricated-sounding approval records"]
+    "used": [
+      {"path": "report/images/07_3d_digital_twin_fullscreen.png", "slide": 2, "use": "current four-room spatial-state UI illustrating the shared-HVAC business problem"},
+      {"path": "report/images/01_operations_centre_dashboard.png", "slide": 4, "use": "current Operations Centre UI illustrating the closed operating loop"},
+      {"path": "report/images/02_predictive_intelligence_hub.png", "slide": 6, "use": "current predictive UI illustrating trajectories, risk evidence and evaluation workflow"}
+    ],
+    "embedded_as": "Base64 data URIs in generated self-contained HTML",
+    "excluded": ["graphics with capacity values conflicting with the current runtime", "unsupported measured outcomes", "offline autonomy evidence", "immutable-audit claims", "field-validation claims", "invented schedules, approvals or site-scale benefits"]
   }
 }

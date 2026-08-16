@@ -1,28 +1,60 @@
 {
-  "pptx_valid_zip": true,
-  "pptx_slide_xml_count": 8,
-  "pptx_notes_xml_count": 8,
-  "personal_absolute_path_absent": true,
-  "pdf_page_count": 0,
+  "canonical_deliverable": "EcoHVAC_Guardian_Project2_Pitch.pdf",
+  "pdf_first": true,
+  "pdf_page_count": 9,
+  "pdf_page_size_points": [960.0, 540.0],
+  "pdf_pages_have_text": [true, true, true, true, true, true, true, true, true],
+  "visual_review": "Rendered all nine pages, reviewed the complete contact sheet, and inspected the new executive opening, operating-loop, predictive-intelligence, and future-potential pages individually. No clipping, overlap, missing image, unreadable crop, or broken progression was observed.",
+  "storyline_review": {
+    "executive_opening_and_recommendation": "Slide 1",
+    "business_problem": "Slide 2",
+    "illustrative_business_hypothesis": "Slide 3",
+    "digital_twin_operating_loop": "Slide 4",
+    "causal_allocation_and_comfort_memory": "Slide 5",
+    "predictive_abstention_and_verification": "Slide 6",
+    "ethical_authority_and_security_trust_envelope": "Slide 7",
+    "conditional_future_potential": "Slide 8",
+    "evidence_building_pilot_decision": "Slide 9"
+  },
+  "narrative_checks": {
+    "opening_is_outcome_led_and_non_technical": true,
+    "business_precedes_technology": true,
+    "digital_twin_functions_are_progressively_explained": true,
+    "future_potential_is_explicit_and_conditional": true,
+    "decision_is_evidence_building_not_autonomous_deployment": true
+  },
+  "evidence_separation": {
+    "current_four_room_ui": "Slides 2, 4, and 6 use current interface screenshots as UI/state evidence.",
+    "archived_two_room_trace": "Slide 5 labels its causal MQTT evidence as an archived two-room integration trace and does not merge it with current four-room screenshots.",
+    "four_room_command_boundary": "Slide 4 states that Room 3/4 MQTT command/status plumbing is not yet symmetric with Rooms 1/2.",
+    "simulation_boundary": "The deck does not claim a connected physical building, field-validated prediction, measured ROI, production autonomy, immutable audit, deployed hardened security, or deployment authorization."
+  },
   "fact_checks": {
     "current_runtime_rooms": 4,
     "runtime_ahu_max_m3_s": 0.24,
-    "stress_request_m3_s": 0.3776,
-    "stress_available_m3_s": 0.0953175,
-    "current_verified_tests": "161 passed; 0 failures/errors/skips",
-    "notebook": "11/11 code cells executed in archived prior-revision run",
-    "unsupported_report_claims_not_propagated": true
+    "forecast_horizons_minutes": [5, 15],
+    "archived_software_tests": "161 passed; 0 failures/errors/skips",
+    "illustrative_base_annual_net_value_sgd": 9080,
+    "illustrative_base_payback_months": 33.04,
+    "illustrative_avoided_incident_share_pct": 91.74,
+    "synthetic_holdout_rows": 480,
+    "synthetic_false_negatives": 63,
+    "current_broker_anonymous_plaintext": true,
+    "stale_capacity_claim_absent": true,
+    "unsupported_measured_or_field_claims_absent": true
   },
-  "pdf_pages": [],
-  "visual_review": "Regenerated all 8 PDF-derived slide PNGs and the contact sheet; visually inspected the complete contact sheet with no clipping, overlap, missing content, or unreadable layout observed.",
-  "source_reproduction": "npm ci && npm run build; export PPTX to PDF with Microsoft PowerPoint",
-  "dependency_note": "PptxGenJS 4.0.1 resolves image-size 2.0.2 via override; npm audit still reports two high-severity parser DoS advisories. Deck generation uses repository-controlled PNG input only.",
+  "visual_assets": [
+    {"slide": 2, "path": "../images/07_3d_digital_twin_fullscreen.png"},
+    {"slide": 4, "path": "../images/01_operations_centre_dashboard.png"},
+    {"slide": 6, "path": "../images/02_predictive_intelligence_hub.png"}
+  ],
+  "source_reproduction": "npm --prefix report/pitch run build; the generator embeds three PNG assets as data URIs in self-contained HTML and invokes headless Google Chrome for PDF rendering.",
+  "powerpoint_required": false,
   "sha256": {
-    "EcoHVAC_Guardian_Project2_Pitch.pptx": "030ec516a64a4ab31f48e92f251fc0c9d8a143edeff91aa64851adaf009c4e53",
-    "EcoHVAC_Guardian_Project2_Pitch.pdf": "3a16883879a3f05043755190589b9d981f7903bdbe311e40b0df696d672110c7",
-    "generate_project2_pitch.js": "09d6f493ce3b2674d542ac5e600e3161efb2766283dc2269ecb7dd7790d6d990",
-    "evidence-index.json": "3b3c2ca377a2e3c980e42d31a292fb2efcb7744b31828c958afb26265fd1acdb",
-    "package.json": "c620a61e2290e30407006c6f367b4a96febb44e10cba68f8e089f08eeb9b73f3",
-    "package-lock.json": "01c5eaa4486899d2d2ffa88c9c07b4109608c23f71f4ea52fc908a1085da5a1d"
+    "EcoHVAC_Guardian_Project2_Pitch.pdf": "6a799aed1e02687537f6c18ea580684d25a5a5c71588042dfa08097d5d254316",
+    "generate_project2_pitch_pdf.js": "0e215e331d49c754e52f4778597000144f9015768156d2a6ccbd88df8c068477",
+    "EcoHVAC_Guardian_Project2_Pitch.html": "aff726253ccaefe9ccff31bf35b88ae6e5762994eeaa41959e394c1a79e2cac8",
+    "evidence-index.json": "fe9c94ee0fdab59442ce99717c66cfae948c7f9e8a7db8a297cfab85667915ba",
+    "package.json": "fd2624ffc20b3032135fa397f250628c0d743df33de776d92850e352bf41d0a9"
   }
 }
